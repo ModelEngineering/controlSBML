@@ -1,13 +1,14 @@
 """LTI Control for SBML models"""
 
-from controlSBML import constants as cn
-from controlSBML import msgs
+"""
+TO DO:
 
-import collections
+1. Plot difference between time jacoabian at reference vs. Current.
+2. Plot TOTAL residual SSQ vs. jacobian difference
+"""
+
 import control
-import os.path
 import numpy as np
-import sys
 import tellurium as te
 
 
@@ -29,9 +30,8 @@ class ControlSBML(object):
         :param str model_reference: string or SBML file or Roadrunner object
         """
         ##### PUBLIC #####
+        self.model_reference = model_reference
         self.roadrunner = None  # Roadrunner object
-        # Initialization for this method
-        xml_model_reference = None
         # Read the model
         if "RoadRunner" in str(type(model_reference)):
             self.roadrunner = model_reference
@@ -54,7 +54,8 @@ class ControlSBML(object):
             raise ValueError("Invalid model reference")
         # Do the initializations
         self.antimony = self.roadrunner.getAntimony()
-        self.state_names = self.jacobian.colnames
+        self.roadrunner.reset()
+        self.state_names = list(self.jacobian.colnames)
 
     @property
     def jacobian(self):
@@ -63,21 +64,27 @@ class ControlSBML(object):
         -------
         NamedArray with names for rows (rownames) and columns (colnames)
         """
-        return self.roadrunner.getFullJacobian()
+        mat = self.roadrunner.getFullJacobian()
+        return mat
+
+    @staticmethod
+    def isRoadrunnerKey(key):
+        return not ((key[0] == "_") or ("(" in key) or (key[-1] == "'"))
 
     def copy(self):
         """
         Creates a copy of the object.
-        
+
         Returns
         -------
         controlSBML
         """
-        control = ControlSBML(self.model_reference)
+        ctlsb = ControlSBML(self.model_reference)
         # Update roadrunner
         for key, value in self.roadrunner.items():
-            control[key] = value
-        return control
+            if self.isRoadrunnerKey(key):
+                ctlsb.roadrunner[key] = value
+        return ctlsb
 
     def equals(self, other):
         """
@@ -86,7 +93,7 @@ class ControlSBML(object):
         Parameters
         ----------
         other: ControlSBML
-        
+
         Returns
         -------
         bool
@@ -100,25 +107,26 @@ class ControlSBML(object):
         # Check the roadrunner state
         if bValue:
             for key, value in self.roadrunner.items():
-                bValue = bValue and (other[key] == value)
+                if self.isRoadrunnerKey(key):
+                    bValue = bValue and (other.roadrunner[key] == value)
         return bValue
-     
+
 
     def get(self, names=None):
         """
         Provides the roadrunner values for a name. If no name,
-        then all values are given. 
+        then all values are given.
 
         Parameters
         ----------
         name: str/list-str
-        
+
         Returns
         -------
         object/dict
         """
         if isinstance(names, str):
-            return self.roadrunner[name]
+            return self.roadrunner[names]
         if names is None:
             names = self.roadrunner.keys()
         return {n: self.roadrunner[n] for n in names}
@@ -133,7 +141,7 @@ class ControlSBML(object):
             key: str
             value: value
         """
-        for name, value in name_dct.items()
+        for name, value in name_dct.items():
             self.roadrunner[name] = value
 
     def mkStateSpace(self, B=None, C=None, D=None):
@@ -145,7 +153,7 @@ class ControlSBML(object):
         B: np.array(n X p)
         C: np.array(q X n)
         D: np.array(q X p)
-        
+
         Returns
         -------
         control.StateSpace
@@ -164,10 +172,10 @@ class ControlSBML(object):
     def mkInitialState(self):
         """
         Contructs the initial state vector for StateSpace model.
-        
+
         Returns
         -------
         np.array
         """
-        values = list(self.get(state_names).values()))
+        values = list(self.get(self.state_names).values())
         return np.array(values)

@@ -1,17 +1,14 @@
-from controlSBML import constants as cn
-from controlSBML import control_sbml
 from controlSBML.control_sbml import ControlSBML
-from tests import helpers
+import helpers
 
-import copy
 import numpy as np
 import os
 import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 
@@ -24,34 +21,42 @@ class TestControlSBML(unittest.TestCase):
     def setUp(self):
       # Cannot modify self.control
       self.ctlsb = ControlSBML(ANTIMONY_FILE)
-  
+
     def testConstructor(self):
-        # TESTING
-        self.assertTrue("RoadRunner" in type(self.ctlsb.roadrunner))
-  
+        if IGNORE_TEST:
+            return
+        self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
+
     def testConstructWithRoadrunner(self):
         if IGNORE_TEST:
             return
         model = te.loada(helpers.TEST_PATH_1)
-        ctlsb1 = SymmathSBML(model)
-        ctlsb2 = SymmathSBML(helpers.TEST_PATH_1)
-        diff = set(ctlsb1.get().values()).symmetric_difference(ctlsb2.get().values())
-        self.assertGreater(len(diff), 0)
+        ctlsb1 = ControlSBML(model)
+        ctlsb2 = ControlSBML(helpers.TEST_PATH_1)
+        diff = set(ctlsb1.get().values()).symmetric_difference(
+              ctlsb2.get().values())
+        self.assertEqual(len(diff), 0)
 
     def testGet(self):
         if IGNORE_TEST:
             return
-        dct = self.ctlsb.get("S0")
-        import pdb; pdb.set_trace()
+        S0 = "S0"
+        dct = self.ctlsb.get(S0)
+        self.assertEqual(dct, self.ctlsb.roadrunner[S0])
+        #
+        dct = self.ctlsb.get([S0])
+        self.assertEqual(dct[S0], self.ctlsb.roadrunner[S0])
+        #
+        dct = self.ctlsb.get()
+        self.assertGreater(len(dct), 0)
 
     def testSet(self):
         if IGNORE_TEST:
             return
         VALUE = 2
-        self.ctlsb.set("S0", VALUE)
-        value = self.ctlsb_get("S0")
-        self.assertTrue(np.isclose(VALUE, value)
-        import pdb; pdb.set_trace()
+        self.ctlsb.set({"S0": VALUE})
+        value = self.ctlsb.get("S0")
+        self.assertTrue(np.isclose(VALUE, value))
 
     def testCopyEquals(self):
         if IGNORE_TEST:
@@ -70,9 +75,11 @@ class TestControlSBML(unittest.TestCase):
     def testMkInitialState(self):
         if IGNORE_TEST:
             return
-        x0 = self.ctlsb.mkInitialState()
-        self.assertEqual(np.shape(x0), (3, 1))
-    
+        X0 = self.ctlsb.mkInitialState()
+        self.assertEqual(np.shape(X0), (3,))
+        dX0 = np.matmul(self.ctlsb.jacobian, X0)
+        self.assertEqual(len(X0), len(dX0))
+
 
 if __name__ == '__main__':
   unittest.main()
