@@ -71,6 +71,10 @@ class ControlSBML(object):
     def isRoadrunnerKey(key):
         return not ((key[0] == "_") or ("(" in key) or (key[-1] == "'"))
 
+    def setTime(self, time):
+        self.roadrunner.reset()
+        _ = self.roadrunner.simulate(0, time)
+
     def copy(self):
         """
         Creates a copy of the object.

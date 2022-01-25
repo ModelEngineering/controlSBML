@@ -80,6 +80,26 @@ class TestControlSBML(unittest.TestCase):
         dX0 = np.matmul(self.ctlsb.jacobian, X0)
         self.assertEqual(len(X0), len(dX0))
 
+    def testSetTime(self):
+        if IGNORE_TEST:
+            return
+        def isEqual(jac1, jac2, val_bl):
+            mat = jac1 - jac2
+            diff = sum((mat.flatten())**2)
+            self.assertEqual(np.isclose(diff, 0), val_bl)
+        #
+        self.ctlsb.setTime(0)
+        jac_0 = self.ctlsb.jacobian
+        self.ctlsb.setTime(5)
+        jac_5 = self.ctlsb.jacobian
+        isEqual(jac_0, jac_5, False)
+        #
+        self.ctlsb.setTime(0)
+        jac_00 = self.ctlsb.jacobian
+        isEqual(jac_00, jac_0, True)
+        
+        
+
 
 if __name__ == '__main__':
   unittest.main()
