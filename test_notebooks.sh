@@ -11,5 +11,6 @@ cd ..
 # Execute the script files
 for f in `ls notebooks/*.py`
   do
+    echo "Running $f"
     python $f
   done
