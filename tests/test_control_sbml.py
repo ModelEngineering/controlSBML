@@ -6,17 +6,30 @@ import pandas as pd
 import os
 import unittest
 import tellurium as te
+import matplotlib
+matplotlib.use('TkAgg')
 
 
 IGNORE_TEST = False
 IS_PLOT = False
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
-LINEAR_MODEL = """
+LINEAR_MDL = """
 S0 -> 2 S0; S0
 S0 -> S1; S0
 S1 -> S2; S1
 S2 -> S3; S2
+
+S0 = 1
+S1 = 10
+S2 = 0
+S3 = 0
+"""
+NONLINEAR_MDL = """
+S0 -> 2 S0; S0
+S0 -> S1; S0
+S1 -> S2; S1*S1
+S2 -> S3; S2*S1
 
 S0 = 1
 S1 = 10
@@ -110,21 +123,23 @@ class TestControlSBML(unittest.TestCase):
         jac_00 = self.ctlsb.jacobian
         isEqual(jac_00, jac_0, True)
 
-    def testSimulateLinearSystem(self):
+    def testSimulateLinearSystemRoadrunner(self):
         if IGNORE_TEST:
             return
-        ctlsb = ControlSBML(LINEAR_MODEL)
+        ctlsb = ControlSBML(LINEAR_MDL)
         linear_df = ctlsb.simulateLinearSystem()
-        rr = te.loada(LINEAR_MODEL)
-        data = rr.simulate()
-        columns = [c[1:-1] for c in data.colnames]
-        rr_df = pd.DataFrame(data, columns=columns)
+        rr = te.loada(LINEAR_MDL)
+        rr_df = ctlsb.simulateRoadrunner()
         for column in rr_df.columns[1:]:
             linear_arr = linear_df[column].values
             rr_arr = rr_df[column].values
             self.assertLess(np.abs(linear_arr[-1] - rr_arr[-1]), 0.1)
-        
-        
+
+    def testEvaluateAccuracy(self):
+        if IGNORE_TEST:
+            return
+        self.ctlsb.evaluateAccuracy(NONLINEAR_MDL,
+              [0, 1, 2, 3], suptitle="Test", is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':

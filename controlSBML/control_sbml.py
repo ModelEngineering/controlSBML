@@ -8,6 +8,7 @@ TO DO:
 """
 
 import control
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import tellurium as te
@@ -22,6 +23,8 @@ TYPE_XML = "type_xml"  # XML string
 TYPE_ANTIMONY = "type_xml"  # Antimony string
 TYPE_FILE = "type_file" # File reference
 END_TIME = 5  # Default endtime
+NUM_POINT = 101
+TIME = "time"
 
 
 class ControlSBML(object):
@@ -117,7 +120,6 @@ class ControlSBML(object):
                     bValue = bValue and (other.roadrunner[key] == value)
         return bValue
 
-
     def get(self, names=None):
         """
         Provides the roadrunner values for a name. If no name,
@@ -187,7 +189,7 @@ class ControlSBML(object):
         return np.array(values)
 
     def simulateLinearSystem(self, timepoint=0, start_time=0,
-          end_time=END_TIME, num_point=100):
+          end_time=END_TIME, num_point=NUM_POINT):
         """
         Creates an approximation of the SBML model based on the Jacobian, and
         constructs predictions based on this Jacobian and the values of
@@ -219,3 +221,86 @@ class ControlSBML(object):
         df = pd.DataFrame(y_vals.transpose(), index=times)
         df.columns = self.state_names
         return df
+
+    def simulateRoadrunner(self, start_time=0, end_time=END_TIME,
+          num_point=NUM_POINT):
+        """
+        Creates an approximation of the SBML model based on the Jacobian, and
+        constructs predictions based on this Jacobian and the values of
+        floating species at the start_time.
+
+        Parameters
+        ----------
+        start_time: float
+        end_time: float
+        num_point: int
+        
+        Returns
+        -------
+        pd.dataframe
+            columns: floating species
+            index: time
+        """
+        self.roadrunner.reset()
+        data = self.roadrunner.simulate(start_time, end_time, num_point)
+        columns = [c[1:-1] if c[0] =="[" else c for c in data.colnames]
+        df = pd.DataFrame(data, columns=columns)
+        df = df.set_index(TIME)
+        return df
+
+    @classmethod
+    def evaluateAccuracy(cls, model_reference, timepoints, suptitle="",
+         is_plot=True, **kwargs):
+        """
+        Creates a plot that evaluates the
+        accouract of a linear model where the Jacobian is calculated
+        at multiple timepoints. X0 is taken at the start of the simulation.
+
+        Parameters
+        ----------
+        model_reference: as required by constructor
+        timepoints: list-float
+            Time at which Jacobian is calculated
+        suptitle: str
+        is_plot: bool
+        kwargs: dict
+            Values used for simulation (start_time, end_time, num_point)
+        
+        Returns
+        -------
+        """
+        if isinstance(timepoints, float) or isinstance(timepoints, int):
+            timepoints = [timepoints]
+        ctlsb = cls(model_reference)
+        rr_df = ctlsb.simulateRoadrunner(**kwargs)
+        nrow = len(timepoints)
+        ncol = len(rr_df.columns)
+        fig, axes = plt.subplots(nrow, ncol, figsize=(15, 5))
+        axes = np.reshape(axes, (nrow, ncol))
+        for irow, timepoint in enumerate(timepoints):
+            linear_df = ctlsb.simulateLinearSystem(timepoint=timepoint,
+                  **kwargs)
+            ymin = min(linear_df.min().min(), rr_df.min().min())
+            ymax = max(linear_df.max().max(), rr_df.max().max())
+            for icol, column in enumerate(rr_df.columns):
+                ax = axes[irow, icol]
+                ax.plot(linear_df.index, linear_df[column], color="red")
+                ax.plot(rr_df.index, rr_df[column], color="blue")
+                ax.scatter(timepoint, ymin, s=40, marker="o", color="g")
+                ax.set_ylim([ymin, ymax])
+                if irow < nrow - 1:
+                    ax.set_xticklabels([])
+                if irow == 0:
+                    ax.set_title(column)
+                    if icol == 0:
+                        ax.text(-3, 0.75*ymax, "Jacobian Time")
+                        ax.legend(["linear", "nonlinear"])
+                if icol > 0:
+                    ax.set_yticklabels([])
+                else:
+                    ax.text(-2, ymax/2, "%2.1f" % timepoint)
+        plt.suptitle(suptitle)
+        if is_plot:
+            plt.show()
+        else:
+            plt.close()
