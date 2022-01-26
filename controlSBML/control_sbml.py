@@ -9,6 +9,7 @@ TO DO:
 
 import control
 import numpy as np
+import pandas as pd
 import tellurium as te
 
 
@@ -20,6 +21,7 @@ TYPE_MODEL = "type_model"  # libsbml model
 TYPE_XML = "type_xml"  # XML string
 TYPE_ANTIMONY = "type_xml"  # Antimony string
 TYPE_FILE = "type_file" # File reference
+END_TIME = 5  # Default endtime
 
 
 class ControlSBML(object):
@@ -183,3 +185,37 @@ class ControlSBML(object):
         """
         values = list(self.get(self.state_names).values())
         return np.array(values)
+
+    def simulateLinearSystem(self, timepoint=0, start_time=0,
+          end_time=END_TIME, num_point=100):
+        """
+        Creates an approximation of the SBML model based on the Jacobian, and
+        constructs predictions based on this Jacobian and the values of
+        floating species at the start_time.
+
+        Parameters
+        ----------
+        timepoint: float
+        start_time: float
+        end_time: float
+        
+        Returns
+        -------
+        pd.dataframe
+            columns: floating species
+            index: time
+        """
+        cur_time = self.get("time")
+        self.setTime(timepoint)
+        sys = self.mkStateSpace()
+        self.setTime(start_time)
+        x0 = np.array(list(self.get(self.state_names).values()))
+        x0 = np.reshape(x0, len(x0))
+        self.setTime(cur_time)  # Restore the time
+        # Run the linear simulation
+        dt = (end_time - start_time)/num_point
+        times = [n*dt for n in range(num_point)]
+        times, y_vals = control.forced_response(sys, T=times, X0=x0)
+        df = pd.DataFrame(y_vals.transpose(), index=times)
+        df.columns = self.state_names
+        return df

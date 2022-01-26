@@ -2,6 +2,7 @@ from controlSBML.control_sbml import ControlSBML
 import helpers
 
 import numpy as np
+import pandas as pd
 import os
 import unittest
 import tellurium as te
@@ -11,6 +12,17 @@ IGNORE_TEST = False
 IS_PLOT = False
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
+LINEAR_MODEL = """
+S0 -> 2 S0; S0
+S0 -> S1; S0
+S1 -> S2; S1
+S2 -> S3; S2
+
+S0 = 1
+S1 = 10
+S2 = 0
+S3 = 0
+"""
 
 
 #############################
@@ -97,6 +109,20 @@ class TestControlSBML(unittest.TestCase):
         self.ctlsb.setTime(0)
         jac_00 = self.ctlsb.jacobian
         isEqual(jac_00, jac_0, True)
+
+    def testSimulateLinearSystem(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MODEL)
+        linear_df = ctlsb.simulateLinearSystem()
+        rr = te.loada(LINEAR_MODEL)
+        data = rr.simulate()
+        columns = [c[1:-1] for c in data.colnames]
+        rr_df = pd.DataFrame(data, columns=columns)
+        for column in rr_df.columns[1:]:
+            linear_arr = linear_df[column].values
+            rr_arr = rr_df[column].values
+            self.assertLess(np.abs(linear_arr[-1] - rr_arr[-1]), 0.1)
         
         
 
