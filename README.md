@@ -1,2 +1,2 @@
-# SBMLControl
-Analyze and design feedback control for SBML models
+# ControlSBML
+Analyze and design feedback control of biochemical networks using Tellurium.

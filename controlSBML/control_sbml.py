@@ -41,6 +41,7 @@ class ControlSBML(object):
         if "RoadRunner" in str(type(model_reference)):
             self.roadrunner = model_reference
             model_reference = model_reference.getSBML()
+        # FIXME: Handle URL reference
         elif isinstance(model_reference, str):
             parts = model_reference.split(".")
             if len(parts) == 2:
@@ -58,9 +59,27 @@ class ControlSBML(object):
         else:
             raise ValueError("Invalid model reference")
         # Do the initializations
+        self.boundary_species = self.roadrunner.getBoundarySpeciesIds()
+        self._state_names = None
         self.antimony = self.roadrunner.getAntimony()
         self.roadrunner.reset()
-        self.state_names = list(self.jacobian.colnames)
+
+    def _mkBoundarySpeciesFloating(self):
+        for name in self.boundary_species:
+            self.roadrunner.setBoundary(name, False)
+
+    def _unmkBoundarySpeciesFloating(self):
+        for name in self.boundary_species:
+            self.roadrunner.setBoundary(name, True)
+
+    @property
+    def state_names(self):
+        if self._state_names is None:
+            self._mkBoundarySpeciesFloating()
+            mat = self.roadrunner.getFullJacobian()
+            self._state_names = list(mat.colnames)
+            self._unmkBoundarySpeciesFloating()
+        return self._state_names
 
     @property
     def jacobian(self):
@@ -68,9 +87,29 @@ class ControlSBML(object):
         Returns
         -------
         NamedArray with names for rows (rownames) and columns (colnames)
+        Handle boundary species.
         """
+        self._mkBoundarySpeciesFloating()
         mat = self.roadrunner.getFullJacobian()
-        return mat
+        self._unmkBoundarySpeciesFloating()
+        for idx, name in enumerate(mat.rownames):
+            if name in self.boundary_species:
+                mat[idx, :] = 0
+        df = pd.DataFrame(mat, columns=mat.colnames, index=mat.rownames)
+        return df
+
+    @property
+    def currentState(self):
+        """
+        Contructs vector of current state values (floating and boundary species)
+
+        Returns
+        -------
+        Series
+            index: str (state names)
+        """
+        values = list(self.get(self.state_names).values())
+        return pd.Series(values, index=self.state_names)
 
     @staticmethod
     def isRoadrunnerKey(key):
@@ -109,7 +148,7 @@ class ControlSBML(object):
         """
         bValue = self.antimony == other.antimony
         bValue = bValue and all([s1 == s2 for s1, s2
-              in zip(self.state_names, self.jacobian.colnames)])
+              in zip(self.state_names, self.jacobian.columns)])
         diff = set(self.roadrunner.keys()).symmetric_difference(
               other.roadrunner.keys())
         bValue = bValue and (len(diff) == 0)
@@ -167,7 +206,7 @@ class ControlSBML(object):
         control.StateSpace
         """
         # Construct the matrices
-        A = self.jacobian
+        A = self.jacobian.values
         if B is None:
             B = np.repeat(0, A.shape[0])
             B = np.reshape(B, (A.shape[0], 1))
@@ -176,17 +215,6 @@ class ControlSBML(object):
         if D is None:
             D = B
         return control.StateSpace(A, B, C, D)
-
-    def mkInitialState(self):
-        """
-        Contructs the initial state vector for StateSpace model.
-
-        Returns
-        -------
-        np.array
-        """
-        values = list(self.get(self.state_names).values())
-        return np.array(values)
 
     def simulateLinearSystem(self, timepoint=0, start_time=0,
           end_time=END_TIME, num_point=NUM_POINT):

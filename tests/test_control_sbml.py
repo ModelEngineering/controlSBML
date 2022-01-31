@@ -15,8 +15,7 @@ IS_PLOT = False
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 LINEAR_MDL = """
-S0 -> 2 S0; S0
-S0 -> S1; S0
+$S0 -> S1; $S0
 S1 -> S2; S1
 S2 -> S3; S2
 
@@ -36,6 +35,22 @@ S1 = 10
 S2 = 0
 S3 = 0
 """
+NONLINEAR1_MDL = """
+//S0 -> 2 S0; S0
+$S0 -> S1; $S0
+S1 -> S2; k2*S1
+S2 -> ; k3*S2*S1
+
+k1 = 1;
+k2 = 1
+k3 = 1
+k4 = 1
+S0 = 1
+k0 = 1
+S1 = 10
+S2 = 0
+S3 = 0
+"""
 
 
 #############################
@@ -45,6 +60,8 @@ class TestControlSBML(unittest.TestCase):
 
     def setUp(self):
       # Cannot modify self.control
+      if IGNORE_TEST:
+          return
       self.ctlsb = ControlSBML(ANTIMONY_FILE)
 
     def testConstructor(self):
@@ -100,17 +117,28 @@ class TestControlSBML(unittest.TestCase):
     def testMkInitialState(self):
         if IGNORE_TEST:
             return
-        X0 = self.ctlsb.mkInitialState()
-        self.assertEqual(np.shape(X0), (3,))
-        dX0 = np.matmul(self.ctlsb.jacobian, X0)
-        self.assertEqual(len(X0), len(dX0))
+        def test(mdl):
+            ctlsb = ControlSBML(mdl)
+            ctlsb = ControlSBML(ctlsb.roadrunner)
+            num_species = ctlsb.roadrunner.model.getNumFloatingSpecies()  \
+                  + ctlsb.roadrunner.model.getNumBoundarySpecies()
+            X0 = ctlsb.currentState
+            self.assertEqual(len(X0), num_species)
+            jacobian = ctlsb.jacobian
+            self.assertTrue(isinstance(jacobian, pd.DataFrame))
+            self.assertEqual(len(jacobian), len(jacobian.columns))
+            dX0 = np.matmul(ctlsb.jacobian.values, X0.values)
+            self.assertEqual(len(X0), len(dX0))
+        #
+        test(NONLINEAR1_MDL)
+        test(LINEAR_MDL)
 
     def testSetTime(self):
         if IGNORE_TEST:
             return
         def isEqual(jac1, jac2, val_bl):
             mat = jac1 - jac2
-            diff = sum((mat.flatten())**2)
+            diff = sum((mat.values.flatten())**2)
             self.assertEqual(np.isclose(diff, 0), val_bl)
         #
         self.ctlsb.setTime(0)
