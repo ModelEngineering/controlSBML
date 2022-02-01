@@ -41,21 +41,23 @@ class ControlSBML(object):
         if "RoadRunner" in str(type(model_reference)):
             self.roadrunner = model_reference
             model_reference = model_reference.getSBML()
-        # FIXME: Handle URL reference
         elif isinstance(model_reference, str):
-            parts = model_reference.split(".")
-            if len(parts) == 2:
-                if parts[1] == XML:
-                    self.roadrunner = te.loadSBMLModel(model_reference)
-                elif parts[1] == ANT:
-                    self.roadrunner = te.loadAntimonyModel(model_reference)
-                elif XML in model_reference.count:
-                    self.roadrunner = te.loadSBMLModel(model_reference)
-                else:
-                    # Assume string for antimony model
-                    self.roadrunner = te.loada(model_reference)
+            if model_reference[0:4] == "http":
+                self.roadrunner = te.loadSBMLModel(model_reference)
             else:
-                self.roadrunner = te.loada(model_reference)
+                parts = model_reference.split(".")
+                if len(parts) == 2:
+                    if parts[1] == XML:
+                        self.roadrunner = te.loadSBMLModel(model_reference)
+                    elif parts[1] == ANT:
+                        self.roadrunner = te.loadAntimonyModel(model_reference)
+                    elif XML in model_reference.count:
+                        self.roadrunner = te.loadSBMLModel(model_reference)
+                    else:
+                        # Assume string for antimony model
+                        self.roadrunner = te.loada(model_reference)
+                else:
+                    self.roadrunner = te.loada(model_reference)
         else:
             raise ValueError("Invalid model reference")
         # Do the initializations
