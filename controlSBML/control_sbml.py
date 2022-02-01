@@ -7,6 +7,8 @@ TO DO:
 2. Plot TOTAL residual SSQ vs. jacobian difference
 """
 
+from controlSBML.make_roadrunner import makeRoadrunner
+
 import control
 import matplotlib.pyplot as plt
 import numpy as np
@@ -36,34 +38,11 @@ class ControlSBML(object):
         """
         ##### PUBLIC #####
         self.model_reference = model_reference
-        self.roadrunner = None  # Roadrunner object
-        # Read the model
-        if "RoadRunner" in str(type(model_reference)):
-            self.roadrunner = model_reference
-            model_reference = model_reference.getSBML()
-        elif isinstance(model_reference, str):
-            if model_reference[0:4] == "http":
-                self.roadrunner = te.loadSBMLModel(model_reference)
-            else:
-                parts = model_reference.split(".")
-                if len(parts) == 2:
-                    if parts[1] == XML:
-                        self.roadrunner = te.loadSBMLModel(model_reference)
-                    elif parts[1] == ANT:
-                        self.roadrunner = te.loadAntimonyModel(model_reference)
-                    elif XML in model_reference.count:
-                        self.roadrunner = te.loadSBMLModel(model_reference)
-                    else:
-                        # Assume string for antimony model
-                        self.roadrunner = te.loada(model_reference)
-                else:
-                    self.roadrunner = te.loada(model_reference)
-        else:
-            raise ValueError("Invalid model reference")
+        self.roadrunner = makeRoadrunner(model_reference)
+        self.antimony = self.roadrunner.getAntimony()
         # Do the initializations
         self.boundary_species = self.roadrunner.getBoundarySpeciesIds()
         self._state_names = None
-        self.antimony = self.roadrunner.getAntimony()
         self.roadrunner.reset()
 
     def _mkBoundarySpeciesFloating(self):
