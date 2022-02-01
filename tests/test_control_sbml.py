@@ -6,13 +6,13 @@ import pandas as pd
 import os
 import unittest
 import tellurium as te
-    matplotlib.use('TkAgg')
 
 
 IGNORE_TEST = False
 IS_PLOT = False
 if IS_PLOT:
     import matplotlib
+    matplotlib.use('TkAgg')
 
 HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
