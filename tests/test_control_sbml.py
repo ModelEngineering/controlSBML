@@ -123,7 +123,7 @@ class TestControlSBML(unittest.TestCase):
             ctlsb = ControlSBML(ctlsb.roadrunner)
             num_species = ctlsb.roadrunner.model.getNumFloatingSpecies()  \
                   + ctlsb.roadrunner.model.getNumBoundarySpecies()
-            X0 = ctlsb.currentState
+            X0 = ctlsb.current_state
             self.assertEqual(len(X0), num_species)
             jacobian = ctlsb.jacobian
             self.assertTrue(isinstance(jacobian, pd.DataFrame))

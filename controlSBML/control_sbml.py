@@ -80,7 +80,7 @@ class ControlSBML(object):
         return df
 
     @property
-    def currentState(self):
+    def current_state(self):
         """
         Contructs vector of current state values (floating and boundary species)
 
@@ -220,12 +220,11 @@ class ControlSBML(object):
         self.setTime(timepoint)
         sys = self.mkStateSpace()
         self.setTime(start_time)
-        x0 = np.array(list(self.get(self.state_names).values()))
-        x0 = np.reshape(x0, len(x0))
+        x0 = self.current_state
         self.setTime(cur_time)  # Restore the time
         # Run the linear simulation
         dt = (end_time - start_time)/num_point
-        times = [n*dt for n in range(num_point)]
+        times = [start_time + n*dt for n in range(num_point)]
         times, y_vals = control.forced_response(sys, T=times, X0=x0)
         df = pd.DataFrame(y_vals.transpose(), index=times)
         df.columns = self.state_names
