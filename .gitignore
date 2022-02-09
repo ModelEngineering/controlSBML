@@ -4,3 +4,6 @@ sym
 .ipynb_*
 data/*.xml
 ctl/
+build?
+dist?
+*.egg-info/

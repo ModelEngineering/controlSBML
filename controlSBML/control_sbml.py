@@ -24,6 +24,7 @@ TYPE_MODEL = "type_model"  # libsbml model
 TYPE_XML = "type_xml"  # XML string
 TYPE_ANTIMONY = "type_xml"  # Antimony string
 TYPE_FILE = "type_file" # File reference
+START_TIME = 0  # Default start time
 END_TIME = 5  # Default endtime
 NUM_POINT = 101
 TIME = "time"
@@ -57,9 +58,13 @@ class ControlSBML(object):
     def state_names(self):
         if self._state_names is None:
             self._mkBoundarySpeciesFloating()
-            mat = self.roadrunner.getFullJacobian()
+            try:
+                mat = self.roadrunner.getFullJacobian()
+                self._unmkBoundarySpeciesFloating()
+            except Exception:
+                self._unmkBoundarySpeciesFloating()
+                mat = self.roadrunner.getFullJacobian()
             self._state_names = list(mat.colnames)
-            self._unmkBoundarySpeciesFloating()
         return self._state_names
 
     @property
@@ -71,8 +76,12 @@ class ControlSBML(object):
         Handle boundary species.
         """
         self._mkBoundarySpeciesFloating()
-        mat = self.roadrunner.getFullJacobian()
-        self._unmkBoundarySpeciesFloating()
+        try:
+            mat = self.roadrunner.getFullJacobian()
+            self._unmkBoundarySpeciesFloating()
+        except Exception:
+            self._unmkBoundarySpeciesFloating()
+            mat = self.roadrunner.getFullJacobian()
         for idx, name in enumerate(mat.rownames):
             if name in self.boundary_species:
                 mat[idx, :] = 0
@@ -172,12 +181,13 @@ class ControlSBML(object):
         for name, value in name_dct.items():
             self.roadrunner[name] = value
 
-    def mkStateSpace(self, B=None, C=None, D=None):
+    def mkStateSpace(self, A=None, B=None, C=None, D=None):
         """
         Creates a control system object for the n X n jacobian.
 
         Parameters
         ----------
+        A: np.array(n X n)
         B: np.array(n X p)
         C: np.array(q X n)
         D: np.array(q X p)
@@ -187,7 +197,8 @@ class ControlSBML(object):
         control.StateSpace
         """
         # Construct the matrices
-        A = self.jacobian.values
+        if A is None:
+            A = self.jacobian.values
         if B is None:
             B = np.repeat(0, A.shape[0])
             B = np.reshape(B, (A.shape[0], 1))
@@ -197,7 +208,7 @@ class ControlSBML(object):
             D = B
         return control.StateSpace(A, B, C, D)
 
-    def simulateLinearSystem(self, timepoint=0, start_time=0,
+    def simulateLinearSystem(self, A_mat=None, timepoint=0, start_time=0,
           end_time=END_TIME, num_point=NUM_POINT):
         """
         Creates an approximation of the SBML model based on the Jacobian, and
@@ -218,7 +229,7 @@ class ControlSBML(object):
         """
         cur_time = self.get("time")
         self.setTime(timepoint)
-        sys = self.mkStateSpace()
+        sys = self.mkStateSpace(A=A_mat)
         self.setTime(start_time)
         x0 = self.current_state
         self.setTime(cur_time)  # Restore the time
@@ -256,6 +267,50 @@ class ControlSBML(object):
         df = df.set_index(TIME)
         return df
 
+    def plotLinearApproximation(self, A_mat, suptitle="",
+         is_plot=True, start_time=START_TIME, end_time=END_TIME, num_point=NUM_POINT):
+        """
+        Creates a plot that compares the linear approximation with the true model.
+
+        Parameters
+        ----------
+        A_mat: A matrix of approximation model
+        suptitle: str
+        is_plot: bool
+        start_time: float
+        end_time: float
+        num_point: int
+        """
+        rr_df = self.simulateRoadrunner(start_time, end_time, num_point)
+        nrow = 1
+        ncol = len(rr_df.columns)
+        fig, axes = plt.subplots(nrow, ncol, figsize=(15, 5))
+        axes = np.reshape(axes, (nrow, ncol))
+        linear_df = self.simulateLinearSystem(timepoint=start_time,
+              A_mat=A_mat,
+              start_time=start_time, end_time=end_time, num_point=num_point)
+        ymin = min(linear_df.min().min(), rr_df.min().min())
+        ymax = max(linear_df.max().max(), rr_df.max().max())
+        irow = 0
+        for icol, column in enumerate(rr_df.columns):
+            ax = axes[irow, icol]
+            ax.plot(linear_df.index, linear_df[column], color="red")
+            ax.plot(rr_df.index, rr_df[column], color="blue")
+            ax.set_ylim([ymin, ymax])
+            if irow < nrow - 1:
+                ax.set_xticklabels([])
+            if irow == 0:
+                ax.set_title(column, rotation=45)
+                if icol == 0:
+                    ax.legend(["linear", "nonlinear"])
+            if icol > 0:
+                ax.set_yticklabels([])
+        plt.suptitle(suptitle)
+        if is_plot:
+            plt.show()
+        else:
+            plt.close()
+
     @classmethod
     def evaluateAccuracy(cls, model_reference, timepoints, suptitle="",
          is_plot=True, **kwargs):
@@ -273,9 +328,6 @@ class ControlSBML(object):
         is_plot: bool
         kwargs: dict
             Values used for simulation (start_time, end_time, num_point)
-        
-        Returns
-        -------
         """
         if isinstance(timepoints, float) or isinstance(timepoints, int):
             timepoints = [timepoints]
@@ -299,7 +351,7 @@ class ControlSBML(object):
                 if irow < nrow - 1:
                     ax.set_xticklabels([])
                 if irow == 0:
-                    ax.set_title(column)
+                    ax.set_title(column, rotation=45)
                     if icol == 0:
                         ax.text(-3, 0.75*ymax, "Jacobian Time")
                         ax.legend(["linear", "nonlinear"])

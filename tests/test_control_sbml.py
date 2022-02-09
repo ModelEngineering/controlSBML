@@ -63,8 +63,6 @@ class TestControlSBML(unittest.TestCase):
 
     def setUp(self):
       # Cannot modify self.control
-      if IGNORE_TEST:
-          return
       self.ctlsb = ControlSBML(ANTIMONY_FILE)
 
     def testConstructor(self):
@@ -168,9 +166,18 @@ class TestControlSBML(unittest.TestCase):
 
     def testEvaluateAccuracy(self):
         if IGNORE_TEST:
-            return
+          return
         self.ctlsb.evaluateAccuracy(NONLINEAR_MDL,
               [0, 1, 2, 3], suptitle="Test", is_plot=IS_PLOT)
+
+    def testPlotLinearApproximation(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlSBML(NONLINEAR_MDL)
+        ctlsb.setTime(2)
+        A_mat = ctlsb.jacobian
+        ctlsb.plotLinearApproximation(A_mat,
+              suptitle="Test", is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':
