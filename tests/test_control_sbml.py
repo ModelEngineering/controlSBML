@@ -176,8 +176,12 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = ControlSBML(NONLINEAR_MDL)
         ctlsb.setTime(2)
         A_mat = ctlsb.jacobian
-        ctlsb.plotLinearApproximation(A_mat,
-              suptitle="Test", is_plot=IS_PLOT)
+        ctlsb.plotLinearApproximation(A_mat, suptitle="Test", is_plot=IS_PLOT)
+
+    def testPlotLinearApproximation(self):
+        if IGNORE_TEST:
+          return
+        self.ctlsb.plotTrueModel(is_plot=IS_PLOT, legend_crd=(1.2, 1))
 
 
 if __name__ == '__main__':

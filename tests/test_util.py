@@ -4,8 +4,8 @@ import unittest
 import numpy as np
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 
 
 #############################
@@ -31,6 +31,12 @@ class TestFunctions(unittest.TestCase):
         self.assertGreater(dist1, 0)
         dist2 = util.calculateMatrixDistance(mat2, mat1)
         self.assertTrue(np.isclose(dist1, dist2))
+
+    def testGetModel(self):
+        # TESTING
+        model_str = util.getModel()
+        import pdb; pdb.set_trace()
+ 
 
 
 if __name__ == '__main__':

@@ -16,14 +16,7 @@ import pandas as pd
 import tellurium as te
 
 
-ANT = "ant"
-XML = "xml"
-
-
-TYPE_MODEL = "type_model"  # libsbml model
-TYPE_XML = "type_xml"  # XML string
-TYPE_ANTIMONY = "type_xml"  # Antimony string
-TYPE_FILE = "type_file" # File reference
+TIME = "time"
 START_TIME = 0  # Default start time
 END_TIME = 5  # Default endtime
 NUM_POINT = 101
@@ -267,6 +260,38 @@ class ControlSBML(object):
         df = df.set_index(TIME)
         return df
 
+    def plotTrueModel(self, is_plot=True, start_time=START_TIME,
+          end_time=END_TIME, num_point=NUM_POINT, y_max=None,
+          legend_crd=(1.1, 1),  ax=None):
+        """
+        Plots the underlying SBML model.
+
+        Parameters
+        ----------
+        is_plot: bool
+        start_time: float
+        end_time: float
+        num_point: int
+        y_max: float
+            max value of y
+        legend_crd: (float, float)
+            coordinates for the legend
+        """
+        if ax is None:
+            _, ax = plt.subplots(1)
+        self.roadrunner.reset()
+        data = self.roadrunner.simulate(start_time, end_time, num_point)
+        for col in data.colnames[1:]:
+            ax.plot(data[TIME], data[col])
+        ax.set_xlabel("time")
+        if y_max is None:
+            y_max = max((data[:, 1:].flatten()))
+        ax.set_ylim([0, y_max])
+        ax.legend(data.colnames[1:], bbox_to_anchor=legend_crd,
+               loc="upper right")
+        if is_plot:
+            plt.show()
+
     def plotLinearApproximation(self, A_mat, suptitle="",
          is_plot=True, start_time=START_TIME, end_time=END_TIME, num_point=NUM_POINT):
         """
@@ -289,20 +314,20 @@ class ControlSBML(object):
         linear_df = self.simulateLinearSystem(timepoint=start_time,
               A_mat=A_mat,
               start_time=start_time, end_time=end_time, num_point=num_point)
-        ymin = min(linear_df.min().min(), rr_df.min().min())
-        ymax = max(linear_df.max().max(), rr_df.max().max())
+        y_min = min(linear_df.min().min(), rr_df.min().min())
+        y_max = max(linear_df.max().max(), rr_df.max().max())
         irow = 0
         for icol, column in enumerate(rr_df.columns):
             ax = axes[irow, icol]
             ax.plot(linear_df.index, linear_df[column], color="red")
             ax.plot(rr_df.index, rr_df[column], color="blue")
-            ax.set_ylim([ymin, ymax])
+            ax.set_ylim([y_min, y_max])
             if irow < nrow - 1:
                 ax.set_xticklabels([])
             if irow == 0:
                 ax.set_title(column, rotation=45)
                 if icol == 0:
-                    ax.legend(["linear", "nonlinear"])
+                    ax.legend(["approximation", "true"])
             if icol > 0:
                 ax.set_yticklabels([])
         plt.suptitle(suptitle)
@@ -313,7 +338,7 @@ class ControlSBML(object):
 
     @classmethod
     def evaluateAccuracy(cls, model_reference, timepoints, suptitle="",
-         is_plot=True, **kwargs):
+         is_plot=True, y_max=None, **kwargs):
         """
         Creates a plot that evaluates the
         accouract of a linear model where the Jacobian is calculated
@@ -340,25 +365,26 @@ class ControlSBML(object):
         for irow, timepoint in enumerate(timepoints):
             linear_df = ctlsb.simulateLinearSystem(timepoint=timepoint,
                   **kwargs)
-            ymin = min(linear_df.min().min(), rr_df.min().min())
-            ymax = max(linear_df.max().max(), rr_df.max().max())
+            y_min = min(linear_df.min().min(), rr_df.min().min())
+            if y_max is None:
+                y_max = max(linear_df.max().max(), rr_df.max().max())
             for icol, column in enumerate(rr_df.columns):
                 ax = axes[irow, icol]
                 ax.plot(linear_df.index, linear_df[column], color="red")
                 ax.plot(rr_df.index, rr_df[column], color="blue")
-                ax.scatter(timepoint, ymin, s=40, marker="o", color="g")
-                ax.set_ylim([ymin, ymax])
+                ax.scatter(timepoint, y_min, s=40, marker="o", color="g")
+                ax.set_ylim([y_min, y_max])
                 if irow < nrow - 1:
                     ax.set_xticklabels([])
                 if irow == 0:
                     ax.set_title(column, rotation=45)
                     if icol == 0:
-                        ax.text(-3, 0.75*ymax, "Jacobian Time")
+                        ax.text(-3, 0.75*y_max, "Jacobian Time")
                         ax.legend(["linear", "nonlinear"])
                 if icol > 0:
                     ax.set_yticklabels([])
                 else:
-                    ax.text(-2, ymax/2, "%2.1f" % timepoint)
+                    ax.text(-2, y_max/2, "%2.1f" % timepoint)
         plt.suptitle(suptitle)
         if is_plot:
             plt.show()
