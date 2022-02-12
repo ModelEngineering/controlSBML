@@ -7,3 +7,5 @@ ctl/
 build?
 dist?
 *.egg-info/
+local.txt
+python.py

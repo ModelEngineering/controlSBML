@@ -56,8 +56,7 @@ def getModel(file_name=MODEL_823_FILE):
     str
     """
     url = MODEL_URLPAT % file_name
-    import pdb; pdb.set_trace()
     _, _ = urllib.request.urlretrieve(url=url, filename=LOCAL_FILE)
     with open(LOCAL_FILE, "r") as fd:
         model_str = "".join(fd.readlines())
-    return modle_str
+    return model_str
