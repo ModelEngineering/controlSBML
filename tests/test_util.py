@@ -1,11 +1,12 @@
 from controlSBML import util
 
+import tellurium as te
 import unittest
 import numpy as np
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 
 
 #############################
@@ -33,9 +34,11 @@ class TestFunctions(unittest.TestCase):
         self.assertTrue(np.isclose(dist1, dist2))
 
     def testGetModel(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         model_str = util.getModel()
-        import pdb; pdb.set_trace()
+        rr = te.loada(model_str)
+        self.assertTrue("roadrunner" in str(type(rr)))
  
 
 
