@@ -26,4 +26,4 @@ is the Jacobian of the current ``RoadRunner`` instance. You can either specify a
 
 ## Example
 
-
+[This notebook](https://github.com/ModelEngineering/controlSBML/blob/main/notebooks/images/UsingControlSBML.pdf) illustrates how to use ``controlSBML``.
