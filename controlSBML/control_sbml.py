@@ -36,7 +36,7 @@ class ControlSBML(object):
         self.antimony = self.roadrunner.getAntimony()
         # Do the initializations
         self.boundary_species = self.roadrunner.getBoundarySpeciesIds()
-        self._state_names = None
+        self._species_names = None
         self.roadrunner.reset()
 
     def _mkBoundarySpeciesFloating(self):
@@ -48,8 +48,8 @@ class ControlSBML(object):
             self.roadrunner.setBoundary(name, True)
 
     @property
-    def state_names(self):
-        if self._state_names is None:
+    def species_names(self):
+        if self._species_names is None:
             self._mkBoundarySpeciesFloating()
             try:
                 mat = self.roadrunner.getFullJacobian()
@@ -57,8 +57,8 @@ class ControlSBML(object):
             except Exception:
                 self._unmkBoundarySpeciesFloating()
                 mat = self.roadrunner.getFullJacobian()
-            self._state_names = list(mat.colnames)
-        return self._state_names
+            self._species_names = list(mat.colnames)
+        return self._species_names
 
     @property
     def jacobian(self):
@@ -78,7 +78,7 @@ class ControlSBML(object):
         for idx, name in enumerate(mat.rownames):
             if name in self.boundary_species:
                 mat[idx, :] = 0
-        df = pd.DataFrame(mat, columns=mat.colnames, index=mat.rownames)
+        df = pd.DataFrame(mat, columns=mat.colnames, index=self.species_names)
         return df
 
     @property
@@ -91,8 +91,8 @@ class ControlSBML(object):
         Series
             index: str (state names)
         """
-        values = list(self.get(self.state_names).values())
-        return pd.Series(values, index=self.state_names)
+        values = list(self.get(self.species_names).values())
+        return pd.Series(values, index=self.species_names)
 
     @staticmethod
     def isRoadrunnerKey(key):
@@ -131,7 +131,7 @@ class ControlSBML(object):
         """
         bValue = self.antimony == other.antimony
         bValue = bValue and all([s1 == s2 for s1, s2
-              in zip(self.state_names, self.jacobian.columns)])
+              in zip(self.species_names, self.jacobian.columns)])
         diff = set(self.roadrunner.keys()).symmetric_difference(
               other.roadrunner.keys())
         bValue = bValue and (len(diff) == 0)
@@ -174,7 +174,7 @@ class ControlSBML(object):
         for name, value in name_dct.items():
             self.roadrunner[name] = value
 
-    def mkStateSpace(self, A=None, B=None, C=None, D=None):
+    def makeStateSpace(self, A=None, B=None, C=None, D=None):
         """
         Creates a control system object for the n X n jacobian.
 
@@ -222,7 +222,7 @@ class ControlSBML(object):
         """
         cur_time = self.get("time")
         self.setTime(timepoint)
-        sys = self.mkStateSpace(A=A_mat)
+        sys = self.makeStateSpace(A=A_mat)
         self.setTime(start_time)
         x0 = self.current_state
         self.setTime(cur_time)  # Restore the time
@@ -231,7 +231,7 @@ class ControlSBML(object):
         times = [start_time + n*dt for n in range(num_point)]
         times, y_vals = control.forced_response(sys, T=times, X0=x0)
         df = pd.DataFrame(y_vals.transpose(), index=times)
-        df.columns = self.state_names
+        df.columns = self.species_names
         return df
 
     def simulateRoadrunner(self, start_time=0, end_time=END_TIME,

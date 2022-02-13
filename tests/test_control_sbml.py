@@ -109,10 +109,10 @@ class TestControlSBML(unittest.TestCase):
         ctlsb.antimony = ""
         self.assertFalse(ctlsb.equals(self.ctlsb))
 
-    def testMkStateSpace(self):
+    def testMakeStateSpace(self):
         if IGNORE_TEST:
             return
-        sys = self.ctlsb.mkStateSpace()
+        sys = self.ctlsb.makeStateSpace()
         self.assertEqual(sys.nstates, 3)
 
     def testMkInitialState(self):

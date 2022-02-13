@@ -11,4 +11,5 @@ python-libsbml
 seaborn
 sympy
 tellurium
+twine
 urllib3
