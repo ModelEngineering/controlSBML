@@ -262,7 +262,7 @@ class ControlSBML(object):
 
     def plotTrueModel(self, is_plot=True, start_time=START_TIME,
           end_time=END_TIME, num_point=NUM_POINT, y_max=None,
-          legend_crd=(1.1, 1),  ax=None):
+          figsize=(10, 10), legend_crd=(1.4, 1),  ax=None):
         """
         Plots the underlying SBML model.
 
@@ -278,7 +278,7 @@ class ControlSBML(object):
             coordinates for the legend
         """
         if ax is None:
-            _, ax = plt.subplots(1)
+            _, ax = plt.subplots(1, figsize=figsize)
         self.roadrunner.reset()
         data = self.roadrunner.simulate(start_time, end_time, num_point)
         for col in data.colnames[1:]:
@@ -292,14 +292,16 @@ class ControlSBML(object):
         if is_plot:
             plt.show()
 
-    def plotLinearApproximation(self, A_mat, suptitle="",
-         is_plot=True, start_time=START_TIME, end_time=END_TIME, num_point=NUM_POINT):
+    def plotLinearApproximation(self, A_mat=None, suptitle="",
+          is_plot=True, start_time=START_TIME, end_time=END_TIME,
+          figsize=(20, 10), num_point=NUM_POINT):
         """
         Creates a plot that compares the linear approximation with the true model.
 
         Parameters
         ----------
         A_mat: A matrix of approximation model
+            default is Jacobian at current time
         suptitle: str
         is_plot: bool
         start_time: float
@@ -309,7 +311,7 @@ class ControlSBML(object):
         rr_df = self.simulateRoadrunner(start_time, end_time, num_point)
         nrow = 1
         ncol = len(rr_df.columns)
-        fig, axes = plt.subplots(nrow, ncol, figsize=(15, 5))
+        fig, axes = plt.subplots(nrow, ncol, figsize=figsize)
         axes = np.reshape(axes, (nrow, ncol))
         linear_df = self.simulateLinearSystem(timepoint=start_time,
               A_mat=A_mat,

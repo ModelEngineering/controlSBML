@@ -20,6 +20,9 @@
 ## Key methods
 * ``setTime(new_time)`` resets ``roadrunner`` and runs a simulation from time zero to the time specified.
 * ``makeStateSpace()`` creates a ``control`` state space object using the Jacobian of the model at the current simulation time.
+* ``plotTrueModel`` plots a roadrunner simulation.
+* ``plotLinearApproximation`` plots the linear approximation provided by an ${\bf A}$ matrix. The default ${\bf A}$ matrix
+is the Jacobian of the current ``RoadRunner`` instance. You can either specify a different ${\bf A}$ or set the ``RoadRunner`` instance to a different time.
 
 ## Example
 
