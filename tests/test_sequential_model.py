@@ -1,4 +1,5 @@
 from controlSBML.sequential_model import SequentialModel
+import controlSBML as c
 
 import tellurium as te
 import unittest
