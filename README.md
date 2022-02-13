@@ -4,6 +4,12 @@
 ## Installation
 ``pip install controlSBML``
 
+To find the current version:
+```
+import controlSBML as ctl
+ctl.__version__
+```
+
 ## Constructing ControlSBML
 ``ctlsb = ControlSBML(model_reference)`` where
 ``model_reference``can be any of the following:
@@ -26,4 +32,4 @@ is the Jacobian of the current ``RoadRunner`` instance. You can either specify a
 
 ## Example
 
-[This notebook](https://github.com/ModelEngineering/controlSBML/blob/main/notebooks/images/UsingControlSBML.pdf) illustrates how to use ``controlSBML``.
+[This notebook](https://github.com/ModelEngineering/controlSBML/blob/main/notebooks/UsingControlSBML.ipynb)
