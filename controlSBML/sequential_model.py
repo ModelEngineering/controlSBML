@@ -10,8 +10,22 @@ KINETICS_PFX = "k"
 
 class SequentialModel(object):
 
-    def __init__(self, num_reaction, kinetics_values=None, species_values=None):
+    def __init__(self, num_reaction, kinetics_values=None,
+          species_values=None, has_boundaries=True):
+        """
+        Parameters
+        ----------
+        num_reaction: int
+            number of reactions in the sequential model
+        kinetics_values: list-float
+            len == num_reactions
+        species_values: list-float
+            len == num_reactions + 1
+        has_boundaries: bool
+            first and last species are fixed
+        """
         self.num_reaction = num_reaction
+        self.has_boundaries = has_boundaries
         self.num_species = self.num_reaction + 1
         if kinetics_values is None:
             kinetics_values = list(np.repeat(KINETICS_VALUE, self.num_reaction))
@@ -24,9 +38,14 @@ class SequentialModel(object):
     def _makeKineticsName(idx):
         return "%s%d" % (KINETICS_PFX, idx)
 
-    @staticmethod
-    def _makeSpeciesName(idx):
-        return "%s%d" % (SPECIES_PFX, idx)
+    def _makeSpeciesName(self, idx):
+        prefix = ""
+        if self.has_boundaries:
+            if (idx == 0) or (idx == self.num_species - 1):
+                prefix = "$"
+            else:
+                prefix = ""
+        return "%s%s%d" % (prefix, SPECIES_PFX, idx)
 
     def _makeKineticsAssignment(self, idx):
         return "%s = %f" % (self._makeKineticsName(idx),

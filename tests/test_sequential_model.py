@@ -4,8 +4,8 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 NUM_REACTION = 4
 
 
@@ -37,7 +37,8 @@ class TestSequentialModel(unittest.TestCase):
         self.assertTrue("roadrunner" in str(type(rr)))
 
     def testGenerateDifferentKineticsAndInitialValues(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         kinetics_values = [.1, .2, .3]
         species_values = [0, 1, 2, 3]
         smodel = SequentialModel(len(kinetics_values),
@@ -47,6 +48,14 @@ class TestSequentialModel(unittest.TestCase):
         self.assertTrue("k0 = 0.1" in model_str)
         rr = te.loada(model_str)
         self.assertTrue("roadrunner" in str(type(rr)))
+
+    def testGenerateHasBoundaries(self):
+        if IGNORE_TEST:
+          return
+        smodel1 = SequentialModel(NUM_REACTION, has_boundaries=True)
+        self.assertTrue("$" in smodel1.generate())
+        smodel2 = SequentialModel(NUM_REACTION, has_boundaries=False)
+        self.assertFalse("$" in smodel2.generate())
 
 
 if __name__ == '__main__':
