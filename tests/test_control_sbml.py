@@ -1,4 +1,5 @@
 from controlSBML.control_sbml import ControlSBML
+from controlSBML import control_sbml
 import helpers
 
 import numpy as np
@@ -176,12 +177,30 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = ControlSBML(NONLINEAR_MDL)
         ctlsb.setTime(2)
         A_mat = ctlsb.jacobian
-        ctlsb.plotLinearApproximation(A_mat, suptitle="Test", is_plot=IS_PLOT)
+        ctlsb.plotLinearApproximation(A_mat, suptitle="Test", is_plot=IS_PLOT,
+              figsize=(5,5))
 
-    def testPlotLinearApproximation(self):
+    def testPlotTrueModel(self):
         if IGNORE_TEST:
           return
-        self.ctlsb.plotTrueModel(is_plot=IS_PLOT, legend_crd=(1.2, 1))
+        self.ctlsb.plotTrueModel(is_plot=IS_PLOT, ylabel="values")
+
+    def testParseOptions(self):
+        if IGNORE_TEST:
+          return
+        def isSameDct(dct1, dct2):
+            diff = set(dct1.keys()).symmetric_difference(dct2.keys())
+            self.assertEqual(len(diff), 0)
+            diff = set(dct1.values()).symmetric_difference(dct2.values())
+            self.assertEqual(len(diff), 0)
+        #
+        kwargs = dict(control_sbml.PLOT_OPTS)
+        kwargs.update(control_sbml.FIG_OPTS)
+        kwargs.update(control_sbml.SIM_OPTS)
+        plot_opts, fig_opts, sim_opts = self.ctlsb._parseOpts(**kwargs)
+        isSameDct(fig_opts, control_sbml.FIG_OPTS)
+        isSameDct(plot_opts, control_sbml.PLOT_OPTS)
+        isSameDct(sim_opts, control_sbml.SIM_OPTS)
 
 
 if __name__ == '__main__':

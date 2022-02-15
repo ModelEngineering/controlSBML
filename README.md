@@ -32,4 +32,7 @@ is the Jacobian of the current ``RoadRunner`` instance. You can either specify a
 
 ## Example
 
-[This notebook](https://github.com/ModelEngineering/controlSBML/blob/main/notebooks/UsingControlSBML.ipynb)
+[This notebook](https://github.com/ModelEngineering/controlSBML/blob/main/notebooks/UsingControlSBML.ipynb) provides a simple example of using ``controlSBML``.
+
+## Version History
+* 0.1.3, 2/13/2022. First release.

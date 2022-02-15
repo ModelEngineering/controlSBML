@@ -55,7 +55,7 @@ def doSetup(install_requires):
         packages=find_packages(exclude=['tests', 'sym', 'images', 'data',
             'notebook', 'docs']),
         url='https://github.com/ModelEngineering/controlSBML',
-        description='Symbolic mathematics for SBML Models.',
+        description='Control analysis and design for SBML Models.',
         long_description=open('README.md').read(),
         long_description_content_type='text/markdown',
         package_dir={'controlSBML': 'controlSBML'},
