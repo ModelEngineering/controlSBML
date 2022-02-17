@@ -8,6 +8,7 @@ TO DO:
 """
 
 from controlSBML.make_roadrunner import makeRoadrunner
+from controlSBML.options import Options
 
 import control
 import matplotlib.pyplot as plt
@@ -39,13 +40,13 @@ class LegendSpec():
 
 
 # OPtions for simulation methods
-SIM_OPTS = dict(
+SIM_OPTS = Options(dict(
       start_time=START_TIME,  # Start time of the simulation
       end_time=END_TIME,      # End time of the simulation
       num_point=NUM_POINT,    # Number of points in the simulation
-      )
+      ))
 # Options for a single plot
-PLOT_OPTS = dict(
+PLOT_OPTS = Options(dict(
       ylim=None,           # maximum and minimum value of y
       xlabel="",           
       ylabel="",           
@@ -54,16 +55,14 @@ PLOT_OPTS = dict(
       ax=None,              # axis to plot
       xticklabels=None,
       yticklabels=None,
-      )
+      ))
 # Options for the full figure
-FIG_OPTS = dict(
+FIG_OPTS = Options(dict(
       is_plot=True,         # Is a figure generated
       figsize=(10, 10),     # Size of the figure
       suptitle="",          # Title for the figure
-      )
-ALL_OPTS = list(SIM_OPTS.keys())
-ALL_OPTS.extend(list(PLOT_OPTS.keys()))
-ALL_OPTS.extend(list(FIG_OPTS.keys()))
+      ))
+OPTS_LST = [PLOT_OPTS, FIG_OPTS, SIM_OPTS]
 
 
 class ControlSBML(object):
@@ -317,50 +316,21 @@ class ControlSBML(object):
             coordinates for the legend
         """
         # Parse the options
-        plot_opts, fig_opts, sim_opts = self._parseOpts(**kwargs)
+        options = Options(kwargs)
+        plot_opts, fig_opts, sim_opts = options.parse(OPTS_LST)
         # Run the simulation
         df = self.simulateRoadrunner(**sim_opts)
         # Adjust the option values
-        plot_opts["xlabel"] = TIME
-        if plot_opts["ylim"] is None:
-            y_max = df.max().max()
-            plot_opts["ylim"] = [0, y_max]
-        if plot_opts["legend_spec"] is None:
-            legend_spec = LegendSpec(df.columns)
+        plot_opts.set("xlabel", default=TIME)
+        y_max = df.max().max()
+        plot_opts.set("ylim", default=[0, y_max])
+        plot_opts.set("legend_spec", default=LegendSpec(df.columns))
         ax = self._doPlotOpts(**plot_opts)
         # Do the plot
         for col in df.columns:
             ax.plot(df.index, df[col])
         # Finalize the figure
         self._doFigOpts(**fig_opts)
-
-    @classmethod
-    def _parseOpts(cls, **kwargs):
-        """
-        Parses options into plot, figure, and simulation
-
-        Parameters
-        ----------
-        kwargs: dict
-        
-        Returns
-        -------
-        plot_opts: dict
-        fig_opts: dict
-        sim_opts: dict
-        """
-        # Validate
-        unknown_options = set(kwargs.keys()).difference(ALL_OPTS)
-        if len(unknown_options) > 0:
-            raise ValueError("Unknown options: %s" % str(unknown_options))
-        #
-        plot_opts = {k: kwargs[k] if k in kwargs.keys() else v
-              for k, v in PLOT_OPTS.items()}
-        fig_opts = {k: kwargs[k] if k in kwargs.keys() else v
-              for k, v in FIG_OPTS.items()}
-        sim_opts = {k: kwargs[k] if k in kwargs.keys() else v
-              for k, v in SIM_OPTS.items()}
-        return plot_opts, fig_opts, sim_opts
 
     def plotLinearApproximation(self, A_mat=None, **kwargs):
         """
@@ -373,7 +343,8 @@ class ControlSBML(object):
         kwargs: dict
             a combination of plot, figure, and simulation options
         """
-        plot_opts, fig_opts, sim_opts = self._parseOpts(**kwargs)
+        options = Options(kwargs)
+        plot_opts, fig_opts, sim_opts = options.parse(OPTS_LST)
         start_time = sim_opts["start_time"]
         rr_df = self.simulateRoadrunner(**sim_opts)
         nrow = 1
@@ -422,7 +393,8 @@ class ControlSBML(object):
         kwargs: dict
             SIM_OPTS, PLOT_OPTS, FIG_OPTS
         """
-        plot_opts, fig_opts, sim_opts = cls._parseOpts(**kwargs)
+        options = Options(kwargs)
+        plot_opts, fig_opts, sim_opts = options.parse(OPTS_LST)
         if isinstance(timepoints, float) or isinstance(timepoints, int):
             timepoints = [timepoints]
         ctlsb = cls(model_reference)
