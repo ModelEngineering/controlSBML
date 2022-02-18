@@ -20,8 +20,34 @@ import tellurium as te
 TIME = "time"
 START_TIME = 0  # Default start time
 END_TIME = 5  # Default endtime
-NUM_POINT = 101
+POINTS_PER_TIME = 10
 TIME = "time"
+# Options
+O_AX = "ax"
+O_END_TIME = "end_time"
+O_FIGSIZE = "figsize"
+O_IS_PLOT = "is_plot"
+O_LEGEND_SPEC = "legend_spec"
+O_POINTS_PER_TIME = "points_per_time"
+O_START_TIME = "start_time"
+O_SUPTITLE = "suptitle"
+O_TITLE = "title"
+O_XLABEL = "xlabel"
+O_XTICKLABELS = "xticklabels"
+O_YTICKLABELS = "yticklabels"
+O_YLABEL = "ylabel"
+O_YLIM = "ylim"
+
+"""
+        ax: Matplotlib.axes
+        end_time: float (end time of simulation)
+        figsize: float, float (widith, height)
+        is_plot: bool (do the plot)
+        legend_spec: LegendSpec (position of the legend)
+"""
+
+        
+
 # Legend specification
 class LegendSpec():
 
@@ -43,7 +69,7 @@ class LegendSpec():
 SIM_OPTS = Options(dict(
       start_time=START_TIME,  # Start time of the simulation
       end_time=END_TIME,      # End time of the simulation
-      num_point=NUM_POINT,    # Number of points in the simulation
+      points_per_time=POINTS_PER_TIME,    # Number of points in the simulation
       ))
 # Options for a single plot
 PLOT_OPTS = Options(dict(
@@ -243,8 +269,15 @@ class ControlSBML(object):
             D = B
         return control.StateSpace(A, B, C, D)
 
-    def simulateLinearSystem(self, A_mat=None, timepoint=0, start_time=0,
-          end_time=END_TIME, num_point=NUM_POINT):
+    @staticmethod
+    def _getSimulationParameters(sim_opts):
+        start_time = sim_opts[O_START_TIME]
+        end_time = sim_opts[O_END_TIME]
+        points_per_time = sim_opts[O_POINTS_PER_TIME]
+        num_points = int(points_per_time*(start_time - end_time))
+        return start_time, end_time, num_points
+
+    def simulateLinearSystem(self, A_mat=None, timepoint=0, **kwargs):
         """
         Creates an approximation of the SBML model based on the Jacobian, and
         constructs predictions based on this Jacobian and the values of
@@ -252,9 +285,8 @@ class ControlSBML(object):
 
         Parameters
         ----------
-        timepoint: float
-        start_time: float
-        end_time: float
+        kwargs: dict
+            SIM_OPTS
         
         Returns
         -------
@@ -262,7 +294,10 @@ class ControlSBML(object):
             columns: floating species
             index: time
         """
-        cur_time = self.get("time")
+        options = Options(kwargs)
+        sim_opts = options.parse(SIM_OPTS)
+        start_time, end_time, num_points = self._getSimulationParameters(sim_opts)
+        cur_time = self.get(TIME)
         self.setTime(timepoint)
         sys = self.makeStateSpace(A=A_mat)
         self.setTime(start_time)
@@ -276,16 +311,14 @@ class ControlSBML(object):
         df.columns = self.species_names
         return df
 
-    def simulateRoadrunner(self, start_time=0, end_time=END_TIME,
-          num_point=NUM_POINT):
+    def simulateRoadrunner(self, **kwargs):
         """
         Runs a new roadrunner simulation.
 
         Parameters
         ----------
-        start_time: float
-        end_time: float
-        num_point: int
+        kwargs: dict
+            SIM_OPTS
         
         Returns
         -------
@@ -293,6 +326,10 @@ class ControlSBML(object):
             columns: floating species
             index: time
         """
+        options = Options(kwargs)
+        sim_opts = options.parse(SIM_OPTS)
+        start_time, end_time, num_points = self._getSimulationParameters(sim_opts)
+        #
         self.roadrunner.reset()
         data = self.roadrunner.simulate(start_time, end_time, num_point)
         columns = [c[1:-1] if c[0] =="[" else c for c in data.colnames]
@@ -306,25 +343,20 @@ class ControlSBML(object):
 
         Parameters
         ----------
-        is_plot: bool
-        start_time: float
-        end_time: float
-        num_point: int
-        y_max: float
-            max value of y
-        legend_crd: (float, float)
-            coordinates for the legend
+        kwargs: dict
+            PLOT_OPTS, FIG_OPTS
         """
         # Parse the options
         options = Options(kwargs)
+        options = options.parse(options)
         plot_opts, fig_opts, sim_opts = options.parse(OPTS_LST)
         # Run the simulation
         df = self.simulateRoadrunner(**sim_opts)
         # Adjust the option values
-        plot_opts.set("xlabel", default=TIME)
+        plot_opts.set(O_XLABEL, default=TIME)
         y_max = df.max().max()
-        plot_opts.set("ylim", default=[0, y_max])
-        plot_opts.set("legend_spec", default=LegendSpec(df.columns))
+        plot_opts.set(O_YLIM, default=[0, y_max])
+        plot_opts.set(O_LEGEND_SPEC, default=LegendSpec(df.columns))
         ax = self._doPlotOpts(**plot_opts)
         # Do the plot
         for col in df.columns:
@@ -345,17 +377,17 @@ class ControlSBML(object):
         """
         options = Options(kwargs)
         plot_opts, fig_opts, sim_opts = options.parse(OPTS_LST)
-        start_time = sim_opts["start_time"]
+        start_time = sim_opts[O_START_TIME]
         rr_df = self.simulateRoadrunner(**sim_opts)
         nrow = 1
         ncol = len(rr_df.columns)
-        fig, axes = plt.subplots(nrow, ncol, figsize=fig_opts["figsize"])
+        fig, axes = plt.subplots(nrow, ncol, figsize=fig_opts[O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         linear_df = self.simulateLinearSystem(timepoint=start_time,
               A_mat=A_mat, **sim_opts)
         y_min = min(linear_df.min().min(), rr_df.min().min())
         y_max = max(linear_df.max().max(), rr_df.max().max())
-        plot_opts["ylim"] = [y_min, y_max]
+        plot_opts[O_YLIM] = [y_min, y_max]
         irow = 0
         base_plot_opts = dict(plot_opts)
         for icol, column in enumerate(rr_df.columns):
@@ -364,17 +396,17 @@ class ControlSBML(object):
             ax.plot(linear_df.index, linear_df[column], color="red")
             ax.plot(rr_df.index, rr_df[column], color="blue")
             if irow < nrow - 1:
-                plot_opts["xticklabels"] = []
+                plot_opts[O_XTICKLABELS] = []
             if irow == 0:
                 ax.set_title(column, rotation=45)
                 if icol == 0:
-                    plot_opts["legend_spec"] = LegendSpec(
+                    plot_opts[O_LEGEND_SPEC] = LegendSpec(
                           ["approximation", "true"])
                 else:
-                    plot_opts["legend_spec"] = None
+                    plot_opts[O_LEGEND_SPEC] = None
             if icol > 0:
                 ax.set_yticklabels([])
-            plot_opts["ax"] = ax
+            plot_opts[O_AX] = ax
             _ = self._doPlotOpts(**plot_opts)
         self._doFigOpts(**fig_opts)
 
@@ -401,24 +433,24 @@ class ControlSBML(object):
         rr_df = ctlsb.simulateRoadrunner(**sim_opts)
         nrow = len(timepoints)
         ncol = len(rr_df.columns)
-        fig, axes = plt.subplots(nrow, ncol, figsize=fig_opts["figsize"])
+        fig, axes = plt.subplots(nrow, ncol, figsize=fig_opts[O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         for irow, timepoint in enumerate(timepoints):
             linear_df = ctlsb.simulateLinearSystem(timepoint=timepoint, **sim_opts)
-            if plot_opts["ylim"] is None:
+            if plot_opts[O_YLIM] is None:
                 y_min = min(linear_df.min().min(), rr_df.min().min())
                 y_max = max(linear_df.max().max(), rr_df.max().max())
-                plot_opts["ylim"] = [y_min, y_max]
+                plot_opts[O_YLIM] = [y_min, y_max]
             base_plot_opts = dict(plot_opts)
             for icol, column in enumerate(rr_df.columns):
                 plot_opts = dict(base_plot_opts)
                 ax = axes[irow, icol]
-                plot_opts["ax"] = ax
+                plot_opts[O_AX] = ax
                 ax.plot(linear_df.index, linear_df[column], color="red")
                 ax.plot(rr_df.index, rr_df[column], color="blue")
                 ax.scatter(timepoint, y_min, s=40, marker="o", color="g")
                 if irow < nrow - 1:
-                    plot_opts["xticklabels"] = []
+                    plot_opts[O_XTICKLABELS] = []
                 if irow == 0:
                     ax.set_title(column, rotation=45)
                     if icol == 0:
@@ -447,28 +479,28 @@ class ControlSBML(object):
         """
         new_kwargs = {k: kwargs[k] if k in kwargs else v for k, v in
              PLOT_OPTS.items()}
-        ax  = new_kwargs["ax"]
+        ax  = new_kwargs[O_AX]
         if ax is None:
              _, ax  = plt.subplots(1)
-             new_kwargs["ax"]  = ax
-        if new_kwargs["ylim"] is not None:
-            ax.set_ylim(new_kwargs["ylim"])
-        if new_kwargs["xlabel"] is not None:
-            ax.set_xlabel(new_kwargs["xlabel"])
-        if new_kwargs["ylabel"] is not None:
-            ax.set_ylabel(new_kwargs["ylabel"])
-        if new_kwargs["title"] is not None:
-            ax.set_title(new_kwargs["title"])
-        if new_kwargs["xticklabels"] is not None:
-            ax.set_xticklabels(new_kwargs["xticklabels"])
-        if new_kwargs["yticklabels"] is not None:
-            ax.set_yticklabels(new_kwargs["yticklabels"])
-        if new_kwargs["legend_spec"] is not None:
-            legend_spec = new_kwargs["legend_spec"]
+             new_kwargs[O_AX]  = ax
+        if new_kwargs[O_YLIM] is not None:
+            ax.set_ylim(new_kwargs[O_YLIM])
+        if new_kwargs[O_XLABEL] is not None:
+            ax.set_xlabel(new_kwargs[O_XLABEL])
+        if new_kwargs[O_YLABEL] is not None:
+            ax.set_ylabel(new_kwargs[O_YLABEL])
+        if new_kwargs[O_TITLE] is not None:
+            ax.set_title(new_kwargs[O_TITLE])
+        if new_kwargs[O_XTICKLABELS] is not None:
+            ax.set_xticklabels(new_kwargs[O_XTICKLABELS])
+        if new_kwargs[O_YTICKLABELS] is not None:
+            ax.set_yticklabels(new_kwargs[O_YTICKLABELS])
+        if new_kwargs[O_LEGEND_SPEC] is not None:
+            legend_spec = new_kwargs[O_LEGEND_SPEC]
             ax.legend(legend_spec.names,
                   bbox_to_anchor=legend_spec.crd,
                   loc=legend_spec.loc)
-        return new_kwargs["ax"]
+        return new_kwargs[O_AX]
 
     @classmethod
     def _doFigOpts(cls, **kwargs):
@@ -482,6 +514,6 @@ class ControlSBML(object):
         """
         new_kwargs = {k: kwargs[k] if k in kwargs else v for k, v in
              FIG_OPTS.items()}
-        plt.suptitle(new_kwargs["suptitle"])
-        if new_kwargs["is_plot"]:
+        plt.suptitle(new_kwargs[O_SUPTITLE])
+        if new_kwargs[O_IS_PLOT]:
             plt.show()
