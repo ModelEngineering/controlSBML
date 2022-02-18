@@ -1,7 +1,5 @@
 """Constants for Project."""
-from controlSBML.options import Options
 
-import collections
 import os
 
 
@@ -37,13 +35,13 @@ O_YLABEL = "ylabel"
 O_YLIM = "ylim"
 
 # Default values of options
-SIM_OPTS = Options(dict(
+SIM_DCT = dict(
       start_time=START_TIME,  # Start time of the simulation
       end_time=END_TIME,      # End time of the simulation
       points_per_time=POINTS_PER_TIME,    # Number of points in the simulation
-      ))
+      )
 # Options for a single plot
-PLOT_OPTS = Options(dict(
+PLOT_DCT = dict(
       ylim=None,           # maximum and minimum value of y
       xlabel="",           
       ylabel="",           
@@ -52,12 +50,12 @@ PLOT_OPTS = Options(dict(
       ax=None,              # axis to plot
       xticklabels=None,
       yticklabels=None,
-      ))
+      )
 # Options for the full figure
-FIG_OPTS = Options(dict(
+FIG_DCT = dict(
       is_plot=True,         # Is a figure generated
       figsize=(10, 10),     # Size of the figure
       suptitle="",          # Title for the figure
-      ))
+      )
 
-OPTS_LST = [PLOT_OPTS, FIG_OPTS, SIM_OPTS]
+DEFAULT_DCTS = [PLOT_DCT, FIG_DCT, SIM_DCT]

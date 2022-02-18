@@ -4,7 +4,7 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
-PLOT_OPTS = dict(
+PLOT_DCT = dict(
       ylim=None,           # maximum and minimum value of y
       xlabel="",           
       ylabel="",           
@@ -14,7 +14,7 @@ PLOT_OPTS = dict(
       xticklabels=None,
       yticklabels=None,
       )
-OTHER_OPTS = dict(
+OTHER_DCT = dict(
       first=1,
       last=2,
       )
@@ -23,7 +23,8 @@ OTHER_OPTS = dict(
 class TestOptions(unittest.TestCase):
 
     def setUp(self):
-        self.options = Options(PLOT_OPTS)
+        self.options = Options(dct=PLOT_DCT,
+              default_dcts=[PLOT_DCT, OTHER_DCT])
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -57,11 +58,11 @@ class TestOptions(unittest.TestCase):
             diff = set(dct1.values()).symmetric_difference(dct2.values())
             self.assertEqual(len(diff), 0)
         #
-        kwargs = Options(PLOT_OPTS)
-        kwargs.update(OTHER_OPTS)
-        plot_opts, other_opts = self.options.parse([PLOT_OPTS, OTHER_OPTS])
-        isSameDct(plot_opts, PLOT_OPTS)
-        isSameDct(other_opts, OTHER_OPTS)
+        kwargs = Options(PLOT_DCT)
+        kwargs.update(OTHER_DCT)
+        plot_opts, other_opts = self.options.parse()
+        isSameDct(plot_opts, PLOT_DCT)
+        isSameDct(other_opts, OTHER_DCT)
 
 
 if __name__ == '__main__':

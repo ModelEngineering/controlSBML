@@ -36,8 +36,8 @@ class ControlAnalysis(ControlBase):
             columns: floating species
             index: time
         """
-        options = Options(kwargs)
-        sim_opts = options.parse([cn.SIM_OPTS])[0]
+        options = Options(dct=kwargs, default_dcts=[cn.SIM_DCT])
+        sim_opts = options.parse()[0]
         start_time, end_time, num_point = self._getSimulationParameters(**sim_opts)
         cur_time = self.get(cn.TIME)
         self.setTime(timepoint)
@@ -68,8 +68,8 @@ class ControlAnalysis(ControlBase):
             columns: floating species
             index: time
         """
-        options = Options(kwargs)
-        sim_opts = options.parse([cn.SIM_OPTS])[0]
+        options = Options(dct=kwargs, default_dcts=[cn.SIM_DCT])
+        sim_opts = options.parse()[0]
         start_time, end_time, num_point = self._getSimulationParameters(
               **sim_opts)
         #

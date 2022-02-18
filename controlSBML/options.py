@@ -1,11 +1,27 @@
 """Encoding of options as a dictionary"""
 
+"""
+TO DO
+1. Construct with default_dcts, list of defaults
+2. self.default_dct is the union of default_dcts
+3. set checks the default value, and reassigns if at default
+"""
+
 
 class Options(dict):
     # Class to manage options
 
-    def __init__(self, dct=None):
+    def __init__(self, dct=None, default_dcts=None):
+        if dct is None:
+            dct = {}
         super().__init__(dct)
+        # Create the set of all defaults
+        if default_dcts is None:
+            default_dcts = []
+        self.default_dcts = default_dcts  # Options  by dict
+        self.all_default_dct = {}
+        for default_dct in default_dcts:
+            self.all_default_dct.update(default_dct)
 
     def set(self, key, override=None, default=None):
         """
@@ -26,13 +42,14 @@ class Options(dict):
             self[key] = override
         is_default = False
         if key in self.keys():
-            is_default = self[key] is None
+            is_default = self[key] == self.all_default_dct[key]
+            # is_default = self[key] is None
         else:
             is_default = True
         if is_default:
             self[key] = default
 
-    def parse(self, dcts):
+    def parse(self):
         """
         Parses options in to lists coresponding to the dictionaries provided.
         All options from each dictionary are included in the results.
@@ -48,15 +65,12 @@ class Options(dict):
         list-opts
         """
         # Validate that correct options are present
-        all_opts = set([])
-        for dct in dcts:
-            all_opts = all_opts.union(dct.keys())
-        unknownOptions = set(self.keys()).difference(all_opts)
+        unknownOptions = set(self.keys()).difference(self.all_default_dct.keys())
         if len(unknownOptions) > 0:
             raise ValueError("Unknown options: %s" % str(unknownOptions))
         #
         opts_lst = []
-        for dct in dcts:
+        for dct in self.default_dcts:
             opts = Options({k: self[k] if k in self.keys() else v
                   for k, v in dct.items()})
             opts_lst.append(opts)
