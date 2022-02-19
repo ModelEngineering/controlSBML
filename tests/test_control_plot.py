@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -75,8 +75,7 @@ class TestControlPlot(unittest.TestCase):
               figsize=(5,5))
 
     def testPlotTrueModel(self):
-        if IGNORE_TEST:
-          return
+        # TESTING
         self.ctlsb.plotTrueModel(is_plot=IS_PLOT, ylabel="values",
               end_time=10, title="title")
 

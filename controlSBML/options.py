@@ -23,6 +23,9 @@ class Options(dict):
         for default_dct in default_dcts:
             self.all_default_dct.update(default_dct)
 
+    def __repr__(self):
+        return str({k: v for k, v in self.items()})
+
     def set(self, key, override=None, default=None):
         """
         Sets the value of an option in an option dictionary.
@@ -72,6 +75,6 @@ class Options(dict):
         opts_lst = []
         for dct in self.default_dcts:
             opts = Options({k: self[k] if k in self.keys() else v
-                  for k, v in dct.items()})
+                  for k, v in dct.items()}, default_dcts=[dct])
             opts_lst.append(opts)
         return opts_lst
