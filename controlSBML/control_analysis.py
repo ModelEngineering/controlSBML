@@ -5,7 +5,6 @@ import controlSBML.constants as cn
 from controlSBML.options import Options
 
 import control
-import numpy as np
 import pandas as pd
 
 
@@ -29,14 +28,14 @@ class ControlAnalysis(ControlBase):
         ----------
         kwargs: dict
             cn.SIM_OPTS
-        
+
         Returns
         -------
         pd.dataframe
             columns: floating species
             index: time
         """
-        options = Options(dct=kwargs, default_dcts=[cn.SIM_DCT])
+        options = Options(kwargs, [cn.SIM_DCT])
         sim_opts = options.parse()[0]
         start_time, end_time, num_point = self._getSimulationParameters(**sim_opts)
         cur_time = self.get(cn.TIME)
@@ -61,14 +60,14 @@ class ControlAnalysis(ControlBase):
         ----------
         kwargs: dict
             cn.SIM_OPTS
-        
+
         Returns
         -------
         pd.dataframe
             columns: floating species
             index: time
         """
-        options = Options(dct=kwargs, default_dcts=[cn.SIM_DCT])
+        options = Options(kwargs, [cn.SIM_DCT])
         sim_opts = options.parse()[0]
         start_time, end_time, num_point = self._getSimulationParameters(
               **sim_opts)

@@ -1,6 +1,25 @@
 """Constants for Project."""
 
+from docstring_expander.kwarg import Kwarg
+import matplotlib.pyplot
 import os
+
+
+# Legend specification
+class LegendSpec():
+
+    def __init__(self, names, crd=(1.4, 1), loc="upper right"):
+        """
+
+        Parameters
+        ----------
+        names: list-srs - names of the legends
+        crd: (float, float) - coordinate of the legend
+        loc: str - position of the legend
+        """
+        self.names = list(names)
+        self.crd = crd
+        self.loc = loc
 
 
 ################ DIRECTORIES #################
@@ -43,6 +62,7 @@ SIM_DCT = dict(
 # Options for a single plot
 PLOT_DCT = dict(
       ylim=None,           # maximum and minimum value of y
+      xlim=None,
       xlabel="",           
       ylabel="",           
       title="",             # plot title
@@ -59,3 +79,32 @@ FIG_DCT = dict(
       )
 
 DEFAULT_DCTS = [PLOT_DCT, FIG_DCT, SIM_DCT]
+
+
+# Must maintain this in correspondence with SIM_DCT, PLOT_DCT, FIG_DCT
+KWARGS = [
+    #SIMULATION OPTIONS
+    Kwarg("end_time", default=10, dtype=float, doc="end time of simulation"),
+    Kwarg("points_per_time", default=10, dtype=float, doc="number of simulation points per time period"),
+    Kwarg("start_time", default=0, dtype=float, doc="when simulation begins"),
+    #PLOT OPTIONS
+    Kwarg("ax", default=None, dtype=matplotlib.pyplot.axes, doc="Plotting axis"),
+    Kwarg("legend_spec", default=None, dtype=LegendSpec, doc="position of the legend"),
+    Kwarg("title", default="", dtype=str, doc="Plot title"),
+    Kwarg("xlabel", default="", dtype=str, doc="x-axis label"),
+    Kwarg("xlim", default=None, dtype=(float, float), doc="lower and upper values of x axis"),
+    Kwarg("xticklabels", default=None, dtype=list, doc="x-axis tic marks"),
+    Kwarg("ylim", default=0, dtype=(float, float), doc="lower and upper values of y axis"),
+    Kwarg("ylabel", default="", dtype=str, doc="y-axis label"),
+    Kwarg("yticklabels", default=None, dtype=list, doc="y-axis tic marks"),
+    # FIGURE OPTIONS
+    Kwarg("figsize", default=(10, 10), dtype=(float, float), doc="widith, height"),
+    Kwarg("is_plot", default=True, dtype=bool, doc="do the plot"),
+    Kwarg("suptitle", default=0, dtype=str, doc="figure title"),
+    ]
+SIM_KWARGS = list(SIM_DCT.keys())
+PLOT_KWARGS = list(PLOT_DCT.keys())
+FIG_KWARGS = list(FIG_DCT.keys())
+ALL_KWARGS = []
+for kwargs in [SIM_KWARGS, PLOT_KWARGS, FIG_KWARGS]:
+    ALL_KWARGS.extend(kwargs)

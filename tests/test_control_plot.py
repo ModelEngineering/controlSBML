@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -75,14 +75,15 @@ class TestControlPlot(unittest.TestCase):
               figsize=(5,5))
 
     def testPlotTrueModel(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         self.ctlsb.plotTrueModel(is_plot=IS_PLOT, ylabel="values",
               end_time=10, title="title")
 
     def testEvaluateAccuracy(self):
         if IGNORE_TEST:
           return
-        self.ctlsb.evaluateAccuracy(NONLINEAR_MDL,
+        self.ctlsb.plotAccuracy(NONLINEAR_MDL,
               [0, 1, 2, 3], suptitle="Test", is_plot=IS_PLOT)
 
 

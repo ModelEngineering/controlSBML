@@ -11,10 +11,19 @@ TO DO
 class Options(dict):
     # Class to manage options
 
-    def __init__(self, dct=None, default_dcts=None):
+    def __init__(self, dct, default_dcts):
         if dct is None:
             dct = {}
         super().__init__(dct)
+        # Validate the inputs
+        if not isinstance(dct, dict):
+            raise ValueError("First argument must be a dict.")
+        if not isinstance(default_dcts, list):
+            raise ValueError("Second argument must be a list of dict.")
+        else:
+            for default_dct in default_dcts:
+                if not isinstance(default_dct, dict):
+                    raise ValueError("Second argument must be a list of dict.")
         # Create the set of all defaults
         if default_dcts is None:
             default_dcts = []

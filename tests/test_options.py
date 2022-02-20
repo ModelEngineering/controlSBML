@@ -23,15 +23,14 @@ OTHER_DCT = dict(
 class TestOptions(unittest.TestCase):
 
     def setUp(self):
-        self.options = Options(dct=PLOT_DCT,
-              default_dcts=[PLOT_DCT, OTHER_DCT])
+        self.options = Options(PLOT_DCT, [PLOT_DCT, OTHER_DCT])
 
     def testConstructor(self):
         if IGNORE_TEST:
           return
         self.assertTrue("xlabel" in self.options.keys())
         #
-        options = Options(self.options)
+        options = Options(self.options, [PLOT_DCT, OTHER_DCT])
         self.assertTrue("xlabel" in options.keys())
 
     def testSet(self):
@@ -58,9 +57,9 @@ class TestOptions(unittest.TestCase):
             diff = set(dct1.values()).symmetric_difference(dct2.values())
             self.assertEqual(len(diff), 0)
         #
-        kwargs = Options(PLOT_DCT)
-        kwargs.update(OTHER_DCT)
-        plot_opts, other_opts = self.options.parse()
+        default_dcts = [PLOT_DCT, OTHER_DCT]
+        options = Options({}, default_dcts)
+        plot_opts, other_opts = options.parse()
         isSameDct(plot_opts, PLOT_DCT)
         isSameDct(other_opts, OTHER_DCT)
 

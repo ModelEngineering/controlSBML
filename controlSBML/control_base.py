@@ -8,13 +8,10 @@ TO DO:
 """
 
 from controlSBML.make_roadrunner import makeRoadrunner
-from controlSBML.options import Options
 
 import control
-import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import tellurium as te
 
 
 TIME = "time"
