@@ -101,9 +101,8 @@ class ControlPlot(ControlAnalysis):
             _ = self._doPlotOpts(**plot_opts)
         self._doFigOpts(**fig_opts)
 
-    @classmethod
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotAccuracy(cls, model_reference, timepoints, **kwargs):
+    def plotAccuracy(self, model_reference=None, timepoints=[0], **kwargs):
         """
         Creates a plot that evaluates the
         accouract of a linear model where the Jacobian is calculated
@@ -112,15 +111,20 @@ class ControlPlot(ControlAnalysis):
         Parameters
         ----------
         model_reference: as required by constructor
+            default: current model
         timepoints: list-float
             Time at which Jacobian is calculated
+            default: [0]
         #@expand
         """
         options = Options(kwargs, cn.DEFAULT_DCTS)
         plot_opts, fig_opts, sim_opts = options.parse()
         if isinstance(timepoints, float) or isinstance(timepoints, int):
             timepoints = [timepoints]
-        ctlsb = cls(model_reference)
+        if model_reference is not None:
+            ctlsb = self.__class__(model_reference)
+        else:
+            ctlsb = self
         rr_df = ctlsb.simulateRoadrunner(**sim_opts)
         nrow = len(timepoints)
         ncol = len(rr_df.columns)
@@ -151,8 +155,8 @@ class ControlPlot(ControlAnalysis):
                     ax.set_yticklabels([])
                 else:
                     ax.text(-2, y_max/2, "%2.1f" % timepoint)
-                _ = cls._doPlotOpts(**plot_opts)
-        cls._doFigOpts(**fig_opts)
+                _ = self._doPlotOpts(**plot_opts)
+        self._doFigOpts(**fig_opts)
 
     @classmethod
     @Expander(cn.KWARGS, cn.PLOT_KWARGS)

@@ -83,6 +83,8 @@ class TestControlPlot(unittest.TestCase):
     def testEvaluateAccuracy(self):
         if IGNORE_TEST:
           return
+        ctlsb = ControlPlot(NONLINEAR_MDL)
+        ctlsb.plotAccuracy(figsize=(5, 5))
         self.ctlsb.plotAccuracy(NONLINEAR_MDL,
               [0, 1, 2, 3], suptitle="Test", is_plot=IS_PLOT)
 
