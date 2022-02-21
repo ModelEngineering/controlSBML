@@ -36,7 +36,11 @@ class ControlPlot(ControlAnalysis):
         plot_opts.set(cn.O_XLABEL, default=cn.TIME)
         y_max = df.max().max()
         plot_opts.set(cn.O_YLIM, default=[0, y_max])
-        plot_opts.set(cn.O_LEGEND_SPEC, default=cn.LegendSpec(df.columns))
+        if cn.O_LEGEND_CRD in plot_opts.keys():
+            legend_spec =cn.LegendSpec(df.columns, crd=plot_opts[cn.O_LEGEND_CRD])
+        else:
+            legend_spec =cn.LegendSpec(df.columns)
+        plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
         ax = self._doPlotOpts(**plot_opts)
         # Do the plot
         for col in df.columns:
@@ -71,9 +75,9 @@ class ControlPlot(ControlAnalysis):
         y_max = max(linear_df.max().max(), rr_df.max().max())
         plot_opts[cn.O_YLIM] = [y_min, y_max]
         irow = 0
-        base_plot_opts = dict(plot_opts)
+        base_plot_opts = Options(plot_opts, plot_opts.default_dcts)
         for icol, column in enumerate(rr_df.columns):
-            plot_opts = dict(base_plot_opts)
+            plot_opts = Options(base_plot_opts, base_plot_opts.default_dcts)
             ax = axes[irow, icol]
             ax.plot(linear_df.index, linear_df[column], color="red")
             ax.plot(rr_df.index, rr_df[column], color="blue")
@@ -82,8 +86,13 @@ class ControlPlot(ControlAnalysis):
             if irow == 0:
                 ax.set_title(column, rotation=45)
                 if icol == 0:
-                    plot_opts[cn.O_LEGEND_SPEC] = cn.LegendSpec(
-                          ["approximation", "true"])
+                    names = ["approximation", "true"]
+                    if cn.O_LEGEND_CRD in plot_opts.keys():
+                        legend_spec = cn.LegendSpec(
+                              names, crd=plot_opts[cn.O_LEGEND_CRD])
+                    else:
+                        legend_spec =cn.LegendSpec(name)
+                    plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
                 else:
                     plot_opts[cn.O_LEGEND_SPEC] = None
             if icol > 0:

@@ -42,6 +42,7 @@ O_AX = "ax"
 O_END_TIME = "end_time"
 O_FIGSIZE = "figsize"
 O_IS_PLOT = "is_plot"
+O_LEGEND_CRD = "legend_crd"  # Legend coordinate
 O_LEGEND_SPEC = "legend_spec"
 O_POINTS_PER_TIME = "points_per_time"
 O_START_TIME = "start_time"
@@ -62,12 +63,13 @@ SIM_DCT = dict(
       )
 # Options for a single plot
 PLOT_DCT = dict(
+      legend_spec=None,     # LegendSpec
+      legend_crd=None,      # coordinate for legend
       ylim=None,           # maximum and minimum value of y
       xlim=None,
       xlabel="",           
       ylabel="",           
       title="",             # plot title
-      legend_spec=None,     # LegendSpec
       ax=None,              # axis to plot
       xticklabels=None,
       yticklabels=None,
@@ -90,18 +92,19 @@ KWARGS = [
     Kwarg("start_time", default=0, dtype=float, doc="when simulation begins"),
     #PLOT OPTIONS
     Kwarg("ax", default=None, dtype=matplotlib.pyplot.axes, doc="Plotting axis"),
-    Kwarg("legend_spec", default=None, dtype=LegendSpec, doc="position of the legend"),
+    Kwarg("legend_spec", default=None, dtype=LegendSpec, doc="Position of the legend"),
+    Kwarg("legend_crd", default=None, dtype=tuple, doc="Coordinate position of the legend"),
     Kwarg("title", default="", dtype=str, doc="Plot title"),
     Kwarg("xlabel", default="", dtype=str, doc="x-axis label"),
-    Kwarg("xlim", default=None, dtype=(float, float), doc="lower and upper values of x axis"),
+    Kwarg("xlim", default=None, dtype=(float, float), doc="Lower and upper values of x axis"),
     Kwarg("xticklabels", default=None, dtype=list, doc="x-axis tic marks"),
-    Kwarg("ylim", default=None, dtype=(float, float), doc="lower and upper values of y axis"),
+    Kwarg("ylim", default=None, dtype=(float, float), doc="Lower and upper values of y axis"),
     Kwarg("ylabel", default="", dtype=str, doc="y-axis label"),
     Kwarg("yticklabels", default=None, dtype=list, doc="y-axis tic marks"),
     # FIGURE OPTIONS
     Kwarg("figsize", default=None, dtype=(float, float), doc="widith, height"),
-    Kwarg("is_plot", default=True, dtype=bool, doc="do the plot"),
-    Kwarg("suptitle", default="", dtype=str, doc="figure title"),
+    Kwarg("is_plot", default=True, dtype=bool, doc="Do the plot"),
+    Kwarg("suptitle", default="", dtype=str, doc="Figure title"),
     ]
 SIM_KWARGS = list(SIM_DCT.keys())
 PLOT_KWARGS = list(PLOT_DCT.keys())
