@@ -41,6 +41,8 @@ class ControlPlot(ControlAnalysis):
         # Do the plot
         for col in df.columns:
             ax.plot(df.index, df[col])
+        plot_opts.set(cn.O_AX, ax)
+        _ = self._doPlotOpts(**plot_opts)  # Recover lost plot options
         # Finalize the figure
         self._doFigOpts(**fig_opts)
 
@@ -163,23 +165,25 @@ class ControlPlot(ControlAnalysis):
         if ax is None:
              _, ax  = plt.subplots(1)
              new_kwargs[cn.O_AX]  = ax
-        if new_kwargs[cn.O_YLIM] is not None:
-            ax.set_ylim(new_kwargs[cn.O_YLIM])
-        if new_kwargs[cn.O_XLABEL] is not None:
-            ax.set_xlabel(new_kwargs[cn.O_XLABEL])
-        if new_kwargs[cn.O_YLABEL] is not None:
-            ax.set_ylabel(new_kwargs[cn.O_YLABEL])
-        if new_kwargs[cn.O_TITLE] is not None:
-            ax.set_title(new_kwargs[cn.O_TITLE])
-        if new_kwargs[cn.O_XTICKLABELS] is not None:
-            ax.set_xticklabels(new_kwargs[cn.O_XTICKLABELS])
-        if new_kwargs[cn.O_YTICKLABELS] is not None:
-            ax.set_yticklabels(new_kwargs[cn.O_YTICKLABELS])
         if new_kwargs[cn.O_LEGEND_SPEC] is not None:
             legend_spec = new_kwargs[cn.O_LEGEND_SPEC]
             ax.legend(legend_spec.names,
                   bbox_to_anchor=legend_spec.crd,
                   loc=legend_spec.loc)
+        if new_kwargs[cn.O_TITLE] != cn.PLOT_DCT[cn.O_TITLE]:
+            ax.set_title(new_kwargs[cn.O_TITLE])
+        if new_kwargs[cn.O_XLABEL] != cn.PLOT_DCT[cn.O_XLABEL]:
+            ax.set_xlabel(new_kwargs[cn.O_XLABEL])
+        if new_kwargs[cn.O_XLIM] is not None:
+            ax.set_ylim(new_kwargs[cn.O_XLIM])
+        if new_kwargs[cn.O_XTICKLABELS] is not None:
+            ax.set_xticklabels(new_kwargs[cn.O_XTICKLABELS])
+        if new_kwargs[cn.O_YLABEL] != cn.PLOT_DCT[cn.O_YLABEL]:
+            ax.set_ylabel(new_kwargs[cn.O_YLABEL])
+        if new_kwargs[cn.O_YLIM] is not None:
+            ax.set_ylim(new_kwargs[cn.O_YLIM])
+        if new_kwargs[cn.O_YTICKLABELS] is not None:
+            ax.set_yticklabels(new_kwargs[cn.O_YTICKLABELS])
         return new_kwargs[cn.O_AX]
 
     @classmethod

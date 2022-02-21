@@ -8,7 +8,7 @@ import os
 # Legend specification
 class LegendSpec():
 
-    def __init__(self, names, crd=(1.4, 1), loc="upper right"):
+    def __init__(self, names, crd=(1.15, 1), loc="upper right"):
         """
 
         Parameters
@@ -48,10 +48,11 @@ O_START_TIME = "start_time"
 O_SUPTITLE = "suptitle"
 O_TITLE = "title"
 O_XLABEL = "xlabel"
+O_XLIM = "xlim"
 O_XTICKLABELS = "xticklabels"
-O_YTICKLABELS = "yticklabels"
 O_YLABEL = "ylabel"
 O_YLIM = "ylim"
+O_YTICKLABELS = "yticklabels"
 
 # Default values of options
 SIM_DCT = dict(
@@ -94,13 +95,13 @@ KWARGS = [
     Kwarg("xlabel", default="", dtype=str, doc="x-axis label"),
     Kwarg("xlim", default=None, dtype=(float, float), doc="lower and upper values of x axis"),
     Kwarg("xticklabels", default=None, dtype=list, doc="x-axis tic marks"),
-    Kwarg("ylim", default=0, dtype=(float, float), doc="lower and upper values of y axis"),
+    Kwarg("ylim", default=None, dtype=(float, float), doc="lower and upper values of y axis"),
     Kwarg("ylabel", default="", dtype=str, doc="y-axis label"),
     Kwarg("yticklabels", default=None, dtype=list, doc="y-axis tic marks"),
     # FIGURE OPTIONS
-    Kwarg("figsize", default=(10, 10), dtype=(float, float), doc="widith, height"),
+    Kwarg("figsize", default=None, dtype=(float, float), doc="widith, height"),
     Kwarg("is_plot", default=True, dtype=bool, doc="do the plot"),
-    Kwarg("suptitle", default=0, dtype=str, doc="figure title"),
+    Kwarg("suptitle", default="", dtype=str, doc="figure title"),
     ]
 SIM_KWARGS = list(SIM_DCT.keys())
 PLOT_KWARGS = list(PLOT_DCT.keys())
