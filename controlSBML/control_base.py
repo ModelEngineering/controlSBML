@@ -172,29 +172,30 @@ class ControlBase(object):
         for name, value in name_dct.items():
             self.roadrunner[name] = value
 
-    def makeStateSpace(self, A=None, B=None, C=None, D=None):
+    def makeStateSpace(self, A_mat=None, B_mat=None, C_mat=None, D_mat=None):
         """
         Creates a control system object for the n X n jacobian.
 
         Parameters
         ----------
-        A: np.array(n X n)
-        B: np.array(n X p)
-        C: np.array(q X n)
-        D: np.array(q X p)
+        A_mat: np.array(n X n)
+        B_mat: np.array(n X p)
+        C_mat: np.array(q X n)
+        D_mat: np.array(q X p)
 
         Returns
         -------
         control.StateSpace
         """
         # Construct the matrices
-        if A is None:
-            A = self.jacobian.values
-        if B is None:
-            B = np.repeat(0, A.shape[0])
-            B = np.reshape(B, (A.shape[0], 1))
-        if C is None:
-            C = np.identity(A.shape[0])
-        if D is None:
-            D = B
-        return control.StateSpace(A, B, C, D)
+        if A_mat is None:
+            A_mat = self.jacobian.values
+        if B_mat is None:
+            B_mat = np.repeat(0, A_mat.shape[0])
+            B_mat = np.reshape(B_mat, (A_mat.shape[0], 1))
+        if C_mat is None:
+            C_mat = np.identity(A_mat.shape[0])
+        if D_mat is None:
+            D_mat = np.repeat(0, A_mat.shape[0])
+            D_mat = np.reshape(D_mat, (A_mat.shape[0], 1))
+        return control.StateSpace(A_mat, B_mat, C_mat, D_mat)

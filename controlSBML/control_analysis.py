@@ -5,6 +5,7 @@ import controlSBML.constants as cn
 from controlSBML.options import Options
 
 import control
+from docstring_expander.expander import Expander
 import pandas as pd
 
 
@@ -18,7 +19,9 @@ class ControlAnalysis(ControlBase):
         num_point = int(points_per_time*(end_time - start_time)) + 1
         return start_time, end_time, num_point
 
-    def simulateLinearSystem(self, A_mat=None, timepoint=0, **kwargs):
+    @Expander(cn.KWARGS, cn.SIM_KWARGS)
+    def simulateLinearSystem(self, A_mat=None, B_mat=None, C_mat=None,
+          timepoint=0, **kwargs):
         """
         Creates an approximation of the SBML model based on the Jacobian, and
         constructs predictions based on this Jacobian and the values of
@@ -26,8 +29,12 @@ class ControlAnalysis(ControlBase):
 
         Parameters
         ----------
-        kwargs: dict
-            cn.SIM_OPTS
+        A_mat: np.array (n X n)
+        B_mat: np.array (n X p)
+        C_mat: np.array (q X n)
+        timepoint: float
+            Time at which Jacobian is taken
+        #@expand
 
         Returns
         -------
@@ -40,7 +47,7 @@ class ControlAnalysis(ControlBase):
         start_time, end_time, num_point = self._getSimulationParameters(**sim_opts)
         cur_time = self.get(cn.TIME)
         self.setTime(timepoint)
-        sys = self.makeStateSpace(A=A_mat)
+        sys = self.makeStateSpace(A_mat=A_mat, B_mat=B_mat, C_mat=C_mat)
         self.setTime(start_time)
         x0 = self.current_state
         self.setTime(cur_time)  # Restore the time
@@ -52,14 +59,14 @@ class ControlAnalysis(ControlBase):
         df.columns = self.species_names
         return df
 
+    @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def simulateRoadrunner(self, **kwargs):
         """
         Runs a new roadrunner simulation.
 
         Parameters
         ----------
-        kwargs: dict
-            cn.SIM_OPTS
+        #@expand
 
         Returns
         -------

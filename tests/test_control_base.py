@@ -110,7 +110,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeStateSpace(self):
         if IGNORE_TEST:
             return
-        sys = self.ctlsb.makeStateSpace()
+        sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian.values)
         self.assertEqual(sys.nstates, 3)
 
     def testMkInitialState(self):

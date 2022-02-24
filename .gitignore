@@ -1,5 +1,6 @@
 .*swp
 __pycache__
+dist/
 sym
 .ipynb_*
 data/*.xml
@@ -9,3 +10,4 @@ dist?
 *.egg-info/
 local.txt
 python.py
+todo.txt
