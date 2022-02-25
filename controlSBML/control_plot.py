@@ -51,7 +51,7 @@ class ControlPlot(ControlAnalysis):
         self._doFigOpts(**fig_opts)
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotLinearApproximation(self, A_mat=None, **kwargs):
+    def plotLinearApproximation(self, A_mat=None, is_reduced=True, **kwargs):
         """
         Creates a plot that compares the linear approximation with the true model.
 
@@ -59,6 +59,8 @@ class ControlPlot(ControlAnalysis):
         ----------
         A_mat: A matrix of approximation model
             default is Jacobian at current time
+        is_reduced: bool
+            only available if A_mat is None. Construct reduced order model.
         #@expand
         """
         options = Options(kwargs, cn.DEFAULT_DCTS)
@@ -70,7 +72,7 @@ class ControlPlot(ControlAnalysis):
         _, axes = plt.subplots(nrow, ncol, figsize=fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         linear_df = self.simulateLinearSystem(timepoint=start_time,
-              A_mat=A_mat, **sim_opts)
+              A_mat=A_mat, is_reduced=is_reduced, **sim_opts)
         y_min = min(linear_df.min().min(), rr_df.min().min())
         y_max = max(linear_df.max().max(), rr_df.max().max())
         plot_opts[cn.O_YLIM] = [y_min, y_max]

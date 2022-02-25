@@ -12,9 +12,10 @@ from controlSBML.control_plot import ControlPlot
 
 class ControlSBML(ControlPlot):
 
-    def __init__(self, model_reference):
+    def __init__(self, model_reference, include_boundary_species=True):
         """
         Initializes instance variables
         :param str model_reference: string or SBML file or Roadrunner object
         """
-        super().__init__(model_reference)
+        super().__init__(model_reference,
+              include_boundary_species=include_boundary_species)

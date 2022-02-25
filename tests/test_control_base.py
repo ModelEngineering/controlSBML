@@ -60,13 +60,15 @@ S3 = 0
 class TestControlBase(unittest.TestCase):
 
     def setUp(self):
-      # Cannot modify self.control
-      self.ctlsb = ControlBase(ANTIMONY_FILE)
+        # Cannot modify self.control
+        self.ctlsb = ControlBase(ANTIMONY_FILE)
 
     def testConstructor(self):
         if IGNORE_TEST:
-            return
+          return
         self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
+        ctlsb = ControlBase(ANTIMONY_FILE, include_boundary_species=False)
+        self.assertTrue(isinstance(ctlsb.jacobian, pd.DataFrame))
 
     def testConstructWithRoadrunner(self):
         if IGNORE_TEST:
@@ -90,6 +92,12 @@ class TestControlBase(unittest.TestCase):
         #
         dct = self.ctlsb.get()
         self.assertGreater(len(dct), 0)
+
+    def testJacobian(self):
+        if IGNORE_TEST:
+          return
+        self.assertTrue(isinstance(self.ctlsb.jacobian, pd.DataFrame))
+        self.assertTrue(isinstance(self.ctlsb.reduced_jacobian, pd.DataFrame))
 
     def testSet(self):
         if IGNORE_TEST:
@@ -121,7 +129,7 @@ class TestControlBase(unittest.TestCase):
             ctlsb = ControlBase(ctlsb.roadrunner)
             num_species = ctlsb.roadrunner.model.getNumFloatingSpecies()  \
                   + ctlsb.roadrunner.model.getNumBoundarySpecies()
-            X0 = ctlsb.current_state
+            X0 = ctlsb.getCurrentState()
             self.assertEqual(len(X0), num_species)
             jacobian = ctlsb.jacobian
             self.assertTrue(isinstance(jacobian, pd.DataFrame))
