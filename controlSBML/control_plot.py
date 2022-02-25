@@ -72,7 +72,7 @@ class ControlPlot(ControlAnalysis):
         _, axes = plt.subplots(nrow, ncol, figsize=fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         linear_df = self.simulateLinearSystem(timepoint=start_time,
-              A_mat=A_mat, is_reduced=is_reduced, **sim_opts)
+              A_df=A_mat, is_reduced=is_reduced, **sim_opts)
         y_min = min(linear_df.min().min(), rr_df.min().min())
         y_max = max(linear_df.max().max(), rr_df.max().max())
         plot_opts[cn.O_YLIM] = [y_min, y_max]

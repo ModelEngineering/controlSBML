@@ -20,7 +20,7 @@ class ControlAnalysis(ControlBase):
         return start_time, end_time, num_point
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def simulateLinearSystem(self, A_mat=None, B_mat=None, C_mat=None,
+    def simulateLinearSystem(self, A_df=None, B_df=None, C_df=None,
           timepoint=0, is_reduced=False, **kwargs):
         """
         Creates an approximation of the SBML model based on the Jacobian, and
@@ -29,9 +29,9 @@ class ControlAnalysis(ControlBase):
 
         Parameters
         ----------
-        A_mat: np.array (n X n)
-        B_mat: np.array (n X p)
-        C_mat: np.array (q X n)
+        A_df: DataFrame (n X n)
+        B_df: DataFrame (n X p)
+        C_df: DataFrame (q X n)
         timepoint: float
             Time at which Jacobian is taken
         #@expand
@@ -47,16 +47,19 @@ class ControlAnalysis(ControlBase):
         start_time, end_time, num_point = self._getSimulationParameters(**sim_opts)
         cur_time = self.get(cn.TIME)
         self.setTime(timepoint)
-        species_names = self.getSpeciesNames(is_reduced=is_reduced)
-        sys = self.makeStateSpace(A_mat=A_mat, B_mat=B_mat, C_mat=C_mat,
+        if A_df is None:
+            species_names = self.getSpeciesNames(is_reduced=is_reduced)
+        else:
+            species_names = list(A_df.columns)
+        sys = self.makeStateSpace(A_mat=A_df, B_mat=B_df, C_mat=C_df,
               is_reduced=is_reduced)
         self.setTime(start_time)
-        x0 = self.getCurrentState(is_reduced=is_reduced, species_names=species_names)
+        X0 = self.getCurrentState(is_reduced=is_reduced, species_names=species_names)
         self.setTime(cur_time)  # Restore the time
         # Run the linear simulation
         dt = (end_time - start_time)/(num_point - 1)
         times = [start_time + n*dt for n in range(num_point)]
-        times, y_vals = control.forced_response(sys, T=times, X0=x0)
+        times, y_vals = control.forced_response(sys, T=times, X0=X0)
         df = pd.DataFrame(y_vals.transpose(), index=times)
         df.columns = species_names
         return df

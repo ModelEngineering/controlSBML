@@ -243,16 +243,26 @@ class ControlBase(object):
 
         Parameters
         ----------
-        A_mat: np.array(n X n)
-        B_mat: np.array(n X p)
-        C_mat: np.array(q X n)
-        D_mat: np.array(q X p)
+        A_mat: np.array(n X n) or DataFrame
+        B_mat: np.array(n X p) or DataFrame
+        C_mat: np.array(q X n) or DataFrame
+        D_mat: np.array(q X p) or DataFrame
 
         Returns
         -------
         control.StateSpace
         """
+        def df2Mat(df):
+            if isinstance(df, pd.DataFrame):
+                return df.values
+            else:
+                return df
+        #
         # Construct the matrices
+        A_mat = df2Mat(A_mat)
+        B_mat = df2Mat(B_mat)
+        C_mat = df2Mat(C_mat)
+        D_mat = df2Mat(D_mat)
         if A_mat is None:
             if is_reduced:
                 A_mat = self.reduced_jacobian.values

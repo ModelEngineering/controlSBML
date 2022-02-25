@@ -70,9 +70,9 @@ class TestControlPlot(unittest.TestCase):
           return
         ctlsb = ControlPlot(NONLINEAR_MDL)
         ctlsb.setTime(2)
-        A_mat = ctlsb.jacobian
-        ctlsb.plotLinearApproximation(A_mat, suptitle="Test", is_plot=IS_PLOT,
-              figsize=(5,5))
+        A_df = ctlsb.jacobian
+        ctlsb.plotLinearApproximation(A_mat=A_df, suptitle="Test",
+              is_plot=IS_PLOT, figsize=(5,5))
 
     def testPlotTrueModel(self):
         if IGNORE_TEST:
