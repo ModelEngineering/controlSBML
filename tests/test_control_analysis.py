@@ -78,6 +78,16 @@ class TestControlAnalysis(unittest.TestCase):
             rr_arr = rr_df[column].values
             self.assertLess(np.abs(linear_arr[-1] - rr_arr[-1]), 0.1)
 
+    def testSimulateLinearSystem2(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlAnalysis(
+              "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
+              include_boundary_species=False) 
+        timepoint = 1
+        linear_df = ctlsb.simulateLinearSystem(end_time=10, timepoint=timepoint)
+        self.assertTrue(isinstance(linear_df, pd.DataFrame))
+
 
 if __name__ == '__main__':
   unittest.main()

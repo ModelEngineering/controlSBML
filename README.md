@@ -18,12 +18,15 @@ ctl.__version__
 * a URL to an XML file
 
 ## Key properties
-* ``species_names`` is a list of species in the model
 * ``roadrunner`` is the roadrunner object for the model
-* ``jacobian`` is the Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
+* ``jacobian`` is the full Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
+* ``reduced_jacobian`` is the reduced Jacobian of the model at the current simulation time. It is reduced in the
+sense that dependent species (those calculated from conservation laws) are removed as are all species
+that are either independent of the others or do not affect the others.
 * ``antimony`` is the antimony representation of the model
 
 ## Key methods
+* ``getSpeciesNames`` returns a list of species names for either an unreduced or reduced model
 * ``setTime(new_time)`` resets ``roadrunner`` and runs a simulation from time zero to the time specified.
 * ``makeStateSpace()`` creates a ``control`` state space object using the Jacobian of the model at the current simulation time.
 * ``plotTrueModel`` plots a roadrunner simulation.

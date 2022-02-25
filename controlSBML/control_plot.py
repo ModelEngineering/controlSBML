@@ -78,7 +78,7 @@ class ControlPlot(ControlAnalysis):
         plot_opts[cn.O_YLIM] = [y_min, y_max]
         irow = 0
         base_plot_opts = Options(plot_opts, plot_opts.default_dcts)
-        for icol, column in enumerate(rr_df.columns):
+        for icol, column in enumerate(linear_df.columns):
             plot_opts = Options(base_plot_opts, base_plot_opts.default_dcts)
             ax = axes[irow, icol]
             ax.plot(linear_df.index, linear_df[column], color="red")
@@ -138,14 +138,16 @@ class ControlPlot(ControlAnalysis):
                 y_min = min(linear_df.min().min(), rr_df.min().min())
                 y_max = max(linear_df.max().max(), rr_df.max().max())
                 plot_opts[cn.O_YLIM] = [y_min, y_max]
+            y_min, y_max = plot_opts[cn.O_YLIM]
             base_plot_opts = dict(plot_opts)
-            for icol, column in enumerate(rr_df.columns):
+            for icol, column in enumerate(linear_df.columns):
                 plot_opts = dict(base_plot_opts)
                 ax = axes[irow, icol]
                 plot_opts[cn.O_AX] = ax
                 ax.plot(linear_df.index, linear_df[column], color="red")
                 ax.plot(rr_df.index, rr_df[column], color="blue")
-                ax.scatter(timepoint, y_min, s=40, marker="o", color="g")
+                ax.scatter(timepoint, y_min, s=40,
+                       marker="o", color="g")
                 if irow < nrow - 1:
                     plot_opts[cn.O_XTICKLABELS] = []
                 if irow == 0:

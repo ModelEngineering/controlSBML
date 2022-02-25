@@ -83,8 +83,10 @@ class ControlBase(object):
                 all_names = list(mat.rownames)
                 idxs = []
                 for idx, name in enumerate(all_names):
-                   squares = np.sum(mat[idx, :]**2 + mat[:, idx]**2) 
-                   if not np.isclose(squares, 0):
+                   sum_of_row_squares = np.sum(mat[idx, :]**2)
+                   sum_of_column_squares = np.sum(mat[:, idx]**2)
+                   if (not np.isclose(sum_of_row_squares, 0))  \
+                       and (not np.isclose(sum_of_column_squares, 0)):
                        idxs.append(idx)
                 names = [all_names[i] for i in idxs]
                 jacobian_mat = np.array([[mat[i, j] for j in idxs] for i in idxs])
@@ -133,16 +135,24 @@ class ControlBase(object):
             df = self.jacobian
         return list(df.columns)
 
-    def getCurrentState(self, is_reduced=False):
+    def getCurrentState(self, is_reduced=False, species_names=None):
         """
         Contructs vector of current state values (floating and boundary species)
+
+        Parameters
+        ----------
+        is_reduced: bool
+            Is a reduced model
+        species_names: list-str
+            List of species in state
 
         Returns
         -------
         Series
             index: str (state names)
         """
-        species_names = self.getSpeciesNames(is_reduced=is_reduced)
+        if species_names is None:
+            species_names = self.getSpeciesNames(is_reduced=is_reduced)
         values = list(self.get(species_names).values())
         return pd.Series(values, index=species_names)
 
@@ -254,6 +264,8 @@ class ControlBase(object):
         if C_mat is None:
             C_mat = np.identity(A_mat.shape[0])
         if D_mat is None:
-            D_mat = np.repeat(0, A_mat.shape[0])
-            D_mat = np.reshape(D_mat, (A_mat.shape[0], 1))
+            nrow = np.shape(C_mat)[0]
+            ncol = np.shape(B_mat)[1]
+            D_mat = np.repeat(0, nrow*ncol)
+            D_mat = np.reshape(D_mat, (nrow, ncol))
         return control.StateSpace(A_mat, B_mat, C_mat, D_mat)
