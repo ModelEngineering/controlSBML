@@ -1,4 +1,4 @@
-from controlSBML.options import Options
+from controlSBML.option_management.options import Options
 
 import unittest
 

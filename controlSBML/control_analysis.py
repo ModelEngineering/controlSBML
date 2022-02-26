@@ -2,7 +2,7 @@
 
 from controlSBML.control_base import ControlBase
 import controlSBML.constants as cn
-from controlSBML.options import Options
+from controlSBML.option_management.options import Options
 
 import control
 from docstring_expander.expander import Expander
