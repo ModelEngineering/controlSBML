@@ -5,11 +5,12 @@ from controlSBML.option_management.options import Options
 
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 class OptionManager(object):
 
-    def __init__(self, kwargs, default_dcts):
+    def __init__(self, kwargs):
         """
         Parameters
         ----------
@@ -18,17 +19,35 @@ class OptionManager(object):
         default_dcts: list-dict
             dictionaries to parse
         """
-        if len(kwargs) > 0:
-            self.options = Options(kwargs, default_dcts)
-            self.plot_opts, self.fig_opts, self.sim_opts = self.options.parse()
+        self.options = Options(kwargs, cn.DEFAULT_DCTS)
+        self.plot_opts, self.fig_opts, self.sim_opts = self.options.parse()
 
     def copy(self):
-        new_mgr = self.__class__({}, [{}])
-        new_mgr.options = self.options
-        new_mgr.plot_opts = self.plot_opts
-        new_mgr.fig_opts = self.fig_opts
-        new_mgr.sim_opts = self.sim_opts
+        new_mgr = self.__class__({})
+        new_mgr.options = Options(self.options, cn.DEFAULT_DCTS)
+        new_mgr.plot_opts = Options(self.plot_opts, [cn.PLOT_DCT])
+        new_mgr.fig_opts = Options(self.fig_opts, [cn.FIG_DCT])
+        new_mgr.sim_opts = Options(self.sim_opts, [cn.SIM_DCT])
         return new_mgr
+
+    def setYlim(self, values, is_override=False):
+        """
+        Sets the range for y based on the values provided.
+
+        Parameters
+        ----------
+        values: list-float
+        """
+        arr = np.array(values)
+        y_abs_max = max(max(arr), min(np.abs(arr)))
+        ylim = [-y_abs_max, y_abs_max]
+        override = None
+        default = None
+        if is_override:
+            override = ylim
+        else:
+            default = ylim
+        self.plot_opts.set(cn.O_YLIM, default=default, override=override)
     
     @Expander(cn.KWARGS, cn.PLOT_KWARGS)
     def doPlotOpts(self):

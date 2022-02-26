@@ -1,11 +1,5 @@
 """LTI Control for SBML models"""
 
-"""
-TO DO:
-
-1. Plot difference between time jacoabian at reference vs. Current.
-2. Plot TOTAL residual SSQ vs. jacobian difference
-"""
 
 import controlSBML.constants as cn
 from controlSBML.control_analysis import ControlAnalysis
@@ -28,7 +22,7 @@ class ControlPlot(ControlAnalysis):
         #@expand
         """
         # Parse the options
-        mgr = OptionManager(kwargs, cn.DEFAULT_DCTS)
+        mgr = OptionManager(kwargs)
         # Run the simulation
         df = self.simulateRoadrunner(**mgr.sim_opts)
         # Adjust the option values
@@ -63,7 +57,7 @@ class ControlPlot(ControlAnalysis):
             only available if A_mat is None. Construct reduced order model.
         #@expand
         """
-        mgr = OptionManager(kwargs, cn.DEFAULT_DCTS)
+        mgr = OptionManager(kwargs)
         start_time = mgr.sim_opts[cn.O_START_TIME]
         rr_df = self.simulateRoadrunner(**mgr.sim_opts)
         nrow = 1
@@ -118,7 +112,7 @@ class ControlPlot(ControlAnalysis):
             default: [0]
         #@expand
         """
-        mgr = OptionManager(kwargs, cn.DEFAULT_DCTS)
+        mgr = OptionManager(kwargs)
         if isinstance(timepoints, float) or isinstance(timepoints, int):
             timepoints = [timepoints]
         if model_reference is not None:

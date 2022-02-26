@@ -30,7 +30,7 @@ class TestOptionManager(unittest.TestCase):
         dct[cn.O_AX] = self.ax
         dct[cn.O_XLABEL] = "xlabel"
         dct[cn.O_IS_PLOT] = IS_PLOT
-        self.option_mgr = OptionManager(dct, cn.DEFAULT_DCTS)
+        self.option_mgr = OptionManager(dct)
 
     def tearDown(self):
         plt.close()
