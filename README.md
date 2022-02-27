@@ -10,6 +10,17 @@ import controlSBML as ctl
 ctl.__version__
 ```
 
+### Installing slycot (a ``control`` package dependency)
+* The best way is to install from binaries using ``anaconda``. However,
+at the present time, ``anaconda`` is difficult to set up on
+Google Collaboratory.
+* Otherwise, you need to install from source.
+   * install fortran
+   * install BLAS
+   * ``https://github.com/python-control/Slycot.git``
+   * ``cd Slycot``
+   * ``python setup.py install`` 
+
 ## Constructing ControlSBML
 ``ctlsb = ControlSBML(model_reference)`` where
 ``model_reference``can be any of the following:
