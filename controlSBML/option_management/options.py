@@ -52,10 +52,11 @@ class Options(dict):
         """
         if override is not None:
             self[key] = override
+            return
+        #
         is_default = False
         if key in self.keys():
             is_default = self[key] == self.all_default_dct[key]
-            # is_default = self[key] is None
         else:
             is_default = True
         if is_default:

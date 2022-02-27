@@ -6,8 +6,8 @@ import pandas as pd
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -45,7 +45,6 @@ class TestStateSpaceTF(unittest.TestCase):
         if IGNORE_TEST:
           return
         self.assertTrue(isinstance(self.ss_tf.dataframe, pd.DataFrame))
-        import pdb; pdb.set_trace()
 
     def testGetSystemShape(self):
         if IGNORE_TEST:
@@ -54,6 +53,10 @@ class TestStateSpaceTF(unittest.TestCase):
         self.assertEqual(num_state, self.sys.nstates)
         self.assertEqual(num_input, len(self.ss_tf.dataframe))
         self.assertEqual(num_output, len(self.ss_tf.dataframe.columns))
+
+    def testPlotBode(self):
+        # TESTING
+        self.ss_tf.plotBode(is_plot=IS_PLOT, legend_crd=(0.9, 1))
 
 
 if __name__ == '__main__':
