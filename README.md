@@ -14,10 +14,14 @@ ctl.__version__
 * The best way is to install from binaries using ``anaconda``. However,
 at the present time, ``anaconda`` is difficult to set up on
 Google Collaboratory.
-* Otherwise, you need to install from source.
-   * install fortran
-   * install BLAS
-   * ``https://github.com/python-control/Slycot.git``
+* Otherwise, you need to install from source. Below are the instructions
+for Ubuntu.
+   * install cmake: ``pip install cmake --upgrade``
+   * install sikit-build: ``pip install scikit-build``
+   * install fortran: ``sudo apt-get install gfortran``
+   * provide path to fortran: ``export FC=`which gfortran``
+   * install BLAS: ``sudo apt-get install libatlas-base-dev``
+   * clone Sylcot: ``git clone --recurse-submodules https://github.com/python-control/Slycot.git``
    * ``cd Slycot``
    * ``python setup.py install`` 
 
