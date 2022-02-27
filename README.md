@@ -11,19 +11,26 @@ ctl.__version__
 ```
 
 ### Installing slycot (a ``control`` package dependency)
-* The best way is to install from binaries using ``anaconda``. However,
+To get the full set of capabilities from the ``control`` package,
+you need to install ``slycot``, a package that addresses requirements
+for more sophisticated manipulation of MIMO models (e.g.,
+solving algebraic Ricotti equations).
+
+The best way is to install ``slycot`` is from binaries using ``anaconda``.
+However,
 at the present time, ``anaconda`` is difficult to set up on
 Google Collaboratory.
-* Otherwise, you need to install from source. Below are the instructions
+
+Otherwise, you need to install from source. Below are the instructions
 for Ubuntu.
-   * install cmake: ``pip install cmake --upgrade``
-   * install sikit-build: ``pip install scikit-build``
-   * install fortran: ``sudo apt-get install gfortran``
-   * provide path to fortran: ``export FC=`which gfortran``
-   * install BLAS: ``sudo apt-get install libatlas-base-dev``
-   * clone Sylcot: ``git clone --recurse-submodules https://github.com/python-control/Slycot.git``
-   * ``cd Slycot``
-   * ``python setup.py install`` 
+* install cmake: ``pip install cmake --upgrade``
+* install sikit-build: ``pip install scikit-build``
+* install fortran: ``sudo apt-get install gfortran``
+* provide path to fortran: ``export FC=`which gfortran``
+* install BLAS: ``sudo apt-get install libatlas-base-dev``
+* clone Sylcot: ``git clone --recurse-submodules https://github.com/python-control/Slycot.git``
+* ``cd Slycot``
+* ``python setup.py install`` 
 
 ## Constructing ControlSBML
 ``ctlsb = ControlSBML(model_reference)`` where
@@ -51,6 +58,10 @@ is the Jacobian of the current ``RoadRunner`` instance. You can either specify a
 ## Example
 
 [This notebook](https://github.com/ModelEngineering/controlSBML/blob/main/notebooks/Using-Control-SBML.ipynb) provides a simple example of using ``controlSBML``.
+
+## Developer Notes
+1. The package works with and without ``slycot``. So two virtual environments are needed for testing: ``ctl`` includes ``slycot`` and ``ctl_tst`` does not. Note
+that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.1.4,
