@@ -11,6 +11,9 @@ import numpy as np
 import pandas as pd
 
 NUM_FREQ = 100  # Number of frequences in radians/sec
+FREQ_RNG = [1e-2, 1e2]
+LOW = 0
+HIGH = 1
 
 
 class StateSpaceTF(object):
@@ -36,8 +39,8 @@ class StateSpaceTF(object):
     def __str__(self):
         stgs = ["(input, output)\n\n"]
         indents = "            "
-        for inp in self.dataframe.index:
-            for out in self.dataframe.columns:
+        for inp in self.dataframe.columns:
+            for out in self.dataframe.index:
                 pfx = "(%s, %s):  " % (inp, out)
                 stg = str(self.dataframe.loc[inp, out])[:-1]  # Exclude nl
                 stg = stg.replace("\n", "", 1)
@@ -128,18 +131,19 @@ class StateSpaceTF(object):
         #@expand
         """
         # Calculate magnitudes and phases for al inputs and outputs
-        freqs = np.array([n/NUM_FREQ for n in range(1, NUM_FREQ+1)])
+        freq_arr = np.array(range(NUM_FREQ))
+        delta = (FREQ_RNG[HIGH] - FREQ_RNG[LOW])/NUM_FREQ
+        freq_arr = (freq_arr + FREQ_RNG[LOW])*delta
         mgr = OptionManager(kwargs)
         legends = []
-        for inp_idx, inp_name in enumerate(self.dataframe.columns):
-            for out_idx, out_name in enumerate(self.dataframe.index):
+        for out_idx, out_name in enumerate(self.dataframe.index):
+            for inp_idx, inp_name in enumerate(self.dataframe.columns):
                 siso_tf = self.dataframe.loc[out_name, inp_name]
                 # Create the plot data
-                _ = control.bode(siso_tf, freqs)
-                mgr.plot_opts[cn.O_AX] = plt.gca()
+                _ = control.bode(siso_tf, freq_arr)
                 # Construct the plot
                 title ="%s->%s" % (
-                      self.input_names[inp_idx], self.output_names[out_idx])
+                      self.output_names[out_idx], self.input_names[inp_idx])
                 legends.append(title)
         mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=ctl.LegendSpec(legends,
               crd=mgr.plot_opts[cn.O_LEGEND_CRD]))

@@ -35,12 +35,12 @@ class ControlPlot(ControlAnalysis):
         else:
             legend_spec =cn.LegendSpec(df.columns)
         mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
-        ax = mgr.doPlotOpts()
+        ax = mgr.getAx()
         # Do the plot
         for col in df.columns:
             ax.plot(df.index, df[col])
         mgr.plot_opts.set(cn.O_AX, ax)
-        _ = mgr.doPlotOpts()  # Recover lost plot options
+        mgr.doPlotOpts()  # Recover lost plot options
         # Finalize the figure
         mgr.doFigOpts()
 
@@ -92,8 +92,7 @@ class ControlPlot(ControlAnalysis):
                     plot_opts[cn.O_LEGEND_SPEC] = None
             if icol > 0:
                 ax.set_yticklabels([])
-            plot_opts[cn.O_AX] = ax
-            _ = new_mgr.doPlotOpts()
+            new_mgr.doPlotOpts()
         mgr.doFigOpts()
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
@@ -151,5 +150,5 @@ class ControlPlot(ControlAnalysis):
                     ax.set_yticklabels([])
                 else:
                     ax.text(-2, y_max/2, "%2.1f" % timepoint)
-                _ = new_mgr.doPlotOpts()
+                new_mgr.doPlotOpts()
         mgr.doFigOpts()

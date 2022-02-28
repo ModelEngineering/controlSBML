@@ -72,13 +72,13 @@ class TestControlPlot(unittest.TestCase):
         ctlsb.setTime(2)
         A_df = ctlsb.jacobian
         ctlsb.plotLinearApproximation(A_mat=A_df, suptitle="Test",
-              is_plot=IS_PLOT, figsize=(5,5))
+              is_plot=IS_PLOT, figsize=(15,5))
 
     def testPlotTrueModel(self):
         if IGNORE_TEST:
           return
         self.ctlsb.plotTrueModel(is_plot=IS_PLOT, ylabel="values",
-              end_time=10, title="title")
+              end_time=10, title="title", figsize=(5, 10))
 
     def testPlotAccuracy(self):
         if IGNORE_TEST:

@@ -48,7 +48,55 @@ class OptionManager(object):
         else:
             default = ylim
         self.plot_opts.set(cn.O_YLIM, default=default, override=override)
-    
+
+    def setFigure(self, is_override=False):
+        """
+        Sets the current figure.
+        
+        Parameters
+        ----------
+        is_override: bool
+            Set the current figure even if there is an existing setting
+        """
+        fig = plt.gcf()
+        override = None
+        default = None
+        if is_override:
+            override = fig
+        else:
+            default = fig
+        self.fig_opts.set(cn.O_FIGURE, override=override, default=default)
+
+    def setAx(self, is_override=False):
+        """
+        Sets the current axis.
+        
+        Parameters
+        ----------
+        is_override: bool
+            Set the current axis even if there is an existing setting
+        """
+        ax = plt.gca()
+        override = None
+        default = None
+        if is_override:
+            override = ax
+        else:
+            default = ax
+        self.plot_opts.set(cn.O_AX, override=override, default=default)
+
+    def getAx(self, is_override=False):
+        """
+        Sets the current axis.
+        
+        Returns
+        -------
+        matplotlib.Axes
+        """
+        ax = plt.gca()
+        self.plot_opts.set(cn.O_AX, default=ax)
+        return self.plot_opts.get(cn.O_AX)
+        
     @Expander(cn.KWARGS, cn.PLOT_KWARGS)
     def doPlotOpts(self):
         """
@@ -57,11 +105,8 @@ class OptionManager(object):
         Parameters
         ----------
         #@expand
-
-        Returns
-        -------
-        Axes
         """
+        self.setAx()
         new_kwargs = {k: self.plot_opts[k] if k in self.plot_opts else v for k, v in
              cn.PLOT_DCT.items()}
         ax  = new_kwargs[cn.O_AX]
@@ -78,7 +123,7 @@ class OptionManager(object):
         if new_kwargs[cn.O_XLABEL] != cn.PLOT_DCT[cn.O_XLABEL]:
             ax.set_xlabel(new_kwargs[cn.O_XLABEL])
         if new_kwargs[cn.O_XLIM] is not None:
-            ax.set_ylim(new_kwargs[cn.O_XLIM])
+            ax.set_xlim(new_kwargs[cn.O_XLIM])
         if new_kwargs[cn.O_XTICKLABELS] is not None:
             ax.set_xticklabels(new_kwargs[cn.O_XTICKLABELS])
         if new_kwargs[cn.O_YLABEL] != cn.PLOT_DCT[cn.O_YLABEL]:
@@ -87,7 +132,6 @@ class OptionManager(object):
             ax.set_ylim(new_kwargs[cn.O_YLIM])
         if new_kwargs[cn.O_YTICKLABELS] is not None:
             ax.set_yticklabels(new_kwargs[cn.O_YTICKLABELS])
-        return new_kwargs[cn.O_AX]
 
     @Expander(cn.KWARGS, cn.FIG_KWARGS)
     def doFigOpts(self):
@@ -98,8 +142,12 @@ class OptionManager(object):
         ----------
         #@expand
         """
+        self.setFigure()
+        fig = self.fig_opts[cn.O_FIGURE]
         new_kwargs = {k: self.fig_opts[k] if k in self.fig_opts else v for k, v in
              cn.FIG_DCT.items()}
         plt.suptitle(new_kwargs[cn.O_SUPTITLE])
+        fig_width, fig_length = self.fig_opts[cn.O_FIGSIZE]
+        fig.set_size_inches(fig_width, fig_length)
         if new_kwargs[cn.O_IS_PLOT]:
             plt.show()

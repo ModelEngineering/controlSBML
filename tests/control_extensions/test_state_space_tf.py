@@ -6,8 +6,8 @@ import pandas as pd
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -55,8 +55,10 @@ class TestStateSpaceTF(unittest.TestCase):
         self.assertEqual(num_output, len(self.ss_tf.dataframe.columns))
 
     def testPlotBode(self):
-        # TESTING
-        self.ss_tf.plotBode(is_plot=IS_PLOT, legend_crd=(0.9, 1))
+        if IGNORE_TEST:
+          return
+        self.ss_tf.plotBode(is_plot=IS_PLOT, legend_crd=(0.9, 1), xlabel="xxx",
+              figsize=(5,10), xlim=[0.1, 10])
 
 
 if __name__ == '__main__':
