@@ -16,14 +16,17 @@ HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?fi
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 LINEAR_MDL = """
-$S0 -> S1; $S0
-S1 -> S2; S1
-S2 -> S3; S2
+$S0 -> S1; k0*$S0
+S1 -> S2; k1*S1
+S2 -> S3; k2*S2
 
 S0 = 1
 S1 = 10
 S2 = 0
 S3 = 0
+k0 = 1
+k1 = 1
+k2 = 1
 """
 NONLINEAR_MDL = """
 S0 -> 2 S0; S0
@@ -80,6 +83,13 @@ class TestControlBase(unittest.TestCase):
               ctlsb2.get().values())
         self.assertEqual(len(diff), 0)
 
+    def test_roadrunner_namespace(self):
+        if IGNORE_TEST:
+          return
+        dct = self.ctlsb.roadrunner_namespace
+        not_contained = set(["S1", "S2", "S0"]).difference(dct.keys())
+        self.assertEqual(len(not_contained), 0)
+
     def testGet(self):
         if IGNORE_TEST:
             return
@@ -115,6 +125,7 @@ class TestControlBase(unittest.TestCase):
         ctlsb.antimony = ""
         self.assertFalse(ctlsb.equals(self.ctlsb))
 
+    # TODO: Test with more complicated inputs
     def testMakeStateSpace(self):
         if IGNORE_TEST:
             return
@@ -157,6 +168,16 @@ class TestControlBase(unittest.TestCase):
         self.ctlsb.setTime(0)
         jac_00 = self.ctlsb.jacobian
         isEqual(jac_00, jac_0, True)
+
+    def testMakeBMatrix(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlBase(LINEAR_MDL)
+        input_dct = {"$S0": {"S1": "k1/k1"}}
+        states = ctlsb.getSpeciesNames(is_reduced=True)
+        B_mat = ctlsb._makeBMatrix(states, input_dct)
+        self.assertEqual(np.shape(B_mat), (3, 1))
+        self.assertEqual(np.sum(B_mat), 1)
 
 
 if __name__ == '__main__':

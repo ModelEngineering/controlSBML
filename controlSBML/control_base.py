@@ -48,6 +48,29 @@ class ControlBase(object):
                 self.roadrunner.setBoundary(name, True)
 
     @property
+    def roadrunner_namespace(self):
+        """
+        Constructs the roadrunner namespace and associated values.
+
+        Parameters
+        ----------
+        
+        Returns
+        -------
+        dict
+        """
+        dct = {}
+        for id_lst in  [self.roadrunner.getCompartmentIds(),
+               self.roadrunner.getBoundarySpeciesIds(),
+               self.roadrunner.getFloatingSpeciesIds(),
+               self.roadrunner.getBoundarySpeciesIds(),
+               self.roadrunner.getGlobalParameterIds(),
+               ]:
+            for id in id_lst:
+                 dct[id] = self.get(id)
+        return dct
+
+    @property
     def jacobian(self):
         """
         Returns
@@ -236,8 +259,38 @@ class ControlBase(object):
         for name, value in name_dct.items():
             self.roadrunner[name] = value
 
+    def _makeBMatrix(self, states, input_dct):
+        """
+        Constructs the B matrix.
+
+        Parameters
+        ----------
+        states: list-str
+        inputs: dict
+            key: input name
+            value: dict
+                key: state name
+                value: float or str-expression of the input for the state
+        
+        Returns
+        -------
+        np.ndarray
+        """
+        num_state = len(states)
+        num_input = len(input_dct)
+        B_mat = np.repeat(0, num_input*num_state)
+        B_mat = np.reshape(B_mat, (num_state, num_input))
+        namespace_dct = self.roadrunner_namespace
+        # Modify the B matrix as required
+        for inp_idx, inp_name in enumerate(input_dct.keys()):
+            for state_name, value in input_dct[inp_name].items():
+                state_idx = states.index(state_name)
+                B_mat[state_idx, inp_idx] = eval(value, namespace_dct)
+        #
+        return B_mat
+
     def makeStateSpace(self, A_mat=None, B_mat=None, C_mat=None, D_mat=None,
-          is_reduced=True):
+          is_reduced=True, inputs=None):
         """
         Creates a control system object for the n X n jacobian.
 
@@ -247,6 +300,16 @@ class ControlBase(object):
         B_mat: np.array(n X p) or DataFrame
         C_mat: np.array(q X n) or DataFrame
         D_mat: np.array(q X p) or DataFrame
+        is_reduced: bool
+             Eliminate conservation laws, 0 rows, 0 columns
+        input_dct: dict (used if B_mat is None)
+            key: input name
+            value: dict
+                key: state name
+                value: float or str-expression of the input for the state
+           Example: {"$A": {"S1": 5, "S3": "comp1*k1"}}
+           Creates the following B Matrix if the states are S1, S2, S3
+               [5, 0, eval("comp1*k1")]^T
 
         Returns
         -------
@@ -269,8 +332,13 @@ class ControlBase(object):
             else:
                 A_mat = self.jacobian.values
         if B_mat is None:
-            B_mat = np.repeat(0, A_mat.shape[0])
-            B_mat = np.reshape(B_mat, (A_mat.shape[0], 1))
+            if inputs is None:
+                B_mat = np.repeat(0, A_mat.shape[0])
+                B_mat = np.reshape(B_mat, (A_mat.shape[0], 1))
+            else:
+                # Construt the B matrix
+                states = getSpeciesNames(is_reduced=is_reduced)
+                B_mat = self._makeBMatrix(states, input_dct)
         if C_mat is None:
             C_mat = np.identity(A_mat.shape[0])
         if D_mat is None:
