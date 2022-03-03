@@ -56,6 +56,8 @@ S2 = 0
 S3 = 0
 """
 
+SPECIES_NAMES = ["S0", "S1", "S2"]
+
 
 #############################
 # Tests
@@ -70,12 +72,18 @@ class TestControlBase(unittest.TestCase):
         if IGNORE_TEST:
           return
         self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
-        ctlsb = ControlBase(ANTIMONY_FILE, include_boundary_species=False)
-        self.assertTrue(isinstance(ctlsb.jacobian, pd.DataFrame))
+        for lst in [self.ctlsb.state_names, self.ctlsb.output_names]:
+            diff = set(SPECIES_NAMES).symmetric_difference(lst)
+            self.assertEqual(len(diff), 0)
+
+    def testMakeCDF(self):
+        if IGNORE_TEST:
+          return
+        C_df = self.ctlsb._makeCDF()
 
     def testConstructWithRoadrunner(self):
         if IGNORE_TEST:
-            return
+          return
         model = te.loada(helpers.TEST_PATH_1)
         ctlsb1 = ControlBase(model)
         ctlsb2 = ControlBase(helpers.TEST_PATH_1)
@@ -92,7 +100,7 @@ class TestControlBase(unittest.TestCase):
 
     def testGet(self):
         if IGNORE_TEST:
-            return
+          return
         S0 = "S0"
         dct = self.ctlsb.get(S0)
         self.assertEqual(dct, self.ctlsb.roadrunner[S0])
@@ -106,8 +114,7 @@ class TestControlBase(unittest.TestCase):
     def testJacobian(self):
         if IGNORE_TEST:
           return
-        self.assertTrue(isinstance(self.ctlsb.jacobian, pd.DataFrame))
-        self.assertTrue(isinstance(self.ctlsb.reduced_jacobian, pd.DataFrame))
+        self.assertTrue(isinstance(self.ctlsb.jacobian_df, pd.DataFrame))
 
     def testSet(self):
         if IGNORE_TEST:
@@ -119,7 +126,7 @@ class TestControlBase(unittest.TestCase):
 
     def testCopyEquals(self):
         if IGNORE_TEST:
-            return
+          return
         ctlsb = self.ctlsb.copy()
         self.assertTrue(ctlsb.equals(self.ctlsb))
         ctlsb.antimony = ""
@@ -128,24 +135,22 @@ class TestControlBase(unittest.TestCase):
     # TODO: Test with more complicated inputs
     def testMakeStateSpace(self):
         if IGNORE_TEST:
-            return
-        sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian.values)
+          return
+        sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian_df.values)
         self.assertEqual(sys.nstates, 3)
 
-    def testMkInitialState(self):
+    def test_state_ser(self):
         if IGNORE_TEST:
-            return
+          return
         def test(mdl):
             ctlsb = ControlBase(mdl)
-            ctlsb = ControlBase(ctlsb.roadrunner)
-            num_species = ctlsb.roadrunner.model.getNumFloatingSpecies()  \
-                  + ctlsb.roadrunner.model.getNumBoundarySpecies()
-            X0 = ctlsb.getCurrentState()
+            num_species = len(ctlsb.state_names)
+            X0 = ctlsb.state_ser
             self.assertEqual(len(X0), num_species)
-            jacobian = ctlsb.jacobian
-            self.assertTrue(isinstance(jacobian, pd.DataFrame))
-            self.assertEqual(len(jacobian), len(jacobian.columns))
-            dX0 = np.matmul(ctlsb.jacobian.values, X0.values)
+            jacobian_df = ctlsb.jacobian_df
+            self.assertTrue(isinstance(jacobian_df, pd.DataFrame))
+            self.assertEqual(len(jacobian_df), len(jacobian_df.columns))
+            dX0 = np.matmul(ctlsb.jacobian_df.values, X0.values)
             self.assertEqual(len(X0), len(dX0))
         #
         test(NONLINEAR1_MDL)
@@ -160,24 +165,27 @@ class TestControlBase(unittest.TestCase):
             self.assertEqual(np.isclose(diff, 0), val_bl)
         #
         self.ctlsb.setTime(0)
-        jac_0 = self.ctlsb.jacobian
+        jac_0 = self.ctlsb.jacobian_df
         self.ctlsb.setTime(5)
-        jac_5 = self.ctlsb.jacobian
+        jac_5 = self.ctlsb.jacobian_df
         isEqual(jac_0, jac_5, False)
         #
         self.ctlsb.setTime(0)
-        jac_00 = self.ctlsb.jacobian
+        jac_00 = self.ctlsb.jacobian_df
         isEqual(jac_00, jac_0, True)
 
     def testMakeBMatrix(self):
         if IGNORE_TEST:
           return
         ctlsb = ControlBase(LINEAR_MDL)
-        input_dct = {"$S0": {"S1": "k1/k1"}}
-        states = ctlsb.getSpeciesNames(is_reduced=True)
-        B_mat = ctlsb._makeBMatrix(states, input_dct)
-        self.assertEqual(np.shape(B_mat), (3, 1))
-        self.assertEqual(np.sum(B_mat), 1)
+        B_df = ctlsb._makeBDF()
+        self.assertEqual(np.shape(B_df.values), (3, 3))
+        self.assertTrue(all(B_df.values.flatten()
+              == ctlsb.full_stoichiometry_df.values.flatten()))
+        #
+        ctlsb = ControlBase(LINEAR_MDL, input_names=["_J0", "_J2"])
+        B_df = ctlsb._makeBDF()
+        self.assertEqual(np.shape(B_df.values), (3, 2))
 
 
 if __name__ == '__main__':

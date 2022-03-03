@@ -45,7 +45,7 @@ class ControlPlot(ControlAnalysis):
         mgr.doFigOpts()
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotLinearApproximation(self, A_mat=None, is_reduced=True, **kwargs):
+    def plotLinearApproximation(self, A_mat=None, **kwargs):
         """
         Creates a plot that compares the linear approximation with the true model.
 
@@ -53,8 +53,6 @@ class ControlPlot(ControlAnalysis):
         ----------
         A_mat: A matrix of approximation model
             default is Jacobian at current time
-        is_reduced: bool
-            only available if A_mat is None. Construct reduced order model.
         #@expand
         """
         mgr = OptionManager(kwargs)
@@ -65,7 +63,7 @@ class ControlPlot(ControlAnalysis):
         _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         linear_df = self.simulateLinearSystem(timepoint=start_time,
-              A_df=A_mat, is_reduced=is_reduced, **mgr.sim_opts)
+              A_df=A_mat, **mgr.sim_opts)
         y_min = min(linear_df.min().min(), rr_df.min().min())
         y_max = max(linear_df.max().max(), rr_df.max().max())
         mgr.plot_opts[cn.O_YLIM] = [y_min, y_max]
@@ -86,7 +84,7 @@ class ControlPlot(ControlAnalysis):
                         legend_spec = cn.LegendSpec(
                               names, crd=plot_opts[cn.O_LEGEND_CRD])
                     else:
-                        legend_spec =cn.LegendSpec(name)
+                        legend_spec =cn.LegendSpec(names)
                     plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
                 else:
                     plot_opts[cn.O_LEGEND_SPEC] = None
@@ -96,7 +94,7 @@ class ControlPlot(ControlAnalysis):
         mgr.doFigOpts()
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotAccuracy(self, model_reference=None, timepoints=[0], **kwargs):
+    def plotAccuracy(self, model_reference=None, timepoints=0, **kwargs):
         """
         Creates a plot that evaluates the
         accouract of a linear model where the Jacobian is calculated
@@ -111,6 +109,8 @@ class ControlPlot(ControlAnalysis):
             default: [0]
         #@expand
         """
+        if timepoints == 0:
+            timepoints = [0]
         mgr = OptionManager(kwargs)
         if isinstance(timepoints, float) or isinstance(timepoints, int):
             timepoints = [timepoints]

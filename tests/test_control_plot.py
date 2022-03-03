@@ -70,7 +70,7 @@ class TestControlPlot(unittest.TestCase):
           return
         ctlsb = ControlPlot(NONLINEAR_MDL)
         ctlsb.setTime(2)
-        A_df = ctlsb.jacobian
+        A_df = ctlsb.jacobian_df
         ctlsb.plotLinearApproximation(A_mat=A_df, suptitle="Test",
               is_plot=IS_PLOT, figsize=(15,5))
 

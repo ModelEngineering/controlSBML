@@ -1,6 +1,15 @@
 """LTI Control for SBML models. Base handles initialization, get, set."""
 
 """
+This module creates an LTI system for an SBML model.
+States are chemical species. Inputs are unnormalized enzyme reaction elasticities.
+Outputs are chemical species.
+
+Notes:
+1. Reaction enzymes are identified by the SBML reaction ID.
+"""
+
+"""
 TO DO:
 
 1. Plot difference between time jacoabian at reference vs. Current.
@@ -19,33 +28,125 @@ START_TIME = 0  # Default start time
 END_TIME = 5  # Default endtime
 POINTS_PER_TIME = 10
 TIME = "time"
+IS_DEBUG = False
+
+
+cleanIt = lambda n: n if n[0] != "[" else n[1:-1]
 
 
 class ControlBase(object):
 
-    def __init__(self, model_reference, include_boundary_species=True):
+    def __init__(self, model_reference, input_names=None, output_names=None):
         """
         Initializes instance variables
-        :param str model_reference: string or SBML file or Roadrunner object
+        model_reference: str
+            string, SBML file or Roadrunner object
+        input_names: name (id) of reaction whose flux is being controlled
+        output_names: list-str
+            output species
         """
-        ##### PUBLIC #####
+        def calcNames(superset_names, subset_names, superset_name, subset_name):
+            if subset_names is None:
+                return list(superset_names)
+            else:
+                if set(subset_names) > set(superset_names):
+                    text = "%s %s are not a subset of the %s %s" % \
+                          (subset_name, subset_names, superset_name,
+                          superset_names)
+                    raise ValueError(text)
+                return subset_names
+        #
+        # Iinitial model calculations
         self.model_reference = model_reference
-        self.include_boundary_species = include_boundary_species
-        self.roadrunner = makeRoadrunner(model_reference)
+        self.roadrunner = makeRoadrunner(self.model_reference)
+        # Set defaults
+        self.state_names = list(
+              self.roadrunner.getReducedStoichiometryMatrix().rownames)
+        self.species_names = list(
+              self.roadrunner.getFullStoichiometryMatrix().rownames)
+        if not set(self.state_names) <= set(self.species_names):
+            import pdb; pdb.set_trace()
+            raise RuntimeError("State name is not a species name.")
+        self.state_names = self._sortList(self.species_names, self.state_names)
+        self.full_stoichiometry_df, self.reduced_stoichiometry_df  \
+              = self._makeStoichiometryDF()
+        # Check for consistency on the state specification
+        self.reaction_names = list(self.reduced_stoichiometry_df.columns)
+        self.num_state = len(self.state_names)
+        # Handle defaults
+        self.input_names = calcNames(self.reaction_names, input_names,
+              "Full stoichiometry matrix", "inputs")
+        self.input_names = self._sortList(self.reaction_names, self.input_names)
+        self.output_names = calcNames(self.state_names, output_names,
+              "Full stoichiometry matrix", "outputs")
+        self.output_names = self._sortList(self.species_names, self.output_names)
+        # Other calculations
+        self.C_df = self._makeCDF()
+        self.state_names = list(self.jacobian_df.columns)
         self.antimony = self.roadrunner.getAntimony()
         # Do the initializations
-        self.boundary_species = self.roadrunner.getBoundarySpeciesIds()
         self.roadrunner.reset()
 
-    def _mkBoundarySpeciesFloating(self):
-        if self.include_boundary_species:
-            for name in self.boundary_species:
-                self.roadrunner.setBoundary(name, False)
+    @staticmethod
+    def _makeDF(mat):
+        df = pd.DataFrame(mat, columns=mat.colnames, index=mat.rownames)
+        return df
 
-    def _unmkBoundarySpeciesFloating(self):
-        if self.include_boundary_species:
-            for name in self.boundary_species:
-                self.roadrunner.setBoundary(name, True)
+    def _makeStoichiometryDF(self):
+        """
+        Creates the reduced stoichiometry matrix and the auxiliary matrix
+
+        Returns
+        -------
+        DataFrame - full stoichiometry matrix
+        DataFrame - reduced stoichiometry matrix
+        """
+        #
+        reduced_stoichiometry_df = self._makeDF(
+              self.roadrunner.getReducedStoichiometryMatrix())
+        full_stoichiometry_df = self._makeDF(
+              self.roadrunner.getFullStoichiometryMatrix())
+        return full_stoichiometry_df, reduced_stoichiometry_df
+
+    def _makeCDF(self):
+        """
+        Creates the output C dataframe based on the requested output_names.
+        Columns should be the states. Rows are the outputs.
+
+        Returns
+        -------
+        pd.DataFrame
+        """
+        mat = np.identity(len(self.species_names))
+        C_df = pd.DataFrame(mat, columns=self.species_names,
+              index=self.species_names)
+        # Adjust to states and outputs
+        for name in self.species_names:
+            if not name in self.state_names:
+                del C_df[name]
+            if not name in self.output_names:
+                C_df = C_df.drop(name)
+        # Handle computed outputs
+        if self.roadrunner.getNumConservedMoieties() == 0:
+            if not set(self.output_names) <= set(self.state_names):
+                import pdb; pdb.set_trace()
+                raise RuntimeError("Cannot compute output from states.")
+        else:
+            # Add the conservation matrix
+            mat = self.roadrunner.getConservationMat()
+            colnames = list(mat.colnames)
+            if set(colnames) != set(self.state_names):
+                import pdb; pdb.set_trace()
+                raise RuntimeError(
+                      "Not all states are columns of the conservation matrix.")
+            rownames = list(mat.rownames)
+            df = pd.DataFrame(self.roadrunner.getConservationMat(),
+                   columns=colnames, index=rownames)
+            # Remove overlapping rows
+            for rowname in rownames:
+                if rowname in self.output_names:
+                    C_df[rowname] = df[rowname]
+        return C_df
 
     @property
     def roadrunner_namespace(self):
@@ -54,7 +155,7 @@ class ControlBase(object):
 
         Parameters
         ----------
-        
+
         Returns
         -------
         dict
@@ -71,113 +172,44 @@ class ControlBase(object):
         return dct
 
     @property
-    def jacobian(self):
+    def state_ser(self):
         """
+        Contructs vector of current state values.
+
         Returns
         -------
-        pd.DataFrame
+        np.ndarray: N X 1
         """
-        return self._getJacobian(is_reduced=False)
+        return self._makeSer(self.state_names)
+
+    def _makeSer(self, names):
+        """
+        Contructs a Series for the names.
+
+        Returns
+        -------
+        pd.Series
+        """
+        return pd.Series(list(self.get(names).values()), index=names)
 
     @property
-    def reduced_jacobian(self):
+    def jacobian_df(self):
         """
-        Returns
-        -------
-        pd.DataFrame
-        """
-        return self._getJacobian(is_reduced=True)
-
-    def _getJacobian(self, is_reduced=True):
-        """
-        Parameters
-        ----------
-        is_reduced: bool
-            return a reduced Jacobian that eliminates
-            conserved moeities and zero rows/columns
-
         Returns
         -------
         pd.DataFrame, species_names
         """
-        def getMat():
-            if is_reduced:
-                mat = self.roadrunner.getReducedJacobian()
-                all_names = list(mat.rownames)
-                idxs = []
-                for idx, name in enumerate(all_names):
-                   sum_of_row_squares = np.sum(mat[idx, :]**2)
-                   sum_of_column_squares = np.sum(mat[:, idx]**2)
-                   if (not np.isclose(sum_of_row_squares, 0))  \
-                       and (not np.isclose(sum_of_column_squares, 0)):
-                       idxs.append(idx)
-                names = [all_names[i] for i in idxs]
-                jacobian_mat = np.array([[mat[i, j] for j in idxs] for i in idxs])
-                jacobian_mat = np.reshape(jacobian_mat, (len(idxs), len(idxs)))
-            else:
-                jacobian_mat = self.roadrunner.getFullJacobian()
-                names = list(jacobian_mat.rownames)
-            return jacobian_mat, names
-        #
-        try:
-            if self.include_boundary_species:
-                self._mkBoundarySpeciesFloating()
-                mat, names = getMat()
-                self._unmkBoundarySpeciesFloating()
-            else:
-                mat, names = getMat()
-        except Exception:
-            if self.include_boundary_species:
-                self._unmkBoundarySpeciesFloating()
-            mat, names = getMat()
-        for idx, name in enumerate(names):
-            if name in self.boundary_species:
-                mat[idx, :] = 0
-        try:
-            df = pd.DataFrame(mat, columns=names, index=names)
-        except:
-            import pdb; pdb.set_trace()
-        return df
+        jacobian_mat = self.roadrunner.getReducedJacobian()
+        if len(jacobian_mat.rownames) != len(jacobian_mat.colnames):
+            raise RuntimeError("Jacobian is not square!")
+        names = list(jacobian_mat.colnames)
+        jacobian_df = pd.DataFrame(jacobian_mat, columns=names, index=names)
+        jacobian_df = jacobian_df.loc[self.state_names, self.state_names]
+        return jacobian_df
 
-    def getSpeciesNames(self, is_reduced=False):
-        """
-        Gets the list of species names.
-
-        Parameters
-        ----------
-        is_reduced: bool
-            create a reduced model
-        
-        Returns
-        -------
-        list-str
-        """
-        if is_reduced:
-            df = self.reduced_jacobian
-        else:
-            df = self.jacobian
-        return list(df.columns)
-
-    def getCurrentState(self, is_reduced=False, species_names=None):
-        """
-        Contructs vector of current state values (floating and boundary species)
-
-        Parameters
-        ----------
-        is_reduced: bool
-            Is a reduced model
-        species_names: list-str
-            List of species in state
-
-        Returns
-        -------
-        Series
-            index: str (state names)
-        """
-        if species_names is None:
-            species_names = self.getSpeciesNames(is_reduced=is_reduced)
-        values = list(self.get(species_names).values())
-        return pd.Series(values, index=species_names)
+    @property
+    def A_df(self):
+        return self.jacobian_df
 
     @staticmethod
     def isRoadrunnerKey(key):
@@ -187,6 +219,7 @@ class ControlBase(object):
         self.roadrunner.reset()
         _ = self.roadrunner.simulate(0, time)
 
+    # FIXME: Doesn't update "sets" done to roadrunner
     def copy(self):
         """
         Creates a copy of the object.
@@ -195,13 +228,13 @@ class ControlBase(object):
         -------
         controlSBML
         """
-        ctlsb = self.__class__(self.model_reference)
-        # Update roadrunner
-        for key, value in self.roadrunner.items():
-            if self.isRoadrunnerKey(key):
-                ctlsb.roadrunner[key] = value
+        ctlsb = self.__class__(self.model_reference,
+              input_names=self.input_names,
+              output_names=self.output_names)
+        ctlsb.setTime(self.roadrunner.model.getTime())
         return ctlsb
 
+    # TODO: More complete check of attributes?
     def equals(self, other):
         """
         Checks that they have the same information
@@ -215,16 +248,38 @@ class ControlBase(object):
         bool
         """
         bValue = self.antimony == other.antimony
+        if IS_DEBUG:
+             print("1: %d" % bValue)
+        bValue = bValue and np.isclose(self.roadrunner.model.getTime(),  \
+              other.roadrunner.model.getTime())
+        if IS_DEBUG:
+             print("2: %d" % bValue)
         bValue = bValue and all([s1 == s2 for s1, s2
-              in zip(self.getSpeciesNames(), other.getSpeciesNames())])
+              in zip(self.state_names, other.state_names)])
+        if IS_DEBUG:
+             print("3: %d" % bValue)
         diff = set(self.roadrunner.keys()).symmetric_difference(
               other.roadrunner.keys())
         bValue = bValue and (len(diff) == 0)
+        if IS_DEBUG:
+             print("4: %d" % bValue)
+        for attr in ["state_names", "input_names", "output_names"]:
+            expr1 = "self.%s" % attr
+            expr2 = "other.%s" % attr
+            try:
+                np.array(eval(expr1)) == np.array(eval(expr2))
+            except Exception:
+                bValue = False
+                break
+        if IS_DEBUG:
+             print("5: %d" % bValue)
         # Check the roadrunner state
         if bValue:
             for key, value in self.roadrunner.items():
                 if self.isRoadrunnerKey(key):
                     bValue = bValue and (other.roadrunner[key] == value)
+        if IS_DEBUG:
+             print("6: %d" % bValue)
         return bValue
 
     def get(self, names=None):
@@ -259,57 +314,53 @@ class ControlBase(object):
         for name, value in name_dct.items():
             self.roadrunner[name] = value
 
-    def _makeBMatrix(self, states, input_dct):
+    @staticmethod
+    def _sortList(super_lst, sub_lst):
         """
-        Constructs the B matrix.
+        Sorts the sub_lst in the same order as the super_lst.
 
         Parameters
         ----------
-        states: list-str
-        inputs: dict
-            key: input name
-            value: dict
-                key: state name
-                value: float or str-expression of the input for the state
-        
+        super_lst: list
+        sub_lst: list
+
         Returns
         -------
-        np.ndarray
+        list
         """
-        num_state = len(states)
-        num_input = len(input_dct)
-        B_mat = np.repeat(0, num_input*num_state)
-        B_mat = np.reshape(B_mat, (num_state, num_input))
-        namespace_dct = self.roadrunner_namespace
-        # Modify the B matrix as required
-        for inp_idx, inp_name in enumerate(input_dct.keys()):
-            for state_name, value in input_dct[inp_name].items():
-                state_idx = states.index(state_name)
-                B_mat[state_idx, inp_idx] = eval(value, namespace_dct)
-        #
-        return B_mat
+        new_super_lst = list(super_lst)
+        return sorted(sub_lst, key=lambda v: new_super_lst.index(v))
 
-    def makeStateSpace(self, A_mat=None, B_mat=None, C_mat=None, D_mat=None,
-          is_reduced=True, inputs=None):
+    def _makeBDF(self):
         """
-        Creates a control system object for the n X n jacobian.
+        Constructs a dataframe for the B matrix.
+
+        Returns
+        -------
+        np.ndarray (n X p), where p = len(input_names)
+        """
+        # Select the columns needed from the stoichiometry matrix
+        B_df = self.full_stoichiometry_df[self.input_names]
+        # Subset to the states
+        sub_names = list(set(B_df.index).intersection(self.state_names))
+        sub_names = self._sortList(self.state_names, sub_names)
+        B_df = B_df.loc[sub_names, :]
+        #
+        return B_df
+
+    def makeStateSpace(self, A_mat=None, B_mat=None, C_mat=None, D_mat=None):
+        """
+        Creates a control system object for the n X n jacobian. By default,
+        the D matrix is always 0.
 
         Parameters
         ----------
+        The default values of the matrices are calculated in the constructor.
+        These can be overridden.
         A_mat: np.array(n X n) or DataFrame
         B_mat: np.array(n X p) or DataFrame
         C_mat: np.array(q X n) or DataFrame
         D_mat: np.array(q X p) or DataFrame
-        is_reduced: bool
-             Eliminate conservation laws, 0 rows, 0 columns
-        input_dct: dict (used if B_mat is None)
-            key: input name
-            value: dict
-                key: state name
-                value: float or str-expression of the input for the state
-           Example: {"$A": {"S1": 5, "S3": "comp1*k1"}}
-           Creates the following B Matrix if the states are S1, S2, S3
-               [5, 0, eval("comp1*k1")]^T
 
         Returns
         -------
@@ -327,22 +378,14 @@ class ControlBase(object):
         C_mat = df2Mat(C_mat)
         D_mat = df2Mat(D_mat)
         if A_mat is None:
-            if is_reduced:
-                A_mat = self.reduced_jacobian.values
-            else:
-                A_mat = self.jacobian.values
+            A_mat = self.jacobian_df.values
         if B_mat is None:
-            if inputs is None:
-                B_mat = np.repeat(0, A_mat.shape[0])
-                B_mat = np.reshape(B_mat, (A_mat.shape[0], 1))
-            else:
-                # Construt the B matrix
-                states = getSpeciesNames(is_reduced=is_reduced)
-                B_mat = self._makeBMatrix(states, input_dct)
+            B_mat = self._makeBDF().values
         if C_mat is None:
-            C_mat = np.identity(A_mat.shape[0])
+            # Construct the output matrix
+            C_mat = self.C_df.values
         if D_mat is None:
-            nrow = np.shape(C_mat)[0]
+            nrow = len(self.output_names)
             ncol = np.shape(B_mat)[1]
             D_mat = np.repeat(0, nrow*ncol)
             D_mat = np.reshape(D_mat, (nrow, ncol))

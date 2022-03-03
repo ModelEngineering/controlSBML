@@ -21,7 +21,7 @@ class ControlAnalysis(ControlBase):
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def simulateLinearSystem(self, A_df=None, B_df=None, C_df=None,
-          timepoint=0, is_reduced=False, **kwargs):
+          timepoint=0, **kwargs):
         """
         Creates an approximation of the SBML model based on the Jacobian, and
         constructs predictions based on this Jacobian and the values of
@@ -44,24 +44,26 @@ class ControlAnalysis(ControlBase):
         """
         options = Options(kwargs, [cn.SIM_DCT])
         sim_opts = options.parse()[0]
-        start_time, end_time, num_point = self._getSimulationParameters(**sim_opts)
+        start_time, end_time, num_point = self._getSimulationParameters(
+              **sim_opts)
         cur_time = self.get(cn.TIME)
         self.setTime(timepoint)
-        if A_df is None:
-            species_names = self.getSpeciesNames(is_reduced=is_reduced)
-        else:
-            species_names = list(A_df.columns)
-        sys = self.makeStateSpace(A_mat=A_df, B_mat=B_df, C_mat=C_df,
-              is_reduced=is_reduced)
+        if B_df is None:
+            B_df = 0*self._makeBDF()
+        sys = self.makeStateSpace(A_mat=A_df, B_mat=B_df, C_mat=C_df)
+        X0 = self.state_ser
         self.setTime(start_time)
-        X0 = self.getCurrentState(is_reduced=is_reduced, species_names=species_names)
+        X0_vals = self.state_ser
+        for name in X0.index:
+            X0.loc[name] = X0_vals.loc[name]
+        X0 = X0.values
         self.setTime(cur_time)  # Restore the time
         # Run the linear simulation
         dt = (end_time - start_time)/(num_point - 1)
         times = [start_time + n*dt for n in range(num_point)]
         times, y_vals = control.forced_response(sys, T=times, X0=X0)
         df = pd.DataFrame(y_vals.transpose(), index=times)
-        df.columns = species_names
+        df.columns = self.state_names
         return df
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
