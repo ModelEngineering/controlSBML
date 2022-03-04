@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -22,7 +22,7 @@ $S0 -> S1; $S0
 S1 -> S2; S1
 S2 -> S3; S2
 
-S0 = 1
+$S0 = 0
 S1 = 10
 S2 = 0
 S3 = 0
@@ -68,6 +68,14 @@ class TestControlPlot(unittest.TestCase):
     def testPlotLinearApproximation(self):
         if IGNORE_TEST:
           return
+        ctlsb = ControlPlot(NONLINEAR_MDL)
+        ctlsb.setTime(2)
+        A_df = ctlsb.jacobian_df
+        ctlsb.plotLinearApproximation(A_mat=A_df, suptitle="Test",
+              is_plot=IS_PLOT, figsize=(15,5))
+
+    def testPlotLinearApproximationWithInput(self):
+        # TESTING
         ctlsb = ControlPlot(NONLINEAR_MDL)
         ctlsb.setTime(2)
         A_df = ctlsb.jacobian_df

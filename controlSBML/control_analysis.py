@@ -31,6 +31,7 @@ class ControlAnalysis(ControlBase):
         ----------
         A_df: DataFrame (n X n)
         B_df: DataFrame (n X p)
+            Default is 0
         C_df: DataFrame (q X n)
         timepoint: float
             Time at which Jacobian is taken

@@ -2,6 +2,7 @@ from controlSBML.control_base import ControlBase
 from controlSBML import control_base
 import helpers
 
+import control
 import numpy as np
 import pandas as pd
 import os
@@ -15,10 +16,13 @@ IS_PLOT = False
 HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
+INPUT_NAMES = ["J0"]
+OUTPUT_NAMES = ["S3", "S2"]
+END_TIME = 20
 LINEAR_MDL = """
-$S0 -> S1; k0*$S0
-S1 -> S2; k1*S1
-S2 -> S3; k2*S2
+J0: $S0 -> S1; k0*$S0
+J1: S1 -> S2; k1*S1
+J2: S2 -> S3; k2*S2
 
 S0 = 1
 S1 = 10
@@ -132,12 +136,67 @@ class TestControlBase(unittest.TestCase):
         ctlsb.antimony = ""
         self.assertFalse(ctlsb.equals(self.ctlsb))
 
-    # TODO: Test with more complicated inputs
-    def testMakeStateSpace(self):
+    def testMakeStateSpace1(self):
         if IGNORE_TEST:
           return
         sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian_df.values)
         self.assertEqual(sys.nstates, 3)
+
+    def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=INPUT_NAMES,
+          output_names=OUTPUT_NAMES, end_time=END_TIME):
+        """
+        Simulates the linear model with an input.
+
+        Parameters
+        ----------
+        u_val: float
+            level of step applied to inputs.
+        mdl: model_reference
+        
+        Returns
+        -------
+        array-float
+        """
+        ctlsb = ControlBase(mdl,
+              input_names=input_names, output_names=output_names)
+        sys = ctlsb.makeStateSpace()
+        times = [0.1*v for v in range(end_time)]
+        X0 = ctlsb.state_ser.values
+        U = np.repeat(u_val, len(times))
+        _, y_vals = control.forced_response(sys, T=times, X0=X0, U=U)
+        return y_vals
+
+    def testMakeStateSpaceLeveledInputs(self):
+        if IGNORE_TEST:
+          return
+        y_dct = {u: self._simulate(u) for u in [0, 1, 2]}
+        keys = y_dct.keys()
+        for idx in range(len(keys)-1):
+            y1_vals = y_dct[idx]
+            y2_vals = y_dct[idx+1]
+            for idx in range(2):
+                # Compare current and enxt
+                self.assertGreater(y2_vals[idx][-1], y1_vals[idx][-1])
+
+    def testMakeStateSpaceZeroInput(self):
+        if IGNORE_TEST:
+          return
+        input_names = ["J0"]
+        ctlsb = ControlBase(LINEAR_MDL,
+              input_names=input_names, output_names=["S3", "S2"])
+        sys = ctlsb.makeStateSpace(A_mat=ctlsb.jacobian_df.values)
+        num_state, num_state = np.shape(ctlsb.jacobian_df.values)
+        self.assertEqual(np.shape(sys.B), (num_state, 1))
+        self.assertEqual(np.shape(sys.C), (2, num_state))
+        # Simulate the system
+        END = 30
+        times = [0*v for v in range(END)]
+        X0 = ctlsb.state_ser.values
+        U = np.repeat(2, END)
+        times, y_val1s = control.forced_response(sys, T=times, X0=X0, U=U)
+        times, y_val2s = control.forced_response(sys, T=times, X0=X0)
+        for idx in range(2):
+            self.assertEqual(np.sum(y_val1s[idx, :] - y_val2s[idx, :])**2, 0)
 
     def test_state_ser(self):
         if IGNORE_TEST:
@@ -183,9 +242,17 @@ class TestControlBase(unittest.TestCase):
         self.assertTrue(all(B_df.values.flatten()
               == ctlsb.full_stoichiometry_df.values.flatten()))
         #
-        ctlsb = ControlBase(LINEAR_MDL, input_names=["_J0", "_J2"])
+        ctlsb = ControlBase(LINEAR_MDL, input_names=["J0", "J2"])
         B_df = ctlsb._makeBDF()
         self.assertEqual(np.shape(B_df.values), (3, 2))
+
+    def testMakeUserError(self):
+        if IGNORE_TEST:
+          return
+        with self.assertRaises(ValueError):
+            ctlsb = ControlBase(LINEAR_MDL, input_names=["J0", "K2"])
+        with self.assertRaises(ValueError):
+            ctlsb = ControlBase(LINEAR_MDL, output_names=["S1", "SS2"])
 
 
 if __name__ == '__main__':

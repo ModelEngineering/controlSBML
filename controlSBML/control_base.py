@@ -49,7 +49,7 @@ class ControlBase(object):
             if subset_names is None:
                 return list(superset_names)
             else:
-                if set(subset_names) > set(superset_names):
+                if not set(subset_names) <= set(superset_names):
                     text = "%s %s are not a subset of the %s %s" % \
                           (subset_name, subset_names, superset_name,
                           superset_names)
@@ -75,10 +75,10 @@ class ControlBase(object):
         self.num_state = len(self.state_names)
         # Handle defaults
         self.input_names = calcNames(self.reaction_names, input_names,
-              "Full stoichiometry matrix", "inputs")
+              "reaction names", "inputs")
         self.input_names = self._sortList(self.reaction_names, self.input_names)
         self.output_names = calcNames(self.state_names, output_names,
-              "Full stoichiometry matrix", "outputs")
+              "states", "outputs")
         self.output_names = self._sortList(self.species_names, self.output_names)
         # Other calculations
         self.C_df = self._makeCDF()
