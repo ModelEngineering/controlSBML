@@ -81,6 +81,7 @@ class ControlBase(object):
               "states", "outputs")
         self.output_names = self._sortList(self.species_names, self.output_names)
         # Other calculations
+        self.B_df = self._makeBDF()
         self.C_df = self._makeCDF()
         self.state_names = list(self.jacobian_df.columns)
         self.antimony = self.roadrunner.getAntimony()
@@ -380,7 +381,7 @@ class ControlBase(object):
         if A_mat is None:
             A_mat = self.jacobian_df.values
         if B_mat is None:
-            B_mat = self._makeBDF().values
+            B_mat = self.B_df.values
         if C_mat is None:
             # Construct the output matrix
             C_mat = self.C_df.values

@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -18,9 +18,9 @@ HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?fi
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 LINEAR_MDL = """
-$S0 -> S1; $S0
-S1 -> S2; S1
-S2 -> S3; S2
+J0: $S0 -> S1; $S0
+J1: S1 -> S2; S1
+J2: S2 -> S3; S2
 
 $S0 = 0
 S1 = 10
@@ -65,21 +65,26 @@ class TestControlPlot(unittest.TestCase):
       # Cannot modify self.control
       self.ctlsb = ControlPlot(ANTIMONY_FILE)
 
-    def testPlotLinearApproximation(self):
+    def testPlotLinearApproximationNonzeroInput(self):
+        if IGNORE_TEST:
+          return
+        step_val = 2
+        ctlsb = ControlPlot(LINEAR_MDL, input_names=["J0"])
+        ctlsb.setTime(2)
+        ctlsb.set({"S0": step_val})
+        A_df = ctlsb.jacobian_df
+        ctlsb.plotLinearApproximation(A_mat=A_df, step_val=2,
+              suptitle="Test",
+              is_plot=IS_PLOT, figsize=(15,5))
+
+    def testPlotLinearApproximationNonlinearZeroInput(self):
         if IGNORE_TEST:
           return
         ctlsb = ControlPlot(NONLINEAR_MDL)
         ctlsb.setTime(2)
         A_df = ctlsb.jacobian_df
-        ctlsb.plotLinearApproximation(A_mat=A_df, suptitle="Test",
-              is_plot=IS_PLOT, figsize=(15,5))
-
-    def testPlotLinearApproximationWithInput(self):
-        # TESTING
-        ctlsb = ControlPlot(NONLINEAR_MDL)
-        ctlsb.setTime(2)
-        A_df = ctlsb.jacobian_df
-        ctlsb.plotLinearApproximation(A_mat=A_df, suptitle="Test",
+        ctlsb.plotLinearApproximation(A_mat=A_df, step_val=0,
+              suptitle="Test",
               is_plot=IS_PLOT, figsize=(15,5))
 
     def testPlotTrueModel(self):

@@ -2,6 +2,7 @@
 
 from docstring_expander.kwarg import Kwarg
 import matplotlib.pyplot
+import pandas as pd
 import os
 
 
@@ -32,16 +33,24 @@ DATA_DIR = os.path.join(PROJECT_DIR, "data")
 BIOMODELS_ZIP_FILENAME = "biomodels.zip"
 
 # Constants
-TIME = "time"
-START_TIME = 0  # Default start time
+A_DF = None  # Use default value of A matrix
+B_DF = None  # Use default value of B matrix
+C_DF = None  # Use default value of C matrix
 END_TIME = 5  # Default endtime
 POINTS_PER_TIME = 10
+START_TIME = 0  # Default start time
+STEP_VAL = 1  # Multiplier used for simulation input
+TIME = "time"
 
 # Keyword options
+O_A_DF = "A_df"
 O_AX = "ax"
+O_B_DF = "B_df"
+O_C_DF = "C_df"
 O_END_TIME = "end_time"
 O_FIGURE = "figure"
 O_FIGSIZE = "figsize"
+O_STEP_VAL = "step_val"
 O_IS_PLOT = "is_plot"
 O_LEGEND_CRD = "legend_crd"  # Legend coordinate
 O_LEGEND_SPEC = "legend_spec"
@@ -58,29 +67,33 @@ O_YTICKLABELS = "yticklabels"
 
 # Default values of options
 SIM_DCT = dict(
-      start_time=START_TIME,  # Start time of the simulation
-      end_time=END_TIME,      # End time of the simulation
-      points_per_time=POINTS_PER_TIME,    # Number of points in the simulation
+      A_df=A_DF,
+      B_df=B_DF,
+      C_df=C_DF,
+      step_val=STEP_VAL,
+      start_time=START_TIME,
+      end_time=END_TIME,
+      points_per_time=POINTS_PER_TIME,
       )
 # Options for a single plot
 PLOT_DCT = dict(
-      legend_spec=None,     # LegendSpec
-      legend_crd=None,      # coordinate for legend
-      ylim=None,           # maximum and minimum value of y
+      legend_spec=None,
+      legend_crd=None,
+      ylim=None,
       xlim=None,
       xlabel="",           
       ylabel="",           
-      title="",             # plot title
-      ax=None,              # axis to plot
+      title="",
+      ax=None,
       xticklabels=None,
       yticklabels=None,
       )
 # Options for the full figure
 FIG_DCT = dict(
-      is_plot=True,         # Is a figure generated
-      figure=None,          # Figure option
-      figsize=(10, 10),     # Size of the figure
-      suptitle="",          # Title for the figure
+      is_plot=True,
+      figure=None,
+      figsize=(10, 10),
+      suptitle="",
       )
 
 DEFAULT_DCTS = [PLOT_DCT, FIG_DCT, SIM_DCT]
@@ -89,14 +102,20 @@ DEFAULT_DCTS = [PLOT_DCT, FIG_DCT, SIM_DCT]
 # Must maintain this in correspondence with SIM_DCT, PLOT_DCT, FIG_DCT
 KWARGS = [
     #SIMULATION OPTIONS
+    Kwarg(O_A_DF, default=10, dtype=pd.DataFrame, doc="Linear system A matrix"),
+    Kwarg(O_AX, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting axis"),
+    Kwarg(O_B_DF, default=10, dtype=pd.DataFrame, doc="Linear system B matrix"),
+    Kwarg(O_C_DF, default=10, dtype=pd.DataFrame, doc="Linear system C matrix"),
     Kwarg(O_END_TIME, default=10, dtype=float, doc="end time of simulation"),
     Kwarg(O_POINTS_PER_TIME, default=10, dtype=float,
           doc="number of simulation points per time period"),
     Kwarg(O_START_TIME, default=0, dtype=float, doc="when simulation begins"),
     #PLOT OPTIONS
-    Kwarg(O_AX, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting axis"),
-    Kwarg(O_LEGEND_SPEC, default=None, dtype=LegendSpec, doc="Position of the legend"),
-    Kwarg(O_LEGEND_CRD, default=None, dtype=tuple, doc="Coordinate position of the legend"),
+    Kwarg(O_LEGEND_SPEC, default=None, dtype=LegendSpec,
+          doc="Position of the legend"),
+    Kwarg(O_LEGEND_CRD, default=None, dtype=tuple,
+          doc="Coordinate position of the legend"),
+    Kwarg(O_STEP_VAL, default=10, dtype=float, doc="value of step input"),
     Kwarg(O_TITLE, default="", dtype=str, doc="Plot title"),
     Kwarg(O_XLABEL, default="", dtype=str, doc="x-axis label"),
     Kwarg(O_XLIM, default=None, dtype=(float, float), doc="Lower and upper values of x axis"),

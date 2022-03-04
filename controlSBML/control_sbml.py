@@ -12,10 +12,15 @@ from controlSBML.control_plot import ControlPlot
 
 class ControlSBML(ControlPlot):
 
-    def __init__(self, model_reference, include_boundary_species=True):
+    def __init__(self, model_reference, input_names=None, output_names=None):
         """
         Initializes instance variables
-        :param str model_reference: string or SBML file or Roadrunner object
+        model_reference: str
+            string, SBML file or Roadrunner object
+        input_names: name (id) of reaction whose flux is being controlled
+        output_names: list-str
+            output species
         """
         super().__init__(model_reference,
-              include_boundary_species=include_boundary_species)
+              input_names=input_names, output_names=output_names)
+        
