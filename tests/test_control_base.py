@@ -1,5 +1,4 @@
 from controlSBML.control_base import ControlBase
-from controlSBML import control_base
 import helpers
 
 import control
@@ -62,6 +61,11 @@ S3 = 0
 
 SPECIES_NAMES = ["S0", "S1", "S2"]
 
+def setList(lst, default):
+    if lst is None:
+        return default
+    return lst
+
 
 #############################
 # Tests
@@ -84,6 +88,9 @@ class TestControlBase(unittest.TestCase):
         if IGNORE_TEST:
           return
         C_df = self.ctlsb._makeCDF()
+        num_row = len(self.ctlsb.output_names)
+        num_col = self.ctlsb.num_state
+        self.assertEqual(np.shape(C_df.values), (num_row, num_col))
 
     def testConstructWithRoadrunner(self):
         if IGNORE_TEST:
@@ -142,8 +149,8 @@ class TestControlBase(unittest.TestCase):
         sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian_df.values)
         self.assertEqual(sys.nstates, 3)
 
-    def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=INPUT_NAMES,
-          output_names=OUTPUT_NAMES, end_time=END_TIME):
+    def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=None,
+          output_names=None, end_time=END_TIME):
         """
         Simulates the linear model with an input.
 
@@ -152,11 +159,13 @@ class TestControlBase(unittest.TestCase):
         u_val: float
             level of step applied to inputs.
         mdl: model_reference
-        
+
         Returns
         -------
         array-float
         """
+        input_names = setList(input_names, INPUT_NAMES)
+        output_names = setList(output_names, OUTPUT_NAMES)
         ctlsb = ControlBase(mdl,
               input_names=input_names, output_names=output_names)
         sys = ctlsb.makeStateSpace()
@@ -171,9 +180,9 @@ class TestControlBase(unittest.TestCase):
           return
         y_dct = {u: self._simulate(u) for u in [0, 1, 2]}
         keys = y_dct.keys()
-        for idx in range(len(keys)-1):
-            y1_vals = y_dct[idx]
-            y2_vals = y_dct[idx+1]
+        for key in range(len(keys)-1):
+            y1_vals = y_dct[key]
+            y2_vals = y_dct[key+1]
             for idx in range(2):
                 # Compare current and enxt
                 self.assertGreater(y2_vals[idx][-1], y1_vals[idx][-1])
@@ -185,7 +194,7 @@ class TestControlBase(unittest.TestCase):
         ctlsb = ControlBase(LINEAR_MDL,
               input_names=input_names, output_names=["S3", "S2"])
         sys = ctlsb.makeStateSpace(A_mat=ctlsb.jacobian_df.values)
-        num_state, num_state = np.shape(ctlsb.jacobian_df.values)
+        num_state, _ = np.shape(ctlsb.jacobian_df.values)
         self.assertEqual(np.shape(sys.B), (num_state, 1))
         self.assertEqual(np.shape(sys.C), (2, num_state))
         # Simulate the system
@@ -250,9 +259,9 @@ class TestControlBase(unittest.TestCase):
         if IGNORE_TEST:
           return
         with self.assertRaises(ValueError):
-            ctlsb = ControlBase(LINEAR_MDL, input_names=["J0", "K2"])
+            _ = ControlBase(LINEAR_MDL, input_names=["J0", "K2"])
         with self.assertRaises(ValueError):
-            ctlsb = ControlBase(LINEAR_MDL, output_names=["S1", "SS2"])
+            _ = ControlBase(LINEAR_MDL, output_names=["S1", "SS2"])
 
 
 if __name__ == '__main__':
