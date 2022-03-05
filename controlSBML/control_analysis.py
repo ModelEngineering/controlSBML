@@ -67,7 +67,7 @@ class ControlAnalysis(ControlBase):
         times = [prms.start_time + n*dt for n in range(prms.num_point)]
         times, y_vals = control.forced_response(sys, T=times, X0=X0, U=prms.step_val)
         df = pd.DataFrame(y_vals.transpose(), index=times)
-        df.columns = self.state_names
+        df.columns = self.output_names
         return df
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)

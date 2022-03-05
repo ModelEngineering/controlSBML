@@ -41,19 +41,22 @@ for Ubuntu.
 
 ## Key properties
 * ``roadrunner`` is the roadrunner object for the model
-* ``jacobian`` is the full Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
-* ``reduced_jacobian`` is the reduced Jacobian of the model at the current simulation time. It is reduced in the
-sense that dependent species (those calculated from conservation laws) are removed as are all species
-that are either independent of the others or do not affect the others.
+* ``jacobian_df`` is the full Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
 * ``antimony`` is the antimony representation of the model
+* ``A_df`` is the ${\bf A}$ matrix in the linear system
+* ``B_df`` is the ${\bf B}$ matrix in the linear system
+* ``C_df`` is the ${\bf C}$ matrix in the linear system
+* ``state_names`` is a list of floating species that constitute the state vector
+* ``input_names`` is a list of reaction names that specify the input vector
+* ``output_names`` is a list of floating species that constitute the output vector
 
 ## Key methods
-* ``getSpeciesNames`` returns a list of species names for either an unreduced or reduced model
 * ``setTime(new_time)`` resets ``roadrunner`` and runs a simulation from time zero to the time specified.
 * ``makeStateSpace()`` creates a ``control`` state space object using the Jacobian of the model at the current simulation time.
 * ``plotTrueModel`` plots a roadrunner simulation.
 * ``plotLinearApproximation`` plots the linear approximation provided by an ${\bf A}$ matrix. The default ${\bf A}$ matrix
 is the Jacobian of the current ``RoadRunner`` instance. You can either specify a different ${\bf A}$ or set the ``RoadRunner`` instance to a different time.
+* ``plotBode`` constructs bode plots for the SISO systems formed by all combinations of inputs and outputs.
 
 ## Example
 

@@ -98,18 +98,21 @@ class StateSpaceTF(object):
         D_mat = np.repeat(0, 1)
         # Construct the dataframe entries
         dct = {n: [] for n in output_names}
-        for out_idx in range(num_output):  # Index for output state
-            for inp_idx in range(num_input):  # Index for input sate
+        for out_idx, output_name in enumerate(output_names):
+            for inp_idx, input_name in enumerate(input_names):
                 # Construct the SISO system
+                input_name = input_names[inp_idx]
                 B_mat = np.array(B_base_mat)
                 B_mat[inp_idx, 0] = 1
                 C_mat = np.array(C_base_mat)
                 C_mat[0, out_idx] = 1
                 new_sys = control.StateSpace(A_mat, B_mat, C_mat, D_mat)
                 siso_tf = control.ss2tf(new_sys)
-                dct[input_names[inp_idx]].append(siso_tf)
+                dct[output_name].append(siso_tf)
         #
-        df = pd.DataFrame(dct, index=output_names)
+        df = pd.DataFrame(dct).transpose()
+        df.index = output_names
+        df.columns = input_names
         df.index.name = "Outputs"
         df.columns.name = "Inputs"
         return df
@@ -136,15 +139,14 @@ class StateSpaceTF(object):
         freq_arr = (freq_arr + FREQ_RNG[LOW])*delta
         mgr = OptionManager(kwargs)
         legends = []
-        for out_idx, out_name in enumerate(self.dataframe.index):
-            for inp_idx, inp_name in enumerate(self.dataframe.columns):
+        for out_idx, out_name in enumerate(self.output_names):
+            for inp_idx, inp_name in enumerate(self.input_names):
                 siso_tf = self.dataframe.loc[out_name, inp_name]
                 # Create the plot data
                 _ = control.bode(siso_tf, freq_arr)
                 # Construct the plot
-                title ="%s->%s" % (
-                      self.output_names[out_idx], self.input_names[inp_idx])
-                legends.append(title)
+                legend =" %s->%s" % (inp_name, out_name)
+                legends.append(legend)
         mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=ctl.LegendSpec(legends,
               crd=mgr.plot_opts[cn.O_LEGEND_CRD]))
         mgr.doPlotOpts()

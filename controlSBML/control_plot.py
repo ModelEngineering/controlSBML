@@ -3,6 +3,7 @@
 
 import controlSBML.constants as cn
 from controlSBML.control_analysis import ControlAnalysis
+from controlSBML.control_extensions.state_space_tf import StateSpaceTF
 from controlSBML.option_management.option_manager import OptionManager
 
 from docstring_expander.expander import Expander
@@ -59,7 +60,7 @@ class ControlPlot(ControlAnalysis):
         start_time = mgr.sim_opts[cn.O_START_TIME]
         rr_df = self.simulateRoadrunner(**mgr.sim_opts)
         nrow = 1
-        ncol = len(rr_df.columns)
+        ncol = len(self.output_names)
         _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         linear_df = self.simulateLinearSystem(timepoint=start_time,
@@ -120,7 +121,7 @@ class ControlPlot(ControlAnalysis):
             ctlsb = self
         rr_df = ctlsb.simulateRoadrunner(**mgr.sim_opts)
         nrow = len(timepoints)
-        ncol = len(rr_df.columns)
+        ncol = len(self.output_names)
         _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         for irow, timepoint in enumerate(timepoints):
@@ -131,7 +132,7 @@ class ControlPlot(ControlAnalysis):
                 y_max = max(linear_df.max().max(), rr_df.max().max())
                 mgr.plot_opts[cn.O_YLIM] = [y_min, y_max]
             y_min, y_max = mgr.plot_opts[cn.O_YLIM]
-            for icol, column in enumerate(linear_df.columns):
+            for icol, column in enumerate(self.output_names):
                 new_mgr = mgr.copy()
                 ax = axes[irow, icol]
                 new_mgr.plot_opts[cn.O_AX] = ax
@@ -152,3 +153,26 @@ class ControlPlot(ControlAnalysis):
                     ax.text(-2, y_max/2, "%2.1f" % timepoint)
                 new_mgr.doPlotOpts()
         mgr.doFigOpts()
+
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
+    def plotBode(self, is_magnitude=True, is_phase=True, is_plot=True,
+          **kwargs):
+        """
+        Constructs bode plots for a MIMO system. This is done by constructing n*n
+        SISO systems where there n states.
+    
+        Parameters
+        ----------
+        is_magnitude: bool
+            Do magnitude plots
+        is_phase: bool
+            Do phase plots
+        is_plot: bool
+            Display plots
+        #@expand
+        """
+        mimo_sys = self.makeStateSpace()
+        tf = StateSpaceTF(mimo_sys, input_names=self.input_names,
+              output_names=self.output_names)
+        tf.plotBode(is_magnitude==is_magnitude, is_phase==is_phase,
+              is_plot=is_plot, **kwargs)

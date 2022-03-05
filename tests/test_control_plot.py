@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -97,9 +97,15 @@ class TestControlPlot(unittest.TestCase):
         if IGNORE_TEST:
           return
         ctlsb = ControlPlot(NONLINEAR_MDL)
-        ctlsb.plotAccuracy(figsize=(5, 5), is_plot=IS_PLOT)
         self.ctlsb.plotAccuracy(NONLINEAR_MDL,
               [0, 1, 2, 3], suptitle="Test", is_plot=IS_PLOT)
+        ctlsb.plotAccuracy(figsize=(5, 5), is_plot=IS_PLOT)
+
+    def testPlotBode(self):
+        # TESTING
+        ctlsb = ControlPlot(NONLINEAR_MDL, input_names=["_J0", "_J2", "_J1"],
+              output_names=["S0", "S2"])
+        ctlsb.plotBode()
 
 
 if __name__ == '__main__':
