@@ -118,7 +118,7 @@ class StateSpaceTF(object):
         return df
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotBode(self, is_magnitude=True, is_phase=True, is_plot=True, **kwargs):
+    def plotBode(self, is_magnitude=True, is_phase=True, **kwargs):
         """
         Constructs bode plots for a MIMO system. This is done by constructing n*n
         SISO systems where there n states.

@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -79,7 +79,7 @@ class TestControlPlot(unittest.TestCase):
 
     def testPlotLinearApproximationNonlinearZeroInput(self):
         if IGNORE_TEST:
-          return
+            return
         ctlsb = ControlPlot(NONLINEAR_MDL)
         ctlsb.setTime(2)
         A_df = ctlsb.jacobian_df
@@ -89,7 +89,7 @@ class TestControlPlot(unittest.TestCase):
 
     def testPlotTrueModel(self):
         if IGNORE_TEST:
-          return
+            return
         self.ctlsb.plotTrueModel(is_plot=IS_PLOT, ylabel="values",
               end_time=10, title="title", figsize=(5, 10))
 
@@ -102,10 +102,11 @@ class TestControlPlot(unittest.TestCase):
         ctlsb.plotAccuracy(figsize=(5, 5), is_plot=IS_PLOT)
 
     def testPlotBode(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         ctlsb = ControlPlot(NONLINEAR_MDL, input_names=["_J0", "_J2", "_J1"],
               output_names=["S0", "S2"])
-        ctlsb.plotBode()
+        ctlsb.plotBode(is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':

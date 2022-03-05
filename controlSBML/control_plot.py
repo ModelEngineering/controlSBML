@@ -127,12 +127,17 @@ class ControlPlot(ControlAnalysis):
         for irow, timepoint in enumerate(timepoints):
             linear_df = ctlsb.simulateLinearSystem(timepoint=timepoint,
                   **mgr.sim_opts)
-            if mgr.plot_opts[cn.O_YLIM] is None:
+            #
+            for icol, column in enumerate(self.output_names):
+                start_time = mgr.sim_opts[cn.O_START_TIME]
                 y_min = min(linear_df.min().min(), rr_df.min().min())
                 y_max = max(linear_df.max().max(), rr_df.max().max())
-                mgr.plot_opts[cn.O_YLIM] = [y_min, y_max]
-            y_min, y_max = mgr.plot_opts[cn.O_YLIM]
-            for icol, column in enumerate(self.output_names):
+                mgr.plot_opts.set(cn.O_YLIM, default=[y_min, y_max])
+                y_min, y_max = mgr.plot_opts[cn.O_YLIM]
+                x_min = start_time
+                x_max = mgr.sim_opts[cn.O_END_TIME]
+                mgr.plot_opts.set(cn.O_XLIM, [x_min, x_max])
+                x_min, x_max = mgr.plot_opts[cn.O_XLIM]
                 new_mgr = mgr.copy()
                 ax = axes[irow, icol]
                 new_mgr.plot_opts[cn.O_AX] = ax
@@ -145,7 +150,7 @@ class ControlPlot(ControlAnalysis):
                 if irow == 0:
                     ax.set_title(column, rotation=45)
                     if icol == 0:
-                        ax.text(-3, 0.75*y_max, "Jacobian Time")
+                        ax.text(start_time-3, 0.75*y_max, "Jacobian Time")
                         ax.legend(["linear", "nonlinear"])
                 if icol > 0:
                     ax.set_yticklabels([])
