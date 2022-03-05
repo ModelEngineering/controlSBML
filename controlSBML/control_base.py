@@ -55,15 +55,15 @@ class ControlBase(object):
                           superset_names)
                     raise ValueError(text)
                 return subset_names
-        #
         # Iinitial model calculations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
         # Set defaults
-        self.state_names = list(
-              self.roadrunner.getReducedStoichiometryMatrix().rownames)
+        self.state_names = list(self.roadrunner.getFullJacobian().rownames)
         self.species_names = list(
               self.roadrunner.getFullStoichiometryMatrix().rownames)
+        self.depeendent_names = list(
+              set(self.species_names).symmetric_difference(self.state_names))
         if not set(self.state_names) <= set(self.species_names):
             import pdb; pdb.set_trace()
             raise RuntimeError("State name is not a species name.")
@@ -87,6 +87,17 @@ class ControlBase(object):
         self.antimony = self.roadrunner.getAntimony()
         # Do the initializations
         self.roadrunner.reset()
+        # Validation checks
+        if set(self.state_names) != set(self.species_names):
+            text = "State does not include some spaces.\n"
+            text += "  Species are: %s" % str(self.species_names)
+            text += "  States are: %s" % str(self.state_names)
+            raise RuntimeError(text)
+        if not set(self.output_names) <= set(self.species_names):
+            diff = list(set(self.output_names).difference(self.species_names))
+            text = "Outputs must be species. The following outputs are not species"
+            text += "The following outputs are not species: %s" % str(diff)
+            raise ValueError(text)
 
     @staticmethod
     def _makeDF(mat):
@@ -118,35 +129,35 @@ class ControlBase(object):
         -------
         pd.DataFrame
         """
-        mat = np.identity(len(self.species_names))
+        mat = np.identity(len(self.state_names))
         C_df = pd.DataFrame(mat, columns=self.species_names,
               index=self.species_names)
-        # Adjust to states and outputs
+        # Adjust to outputs
         for name in self.species_names:
-            if not name in self.state_names:
-                del C_df[name]
             if not name in self.output_names:
                 C_df = C_df.drop(name)
-        # Handle computed outputs
-        if self.roadrunner.getNumConservedMoieties() == 0:
-            if not set(self.output_names) <= set(self.state_names):
-                import pdb; pdb.set_trace()
-                raise RuntimeError("Cannot compute output from states.")
-        else:
-            # Add the conservation matrix
-            mat = self.roadrunner.getConservationMat()
-            colnames = list(mat.colnames)
-            if set(colnames) != set(self.state_names):
-                import pdb; pdb.set_trace()
-                raise RuntimeError(
-                      "Not all states are columns of the conservation matrix.")
-            rownames = list(mat.rownames)
-            df = pd.DataFrame(self.roadrunner.getConservationMat(),
-                   columns=colnames, index=rownames)
-            # Remove overlapping rows
-            for rowname in rownames:
-                if rowname in self.output_names:
-                    C_df[rowname] = df[rowname]
+        # TODO: Address conserved moieties
+        if False:
+            # Handle computed outputs
+            if self.roadrunner.getNumConservedMoieties() == 0:
+                if not set(self.output_names) <= set(self.state_names):
+                    import pdb; pdb.set_trace()
+                    raise RuntimeError("Cannot compute output from states.")
+            else:
+                # Add the conservation matrix
+                mat = self.roadrunner.getConservationMat()
+                colnames = list(mat.colnames)
+                if set(colnames) != set(self.state_names):
+                    import pdb; pdb.set_trace()
+                    raise RuntimeError(
+                          "Not all states are columns of the conservation matrix.")
+                rownames = list(mat.rownames)
+                df = pd.DataFrame(self.roadrunner.getConservationMat(),
+                       columns=colnames, index=rownames)
+                # Remove overlapping rows
+                for rowname in rownames:
+                    if rowname in self.output_names:
+                        C_df[rowname] = df[rowname]
         return C_df
 
     @property
@@ -200,7 +211,9 @@ class ControlBase(object):
         -------
         pd.DataFrame, species_names
         """
-        jacobian_mat = self.roadrunner.getReducedJacobian()
+        # FIXME: Use reduced stoichiometry matrix once it's clear how
+        #        to calculate dependent spcies
+        jacobian_mat = self.roadrunner.getFullJacobian()
         if len(jacobian_mat.rownames) != len(jacobian_mat.colnames):
             raise RuntimeError("Jacobian is not square!")
         names = list(jacobian_mat.colnames)

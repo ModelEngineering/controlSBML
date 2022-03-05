@@ -28,6 +28,17 @@ S1 = 10
 S2 = 0
 S3 = 0
 """
+LONG_LINEAR_MDL = """
+J0: S0 -> S1; S0
+J1: S1 -> S2; S1
+J2: S2 -> S3; S2
+J3: S2 -> S3; S3
+
+S0 = 10
+S1 = 0
+S2 = 0
+S3 = 0
+"""
 NONLINEAR_MDL = """
 S0 -> 2 S0; S0
 S0 -> S1; S0
@@ -78,6 +89,12 @@ class TestControlAnalysis(unittest.TestCase):
             linear_arr = linear_df[column].values
             rr_arr = rr_df[column].values
             self.assertLess(np.abs(linear_arr[-1] - rr_arr[-1]), 0.1)
+
+    def testReducedStoich(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlAnalysis(LONG_LINEAR_MDL)
+        #import pdb; pdb.set_trace()
 
     def testinearApproximationNonzeroInput(self):
         if IGNORE_TEST:
