@@ -16,6 +16,7 @@ def read(rel_path):
 INSTALL_REQUIREMENTS = [
     "coverage",
     "control",
+    "docstring-expander",
     "jupyterlab",
     "matplotlib",
     "nose",

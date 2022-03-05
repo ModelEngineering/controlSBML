@@ -69,4 +69,6 @@ that continuous integration is done only *without* ``slycot``.
 ## Version History
 * 0.1.4,
   * More options for plotting and simulations
+  * plotBode
+  * Inputs are identified by reaction Ids
 * 0.1.3, 2/13/2022. First release.
