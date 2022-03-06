@@ -27,7 +27,7 @@ def makeRoadrunner(model_reference):
         return model_reference
     #
     if not isinstance(model_reference, str):
-        Raise ("Invalid model reference")
+        raise ValueError("Invalid model reference")
     #
     if model_reference[0:4] == "http":
         return te.loadSBMLModel(model_reference)

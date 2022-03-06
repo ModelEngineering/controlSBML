@@ -45,6 +45,7 @@ class ControlPlot(ControlAnalysis):
         # Finalize the figure
         mgr.doFigOpts()
 
+    # TODO: Deprecate plotLinearApproximation. Use plotAccuracy instead.
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
     def plotLinearApproximation(self, A_mat=None, **kwargs):
         """
@@ -176,7 +177,7 @@ class ControlPlot(ControlAnalysis):
             Display plots
         #@expand
         """
-        mimo_sys = self.makeStateSpace()
+        mimo_sys = self.makeMIMOLinearSystem()
         tf = StateSpaceTF(mimo_sys, input_names=self.input_names,
               output_names=self.output_names)
         tf.plotBode(is_magnitude==is_magnitude, is_phase==is_phase,

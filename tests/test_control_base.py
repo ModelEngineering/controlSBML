@@ -146,7 +146,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeStateSpace1(self):
         if IGNORE_TEST:
           return
-        sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian_df.values)
+        sys = self.ctlsb.makeMIMOLinearSystem(A_mat=self.ctlsb.jacobian_df.values)
         self.assertEqual(sys.nstates, 3)
 
     def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=None,
@@ -168,7 +168,7 @@ class TestControlBase(unittest.TestCase):
         output_names = setList(output_names, OUTPUT_NAMES)
         ctlsb = ControlBase(mdl,
               input_names=input_names, output_names=output_names)
-        sys = ctlsb.makeStateSpace()
+        sys = ctlsb.makeMIMOLinearSystem()
         times = [0.1*v for v in range(end_time)]
         X0 = ctlsb.state_ser.values
         U = np.repeat(u_val, len(times))
@@ -193,7 +193,7 @@ class TestControlBase(unittest.TestCase):
         input_names = ["J0"]
         ctlsb = ControlBase(LINEAR_MDL,
               input_names=input_names, output_names=["S3", "S2"])
-        sys = ctlsb.makeStateSpace(A_mat=ctlsb.jacobian_df.values)
+        sys = ctlsb.makeMIMOLinearSystem(A_mat=ctlsb.jacobian_df.values)
         num_state, _ = np.shape(ctlsb.jacobian_df.values)
         self.assertEqual(np.shape(sys.B), (num_state, 1))
         self.assertEqual(np.shape(sys.C), (2, num_state))
