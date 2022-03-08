@@ -77,9 +77,11 @@ class ControlBase(object):
         self.input_names = calcNames(self.reaction_names, input_names,
               "reaction names", "inputs")
         self.input_names = self._sortList(self.reaction_names, self.input_names)
+        self.num_input = len(self.input_names)
         self.output_names = calcNames(self.state_names, output_names,
               "states", "outputs")
         self.output_names = self._sortList(self.species_names, self.output_names)
+        self.num_output = len(self.output_names)
         # Other calculations
         self.B_df = self._makeBDF()
         self.C_df = self._makeCDF()
@@ -193,6 +195,17 @@ class ControlBase(object):
         np.ndarray: N X 1
         """
         return self._makeSer(self.state_names)
+
+    @property
+    def output_ser(self):
+        """
+        Contructs vector of current state values.
+
+        Returns
+        -------
+        np.ndarray: N X 1
+        """
+        return self._makeSer(self.output_names)
 
     def _makeSer(self, names):
         """
@@ -326,6 +339,8 @@ class ControlBase(object):
             value: value
         """
         for name, value in name_dct.items():
+            if isinstance(value, int):
+                value = float(value)
             self.roadrunner[name] = value
 
     @staticmethod
