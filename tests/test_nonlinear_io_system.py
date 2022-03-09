@@ -115,7 +115,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         num_time = 51
         x_vec = self.ctlsb.state_ser.values
-        u_vec = np.repeat(0, len(self.ctlsb.input_names))
+        u_vec = np.repeat(1, len(self.ctlsb.input_names))
         times = [n*0.1 for n in range(0, num_time)]
         dct = {n: [] for n in self.ctlsb.state_names}
         for time in times:
