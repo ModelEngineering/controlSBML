@@ -258,8 +258,18 @@ class ControlBase(object):
         ctlsb = self.__class__(self.model_reference,
               input_names=self.input_names,
               output_names=self.output_names)
-        ctlsb.setTime(self.roadrunner.model.getTime())
+        ctlsb.setTime(self.getTime())
         return ctlsb
+
+    def getTime(self):
+        """
+        Gets current simulation time.
+        
+        Returns
+        -------
+        float
+        """
+        return self.roadrunner.model.getTime()
 
     # TODO: More complete check of attributes?
     def equals(self, other):
@@ -277,8 +287,8 @@ class ControlBase(object):
         bValue = self.antimony == other.antimony
         if IS_DEBUG:
              print("1: %d" % bValue)
-        bValue = bValue and np.isclose(self.roadrunner.model.getTime(),  \
-              other.roadrunner.model.getTime())
+        bValue = bValue and np.isclose(self.getTime(),  \
+              other.getTime())
         if IS_DEBUG:
              print("2: %d" % bValue)
         bValue = bValue and all([s1 == s2 for s1, s2
@@ -376,6 +386,33 @@ class ControlBase(object):
         B_df = B_df.loc[sub_names, :]
         #
         return B_df
+
+    def makeNonLinearIOSystem(self, name):
+        """
+        Creates a control.NonLinearIOSystem.
+
+        Parameters
+        ----------
+        name: str
+        effector_dct: dict
+            key: str (input name)
+            output: str (name of roadrunner muteable, such a species or constant)
+        
+        Returns
+        -------
+        control.NonLinearIOSystem
+        """
+        # TODO: implemtn setEffectorDct, wrappers; handle problem with is_initialized
+        return control.NonlinearIOSystem(
+            self.state_tellurium_wrapper, 
+            self.output_tellurium_wrapper,
+            states=self.state_names,
+            inputs=self.input_names,
+            outputs=self.output_names,
+            name=name,
+            ctlsb=self,
+            effector_dct=effector_dct,
+            )
 
     def makeMIMOLinearSystem(self, A_mat=None, B_mat=None,
           C_mat=None, D_mat=None):

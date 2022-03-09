@@ -37,8 +37,14 @@ A_DF = None  # Use default value of A matrix
 B_DF = None  # Use default value of B matrix
 C_DF = None  # Use default value of C matrix
 END_TIME = 5  # Default endtime
+EVENT = "event"
+INPUT = "input"
+OUTPUT = "output"
+PARAMS = "params"
 POINTS_PER_TIME = 10
+RETURNS = "returns"
 START_TIME = 0  # Default start time
+STATE = "state"
 STEP_VAL = 1  # Multiplier used for simulation input
 TIME = "time"
 
