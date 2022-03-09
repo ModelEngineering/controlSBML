@@ -167,7 +167,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             self._last_time = time
         #return [self.ctlsb.get(n) - x_vec[idx]
         #      for idx, n in enumerate(self.ctlsb.state_names)]
-        return self.ctlsb.state_ser.values - x_vec
+        result = self.ctlsb.state_ser.values - x_vec
+        print(result)
+        return result
 
     def ctlsbOutfcn(*_, **__):
         """
