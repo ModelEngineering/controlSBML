@@ -36,12 +36,21 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.ctlsb = ctlsb
         self.effector_dct = effector_dct
         # Set up the calls
-        if ctlsb is not None:
+        newPargs = list(pargs)
+        # Specify the update functions to call
+        self._updfcn = newPargs[0]
+        self._outfcn = newPargs[1]
+        if self.ctlsb is not None:
             self._updfcn = self.ctlsbUpdfcn
             self._outfcn = self.ctlsbOutfcn
-        else:
-            self._updfcn = parms[0]
-            self._outfcn = parms[1]
+        # Call the wrappers
+        newPargs[0] = self._updfcnWrapper
+        newPargs[1] = self._outfcnWrapper
+        if self.ctlsb is None:
+            if pargs[0] is None:
+                newPargs[0] = None
+            if pargs[1] is None:
+                newPargs[1] = None
         # Initializations
         self.state_call_dct = None
         self.output_call_dct = None
@@ -49,10 +58,17 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self._last_time = None  # Last time at which state update was called
         self.reset()
         # Initialize the controlNonlinearIOSystem object
-        newPargs = list(pargs)
-        newPargs[0] = self._updfcnWrapper
-        newPargs[0] = self._outfcnWrapper
-        super.__init__(*pargs, **kwargs)
+        super().__init__(*newPargs, **kwargs)
+
+    @property
+    def state_call_df(self):
+        return pd.DataFrame(self.state_call_dct,
+              columns=self.state_call_dct.keys())
+
+    @property
+    def output_call_df(self):
+        return pd.DataFrame(self.output_call_dct,
+              columns=self.state_output_dct.keys())
 
     def reset(self):
         """
@@ -71,7 +87,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         dct = {cn.EVENT: []}
         for key in ARG_LST:
             dct[key] = []
-        dct[cn.RETURNS] = []
+        dct[cn.RESULTS] = []
         return dct
 
     @staticmethod
@@ -80,8 +96,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         Updates information in the call dictionary history.
         """
         dct[cn.EVENT].append(event)
-        for idx, key in enumerate(
-            dct[ARG_LST[idx])  = pargs[idx]
+        for idx, key in enumerate(ARG_LST):
+            dct[key].append(pargs[idx])
 
     def _updfcnWrapper(self, *pargs, **kwargs):
         """
@@ -99,7 +115,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self._updateCallDct(self.state_call_dct, cn.STATE, *pargs)
         results = self._updfcn(*pargs)
         self._is_first_state_call = False
-        dct[cn.RESULTS] = results
+        self.state_call_dct[cn.RESULTS].append(results)
         return results
 
     def _outfcnWrapper(self, *pargs, **kwargs):
@@ -117,7 +133,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         """
         self._updateCallDct(self.output_call_dct, cn.OUTPUT, *pargs)
         results = self._outfcn(*pargs)
-        dct[cn.RESULTS] = results
+        self.output_call_dct[cn.RESULTS] = results
         return results
 
     def ctlsbUpdfcn(self, time, x_vec, u_vec, _):
@@ -129,6 +145,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         time: float: time
         x_vec: np.array(float): state vector
         u_vec: np.array(float): input vector (in log10 units)
+
+        Returns
+        -------
+        np.array(float): change in state vector
         """
         # Initializations
         if self._is_first_state_call:
@@ -145,7 +165,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             self.ctlsb.set(input_dct)  # Update input values
             _ = self.ctlsb.roadrunner.simulate(self._last_time, time, 2)
             self._last_time = time
-        return [self.ctlsb.get(n) for n in self.ctlsb.state_names]
+        #return [self.ctlsb.get(n) - x_vec[idx]
+        #      for idx, n in enumerate(self.ctlsb.state_names)]
+        return self.ctlsb.state_ser.values - x_vec
 
     def ctlsbOutfcn(*_, **__):
         """
