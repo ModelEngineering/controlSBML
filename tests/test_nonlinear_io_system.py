@@ -14,6 +14,7 @@ if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
 EFFECTOR_DCT = {"J0": "E_J0"}
+END_TIME = 5
 
 LINEAR_MDL = """
 J0: $S0 -> S1; $S0
@@ -74,7 +75,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def init(self):
         self.ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
-              input_names=["J0"], output_names=["S2"])
+              input_names=["J0"], output_names=["S1", "S2"])
         self.sys = ctl.NonlinearIOSystem(None, None, ctlsb=self.ctlsb,
               inputs=self.ctlsb.input_names, outputs=self.ctlsb.output_names,
               states=self.ctlsb.state_names, name="test_sys",
@@ -109,25 +110,81 @@ class TestNonlinearIOSystem(unittest.TestCase):
             plt.legend(['Hare', 'Lynx'])
             plt.show()
 
-    def testCtlsbUpdfcn(self):
-        if IGNORE_TEST:
-          return
-        self.init()
-        num_time = 51
+    def runSimulation(self, method):
+        self.sys.reset()
+        num_time = 10*END_TIME + 1
         x_vec = self.ctlsb.state_ser.values
-        u_vec = np.repeat(1, len(self.ctlsb.input_names))
+        u_vec = np.repeat(0, len(self.ctlsb.input_names))
         times = [n*0.1 for n in range(0, num_time)]
         dct = {n: [] for n in self.ctlsb.state_names}
         for time in times:
-            _ = self.sys.ctlsbUpdfcn(time, x_vec, u_vec, {})
-            self.sys._is_first_state_call = False
+            _ = method(time, x_vec, u_vec, {})
+            self.sys._is_first_call = False
             states = [self.ctlsb.get(n) for n in self.ctlsb.state_names]
             [dct[self.ctlsb.state_names[i]].append(states[i])
                   for i in range(self.ctlsb.num_state)]
             x_vec = self.ctlsb.state_ser.values
-        df = pd.DataFrame(dct)
-        last_value = df.values[-1,:]
-        self.assertGreater(last_value[-1], last_value[0])
+        return pd.DataFrame(dct)
+
+    def testCtlsbUpdfcn(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        df = self.runSimulation(self.sys.ctlsbUpdfcn)
+        self._checkWithSimulation(df)
+
+    def testOutfcn(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        df = self.runSimulation(self.sys.ctlsbOutfcn)
+        self._checkWithSimulation(df)
+
+    def _checkWithSimulation(self, df):
+        df_rr = self.ctlsb.simulateRoadrunner(end_time=END_TIME)
+        df_rr = df_rr[df.columns]
+        ssq = np.sum((df.values - df_rr.values)**2)
+        self.assertLess(ssq, 1e-4)
+
+    def test_state_call_df(self):
+        if IGNORE_TEST:
+          return
+        _ = self.runInputOutputResponse(0)
+        self.assertTrue(isinstance(self.sys.state_call_df, pd.DataFrame))
+        self.assertGreater(len(self.sys.state_call_df), 0)
+
+    def test_output_call_df(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        _ = self.runInputOutputResponse(0)
+        self.assertTrue(isinstance(self.sys.output_call_df, pd.DataFrame))
+        self.assertGreater(len(self.sys.output_call_df), 0)
+
+    def runInputOutputResponse(self, u_val, end_time=END_TIME):
+        num_time = 10*end_time + 1
+        times = [n*0.1 for n in range(0, num_time)]
+        x_vec = self.ctlsb.state_ser.values
+        u_vec = np.repeat(u_val, len(self.ctlsb.input_names))
+        u_vec = np.repeat(u_vec, num_time)
+        t, y = control.input_output_response(self.sys, times, u_vec, x_vec)
+        df = pd.DataFrame(y, self.ctlsb.output_names)
+        return df.transpose()
+
+    def testWithInputOutputResponse(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        df = self.runInputOutputResponse(0)
+        self._checkWithSimulation(df)
+        # Output increases with inpu
+        self.sys.reset()
+        df1 = self.runInputOutputResponse(1)
+        self.sys.reset()
+        df2 = self.runInputOutputResponse(10)
+        diff = (df2 - df1).sum().sum()
+        self.assertGreater(diff, 10)
+        
 
 
 if __name__ == '__main__':

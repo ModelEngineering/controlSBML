@@ -54,7 +54,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         # Initializations
         self.state_call_dct = None
         self.output_call_dct = None
+        self._is_first_call = None  # Used for simulation initialization
         self._is_first_state_call = None
+        self._is_first_output_call = None
         self._last_time = None  # Last time at which state update was called
         self.reset()
         # Initialize the controlNonlinearIOSystem object
@@ -68,34 +70,34 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     @property
     def output_call_df(self):
         return pd.DataFrame(self.output_call_dct,
-              columns=self.state_output_dct.keys())
+              columns=self.output_call_dct.keys())
 
     def reset(self):
         """
         Sets to initial conditions.
         """
-        self.state_call_dct = self._initializeCallDct()
-        self.output_call_dct = self._initializeCallDct()
+        self.state_call_dct = self._initializeCallDct(cn.OUT_STATE)
+        self.output_call_dct = self._initializeCallDct(cn.OUTPUT)
         self._is_first_state_call = True
+        self._is_first_output_call = True
         self._last_time = 0
 
     @staticmethod
-    def _initializeCallDct():
+    def _initializeCallDct(final_key):
         """
         Initializes the call dictionary history.
         """
-        dct = {cn.EVENT: []}
+        dct = {}
         for key in ARG_LST:
             dct[key] = []
-        dct[cn.RESULTS] = []
+        dct[final_key] = []
         return dct
 
     @staticmethod
-    def _updateCallDct(dct, event, *pargs):
+    def _updateCallDct(dct, *pargs):
         """
         Updates information in the call dictionary history.
         """
-        dct[cn.EVENT].append(event)
         for idx, key in enumerate(ARG_LST):
             dct[key].append(pargs[idx])
 
@@ -112,10 +114,11 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         list (entries in updated state)
         """
-        self._updateCallDct(self.state_call_dct, cn.STATE, *pargs)
-        results = self._updfcn(*pargs)
+        self._first_call = self._is_first_state_call
+        self._updateCallDct(self.state_call_dct, *pargs)
+        results = self._updfcn(*pargs, **kwargs)
+        self.state_call_dct[cn.OUT_STATE].append(results)
         self._is_first_state_call = False
-        self.state_call_dct[cn.RESULTS].append(results)
         return results
 
     def _outfcnWrapper(self, *pargs, **kwargs):
@@ -131,9 +134,11 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         list (entries in output)
         """
-        self._updateCallDct(self.output_call_dct, cn.OUTPUT, *pargs)
-        results = self._outfcn(*pargs)
-        self.output_call_dct[cn.RESULTS] = results
+        self._is_first_call = self._is_first_output_call
+        self._updateCallDct(self.output_call_dct, *pargs)
+        results = self._outfcn(*pargs, **kwargs)
+        self.output_call_dct[cn.OUTPUT].append(results)
+        self._is_first_output_call = False
         return results
 
     def ctlsbUpdfcn(self, time, x_vec, u_vec, _):
@@ -151,8 +156,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         np.array(float): change in state vector
         """
         # Initializations
-        if self._is_first_state_call:
+        if self._is_first_call:
             self.ctlsb.roadrunner.reset()
+            x_vec = self.ctlsb.state_ser.values
+            self._last_time = 0
         if time - self._last_time < MIN_ELAPSED_TIME:
             # Verify that time is moving forward and sufficient time has passed
             pass
@@ -170,16 +177,13 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         result = self.ctlsb.state_ser.values - x_vec
         return result
 
-    def ctlsbOutfcn(*_, **__):
+    def ctlsbOutfcn(self, *pargs, **kwargs):
         """
         Extracts the outputs from the simulation.
 
-        Parameters
-        ----------
-         Arguments are passed but ignored.
-        
         Returns
         -------
         np.array
         """
+        _ = self.ctlsbUpdfcn(*pargs, **kwargs)
         return self.ctlsb.output_ser.values
