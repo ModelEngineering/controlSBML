@@ -17,6 +17,7 @@ TO DO:
 """
 
 from controlSBML.make_roadrunner import makeRoadrunner
+import controlSBML as ctl
 
 import control
 import numpy as np
@@ -457,3 +458,23 @@ class ControlBase(object):
             D_mat = np.repeat(0, nrow*ncol)
             D_mat = np.reshape(D_mat, (nrow, ncol))
         return control.StateSpace(A_mat, B_mat, C_mat, D_mat)
+
+    def makeNonlinearIOSystem(self, name, effector_dct=None):
+        """
+        Creates an object that can be used in connections with the
+        control package.
+ 
+        Parameters
+        ----------
+        name: str (name of the system)
+        effector_dct: dict (maps reaction inputs to roadrunner muteables)
+            key: str (input name)
+            value: str (name of roadrunner muteable)
+        
+        Returns
+        -------
+        controlSBML.NonelinearIOSystem
+        """
+        if effector_dct is None:
+            effector_dct = {n: n for n in self.input_names}
+        return ctl.NonlinearIOSystem(name, self, effector_dct=effector_dct)

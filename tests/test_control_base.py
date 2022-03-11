@@ -263,6 +263,14 @@ class TestControlBase(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = ControlBase(LINEAR_MDL, output_names=["S1", "SS2"])
 
+    def testMakeNonlinearIOSystem(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"])
+        effector_dct = {"J0": "S0"}
+        non_sys = ctlsb.makeNonlinearIOSystem("tst", effector_dct=effector_dct)
+        self.assertTrue("NonlinearIOSystem" in str(type(non_sys)))
+
 
 if __name__ == '__main__':
   unittest.main()

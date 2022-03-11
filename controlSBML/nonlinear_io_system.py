@@ -1,4 +1,4 @@
-"""Extends control.NonlinearIOSystem to consider ControlSBML objects."""
+"""Extends control.NonlinearIOSystem for ControlSBML objects."""
 
 import controlSBML.constants as cn
 
@@ -12,16 +12,16 @@ MIN_ELAPSED_TIME = 1e-2
 
 class NonlinearIOSystem(control.NonlinearIOSystem):
 
-    def __init__(self, *pargs, ctlsb=None, effector_dct=None, **kwargs):
+    def __init__(self, name, ctlsb, effector_dct=None, **kwargs):
         """
         Parameters
         ----------
-        pargs: list (positional arguments for control.NonlinearIOSystem)
+        name: Name of the non-linear system created
         ctlsb: ControlSBML
         effector_dct: dict
             key: input defined in ControlSBML object
             value: roadrunner muteable (e.g., floating species, parameter)
-        kwargs: dict (keyword arguments for control.NonlinearIOSystem)
+        kwargs: dict (additional keyword arguments provided by caller)
 
         Usage:
             sys = NonlinearIOSystem(func, None,
@@ -29,121 +29,23 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                   state=["s1", "s2", "s3"])
             times, y_val1s = control.input_output_response(sys, input_times,
                   input1s, initial_state)
-            sys.reset()
             times, y_val2s = control.input_output_response(sys, input_times,
                   input2s, initial_state)
         """
         self.ctlsb = ctlsb
         self.effector_dct = effector_dct
-        # Set up the calls
-        newPargs = list(pargs)
-        # Specify the update functions to call
-        self._updfcn = newPargs[0]
-        self._outfcn = newPargs[1]
-        if self.ctlsb is not None:
-            self._updfcn = self.ctlsbUpdfcn
-            self._outfcn = self.ctlsbOutfcn
-        # Call the wrappers
-        newPargs[0] = self._updfcnWrapper
-        newPargs[1] = self._outfcnWrapper
-        if self.ctlsb is None:
-            if pargs[0] is None:
-                newPargs[0] = None
-            if pargs[1] is None:
-                newPargs[1] = None
-        # Initializations
-        self.state_call_dct = None
-        self.output_call_dct = None
-        self._is_first_call = None  # Used for simulation initialization
-        self._is_first_state_call = None
-        self._is_first_output_call = None
-        self._last_time = None  # Last time at which state update was called
-        self.reset()
+        if self.effector_dct is None:
+            self.effector_dct = {}
         # Initialize the controlNonlinearIOSystem object
-        super().__init__(*newPargs, **kwargs)
+        super().__init__(self.updfcn, self.outfcn,
+              inputs=ctlsb.input_names, outputs=ctlsb.output_names,
+              states=ctlsb.state_names, name=name)
 
-    @property
-    def state_call_df(self):
-        return pd.DataFrame(self.state_call_dct,
-              columns=self.state_call_dct.keys())
-
-    @property
-    def output_call_df(self):
-        return pd.DataFrame(self.output_call_dct,
-              columns=self.output_call_dct.keys())
-
-    def reset(self):
-        """
-        Sets to initial conditions.
-        """
-        self.state_call_dct = self._initializeCallDct(cn.OUT_STATE)
-        self.output_call_dct = self._initializeCallDct(cn.OUTPUT)
-        self._is_first_state_call = True
-        self._is_first_output_call = True
-        self._last_time = 0
-
-    @staticmethod
-    def _initializeCallDct(final_key):
-        """
-        Initializes the call dictionary history.
-        """
-        dct = {}
-        for key in ARG_LST:
-            dct[key] = []
-        dct[final_key] = []
-        return dct
-
-    @staticmethod
-    def _updateCallDct(dct, *pargs):
-        """
-        Updates information in the call dictionary history.
-        """
-        for idx, key in enumerate(ARG_LST):
-            dct[key].append(pargs[idx])
-
-    def _updfcnWrapper(self, *pargs, **kwargs):
-        """
-        Calls the state update function.
-
-        Parameters
-        ----------
-        pargs: list (positional arguments passed to updfcn)
-        kwargs: dict (keyword arguments passed to updfcn)
-        
-        Returns
-        -------
-        list (entries in updated state)
-        """
-        self._first_call = self._is_first_state_call
-        self._updateCallDct(self.state_call_dct, *pargs)
-        results = self._updfcn(*pargs, **kwargs)
-        self.state_call_dct[cn.OUT_STATE].append(results)
-        self._is_first_state_call = False
-        return results
-
-    def _outfcnWrapper(self, *pargs, **kwargs):
-        """
-        Calls the ouput update function.
-
-        Parameters
-        ----------
-        pargs: list (positional arguments passed to updfcn)
-        kwargs: dict (keyword arguments passed to updfcn)
-        
-        Returns
-        -------
-        list (entries in output)
-        """
-        self._is_first_call = self._is_first_output_call
-        self._updateCallDct(self.output_call_dct, *pargs)
-        results = self._outfcn(*pargs, **kwargs)
-        self.output_call_dct[cn.OUTPUT].append(results)
-        self._is_first_output_call = False
-        return results
-
-    def ctlsbUpdfcn(self, time, x_vec, u_vec, _):
-        """
-        Computes updated states by running a short simulation.
+    def updfcn(self, time, x_vec, u_vec, _):
+        """ 
+        Computes the change in state. This is done by having roadrunner
+        calculate fluxes. No simulation is run, and so this technique
+        may not always work.
         
         Parameters
         ----------
@@ -155,35 +57,44 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         np.array(float): change in state vector
         """
-        # Initializations
-        if self._is_first_call:
-            self.ctlsb.roadrunner.reset()
-            x_vec = self.ctlsb.state_ser.values
-            self._last_time = 0
-        if time - self._last_time < MIN_ELAPSED_TIME:
-            # Verify that time is moving forward and sufficient time has passed
-            pass
-        else:
-            # Update the state and inputs in the simulation
-            if not "len" in dir(u_vec):
-                u_vec = [u_vec]  # Ensure that this is vector-like
-            input_dct = {self.effector_dct[n]: float(u_vec[i])
-                         for i, n in enumerate(self.ctlsb.input_names)}
-            self.ctlsb.set(input_dct)  # Update input values
-            _ = self.ctlsb.roadrunner.simulate(self._last_time, time, 2)
-            self._last_time = time
-        #return [self.ctlsb.get(n) - x_vec[idx]
-        #      for idx, n in enumerate(self.ctlsb.state_names)]
-        result = self.ctlsb.state_ser.values - x_vec
-        return result
+        if isinstance(u_vec, float):
+            u_vec = [u_vec]
+        self.ctlsb.setTime(time)  # Consider time dependent functions
+        # Adust the state and input
+        state_dct = {n: x_vec[i] for i, n in enumerate(self.ctlsb.state_names)}
+        self.ctlsb.set(state_dct)
+        input_dct = {self.effector_dct[n]: u_vec[i]
+                     for i, n in enumerate(self.ctlsb.input_names)}
+        self.ctlsb.set(input_dct)
+        # Construct the flux vector
+        s_df = self.ctlsb.full_stoichiometry_df
+        flux_names = list(s_df.columns)
+        flux_dct = {n: self.ctlsb.get(n) for n in flux_names}
+        flux_ser = pd.Series(flux_dct)
+        # Compute the change in state
+        vec = np.matmul(s_df.values, flux_ser.values)
+        dstate_ser = pd.Series({n: vec[i] for i, n in enumerate(s_df.index)
+              if n in self.ctlsb.state_names})
+        return dstate_ser.values
 
-    def ctlsbOutfcn(self, *pargs, **kwargs):
-        """
-        Extracts the outputs from the simulation.
+    def outfcn(self, time, x_vec, u_vec, _): 
+        """ 
+        Calculates the values of outputs.
+        
+        Parameters
+        ----------
+        time: float: time
+        x_vec: np.array(float): state vector
+        u_vec: np.array(float): input vector (in log10 units)
 
         Returns
         -------
-        np.array
+        np.array(float): change in state vector
         """
-        _ = self.ctlsbUpdfcn(*pargs, **kwargs)
-        return self.ctlsb.output_ser.values
+        out_vec = np.repeat(np.nan, self.ctlsb.num_output)
+        for out_idx, name in enumerate(self.ctlsb.output_names):
+            state_idx = self.ctlsb.state_names.index(name)
+            out_vec[out_idx] = x_vec[state_idx]
+        if np.isnan(np.sum(out_vec)):
+            raise ValueError("Outputs could not be calculated.")
+        return out_vec
