@@ -101,6 +101,30 @@ class TestNonlinearIOSystem(unittest.TestCase):
         out_vec = self.sys.outfcn(time, x_vec, u_vec, None)
         self.assertEqual(len(out_vec), len(self.ctlsb.output_names))
 
+    def testOutlist(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        names = self.sys.outlist
+        self.assertTrue(all([self.sys.name in n for n in names]))
+        self.assertEqual(len(names), self.ctlsb.num_output)
+
+    def testGetStateSer(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        ser_0 = self.sys.getStateSer()
+        ser_1 = self.sys.getStateSer(time=1)
+        self.assertGreater(ser_0.loc["S0"], ser_1.loc["S1"])
+
+    def testInplist(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        names = self.sys.inplist
+        self.assertTrue(all([self.sys.name in n for n in names]))
+        self.assertEqual(len(names), self.ctlsb.num_input)
+
     def _checkWithSimulation(self, df):
         df_rr = self.ctlsb.simulateRoadrunner(start_time=0, end_time=END_TIME,
                points_per_time=POINTS_PER_TIME)     

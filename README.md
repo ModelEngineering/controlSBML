@@ -67,7 +67,10 @@ is the Jacobian of the current ``RoadRunner`` instance. You can either specify a
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.1.4,
+* 0.1.6,
+  * Implemented ``controlSBML.NonlinearIOSystem`` that wraps an SBML model. Can be used
+    in the construction of systems using ``control.interconnect``.
+* 0.1.5,
   * More options for plotting and simulations
   * plotBode
   * Inputs are identified by reaction Ids

@@ -33,13 +33,46 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                   input2s, initial_state)
         """
         self.ctlsb = ctlsb
+        # Useful properties
+        self.state_names = ctlsb.state_names
+        self.input_names = ctlsb.input_names
+        self.output_names = ctlsb.output_names
+        #
         self.effector_dct = effector_dct
         if self.effector_dct is None:
             self.effector_dct = {}
+        for input_name in self.input_names:
+            if not input_name in self.effector_dct.keys():
+                # Make it its own effector
+                self.effector_dct[input_name] = input_name
         # Initialize the controlNonlinearIOSystem object
         super().__init__(self.updfcn, self.outfcn,
               inputs=ctlsb.input_names, outputs=ctlsb.output_names,
               states=ctlsb.state_names, name=name)
+
+    @property
+    def outlist(self):
+        return ["%s.%s" % (self.name, n) for n in self.ctlsb.output_names]
+
+    @property
+    def inplist(self):
+        return ["%s.%s" % (self.name, self.effector_dct[n])
+              for n in self.ctlsb.input_names]
+
+    def getStateSer(self, time=0):
+        """
+        Gets the values of state at the specified time.
+
+        Parameters
+        ----------
+        time: float
+        
+        Returns
+        -------
+        pd.Series
+        """
+        self.ctlsb.setTime(time)
+        return self.ctlsb.state_ser
 
     def updfcn(self, time, x_vec, u_vec, _):
         """ 

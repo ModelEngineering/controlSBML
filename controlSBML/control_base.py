@@ -17,6 +17,7 @@ TO DO:
 """
 
 from controlSBML.make_roadrunner import makeRoadrunner
+from controlSBML import msgs
 import controlSBML as ctl
 
 import control
@@ -90,6 +91,8 @@ class ControlBase(object):
         self.antimony = self.roadrunner.getAntimony()
         # Do the initializations
         self.roadrunner.reset()
+        # Ignored sets
+        self._ignored_setter_names = []
         # Validation checks
         if set(self.state_names) != set(self.species_names):
             text = "State does not include some spaces.\n"
@@ -352,7 +355,15 @@ class ControlBase(object):
         for name, value in name_dct.items():
             if isinstance(value, int):
                 value = float(value)
-            self.roadrunner[name] = value
+            try:
+                self.roadrunner[name] = value
+            except RuntimeError:
+                if not name in self._ignored_setter_names:
+                    text = "Attempt to set an non-muteable in roadrunner: %s. Ignored."  \
+                          % name
+                    msgs.warn(text)
+                    # Only give the error once
+                    self._ignored_setter_names.append(name)
 
     @staticmethod
     def _sortList(super_lst, sub_lst):
@@ -387,33 +398,6 @@ class ControlBase(object):
         B_df = B_df.loc[sub_names, :]
         #
         return B_df
-
-    def makeNonLinearIOSystem(self, name):
-        """
-        Creates a control.NonLinearIOSystem.
-
-        Parameters
-        ----------
-        name: str
-        effector_dct: dict
-            key: str (input name)
-            output: str (name of roadrunner muteable, such a species or constant)
-        
-        Returns
-        -------
-        control.NonLinearIOSystem
-        """
-        # TODO: implemtn setEffectorDct, wrappers; handle problem with is_initialized
-        return control.NonlinearIOSystem(
-            self.state_tellurium_wrapper, 
-            self.output_tellurium_wrapper,
-            states=self.state_names,
-            inputs=self.input_names,
-            outputs=self.output_names,
-            name=name,
-            ctlsb=self,
-            effector_dct=effector_dct,
-            )
 
     def makeMIMOLinearSystem(self, A_mat=None, B_mat=None,
           C_mat=None, D_mat=None):
@@ -475,6 +459,4 @@ class ControlBase(object):
         -------
         controlSBML.NonelinearIOSystem
         """
-        if effector_dct is None:
-            effector_dct = {n: n for n in self.input_names}
         return ctl.NonlinearIOSystem(name, self, effector_dct=effector_dct)
