@@ -164,7 +164,8 @@ class ControlPlot(ControlAnalysis):
     def plotBode(self, is_magnitude=True, is_phase=True, is_plot=True,
           **kwargs):
         """
-        Constructs bode plots for a MIMO system. This is done by constructing n*n
+        Constructs bode plots for a State Spaesystem.
+        This is done by constructing n*n
         SISO systems where there n states.
     
         Parameters
@@ -177,7 +178,7 @@ class ControlPlot(ControlAnalysis):
             Display plots
         #@expand
         """
-        mimo_sys = self.makeMIMOLinearSystem()
+        mimo_sys = self.makeStateSpace()
         tf = StateSpaceTF(mimo_sys, input_names=self.input_names,
               output_names=self.output_names)
         tf.plotBode(is_magnitude==is_magnitude, is_phase==is_phase,

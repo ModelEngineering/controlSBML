@@ -391,10 +391,10 @@ class ControlBase(object):
         #
         return B_df
 
-    def makeMIMOLinearSystem(self, A_mat=None, B_mat=None,
+    def makeStateSpace(self, A_mat=None, B_mat=None,
           C_mat=None, D_mat=None):
         """
-        Creates a MIMO linear system control system object for
+        Creates a state space control object for
         the n X n jacobian. By default, the D matrix is always 0.
 
         Parameters

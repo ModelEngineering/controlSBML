@@ -53,7 +53,7 @@ class ControlAnalysis(ControlBase):
         self.setTime(timepoint)
         if prms.B_df is None:
             prms.B_df = self._makeBDF()
-        sys =self.makeMIMOLinearSystem(A_mat=prms.A_df, B_mat=prms.B_df,
+        sys =self.makeStateSpace(A_mat=prms.A_df, B_mat=prms.B_df,
               C_mat=prms.C_df)
         X0 = self.state_ser
         self.setTime(prms.start_time)
