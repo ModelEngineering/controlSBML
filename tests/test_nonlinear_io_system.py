@@ -163,6 +163,13 @@ class TestNonlinearIOSystem(unittest.TestCase):
         df2 = self.runInputOutputResponse(10)
         diff = (df2 - df1).sum().sum()
         self.assertGreater(diff, 10)
+
+    def testWithInputOutputResponseWithoutEffector(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb)
+        df = self.runInputOutputResponse(0)
         
 
 

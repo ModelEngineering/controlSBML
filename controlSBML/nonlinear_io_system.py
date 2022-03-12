@@ -1,6 +1,7 @@
 """Extends control.NonlinearIOSystem for ControlSBML objects."""
 
 import controlSBML.constants as cn
+from controlSBML import msgs
 
 import control
 import numpy as np
@@ -49,19 +50,20 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             if not input_name in self.effector_dct.keys():
                 # Make it its own effector
                 self.effector_dct[input_name] = input_name
+        self._ignored_inputs = []  # Note setable inputs
         # Initialize the controlNonlinearIOSystem object
         super().__init__(self.updfcn, self.outfcn,
-              inputs=ctlsb.input_names, outputs=ctlsb.output_names,
-              states=ctlsb.state_names, name=name)
+              inputs=self.input_names, outputs=self.output_names,
+              states=self.state_names, name=name)
 
     @property
     def outlist(self):
-        return ["%s.%s" % (self.name, n) for n in self.ctlsb.output_names]
+        return ["%s.%s" % (self.name, n) for n in self.output_names]
 
     @property
     def inplist(self):
         return ["%s.%s" % (self.name, self.effector_dct[n])
-              for n in self.ctlsb.input_names]
+              for n in self.input_names]
 
     def getStateSer(self, time=0):
         """
@@ -98,21 +100,24 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             u_vec = [u_vec]
         if self.do_simulate_on_update:
             self.ctlsb.setTime(time)  # Consider time dependent functions
-        # Adust the state and input
-        state_dct = {n: x_vec[i] for i, n in enumerate(self.ctlsb.state_names)}
+        # Adust the state
+        state_dct = {n: x_vec[i] for i, n in enumerate(self.state_names)}
         self.ctlsb.set(state_dct)
+        # Set values for input effector and check for errors
         input_dct = {self.effector_dct[n]: u_vec[i]
-                     for i, n in enumerate(self.ctlsb.input_names)}
-        self.ctlsb.set(input_dct)
-        # Construct the flux vector
-        s_df = self.ctlsb.full_stoichiometry_df
-        flux_names = list(s_df.columns)
-        flux_dct = {n: self.ctlsb.get(n) for n in flux_names}
-        flux_ser = pd.Series(flux_dct)
-        # Compute the change in state
-        vec = np.matmul(s_df.values, flux_ser.values)
-        dstate_ser = pd.Series({n: vec[i] for i, n in enumerate(s_df.index)
-              if n in self.ctlsb.state_names})
+                     for i, n in enumerate(self.input_names)}
+        for input_name, input_value in input_dct.items():
+            try:
+                self.ctlsb.set({input_name: input_value})
+            except RuntimeError:
+                if input_name not in self._ignored_inputs:
+                    self._ignored_inputs.append(input_name)
+                    text = "System %s: Input %s cannot be set. Ignored."  \
+                          % (self.name, input_name)
+                    msgs.warn(text)
+        # Calculate the change in floating species in state
+        dstate_names = ["%s'" % n for n in self.state_names]
+        dstate_ser = pd.Series(self.ctlsb.get(dstate_names))
         return dstate_ser.values
 
     def outfcn(self, time, x_vec, u_vec, _): 
@@ -130,8 +135,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         np.array(float): change in state vector
         """
         out_vec = np.repeat(np.nan, self.ctlsb.num_output)
-        for out_idx, name in enumerate(self.ctlsb.output_names):
-            state_idx = self.ctlsb.state_names.index(name)
+        for out_idx, name in enumerate(self.output_names):
+            state_idx = self.state_names.index(name)
             out_vec[out_idx] = x_vec[state_idx]
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")

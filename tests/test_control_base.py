@@ -31,6 +31,7 @@ k0 = 1
 k1 = 1
 k2 = 1
 """
+LINEAR_MDL_INPUT_NAMES = ["J0", "J1", "J2"]
 NONLINEAR_MDL = """
 S0 -> 2 S0; S0
 S0 -> S1; S0
@@ -245,7 +246,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeBMatrix(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlBase(LINEAR_MDL)
+        ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_INPUT_NAMES)
         B_df = ctlsb._makeBDF()
         self.assertEqual(np.shape(B_df.values), (3, 3))
         self.assertTrue(all(B_df.values.flatten()

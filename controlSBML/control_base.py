@@ -93,8 +93,6 @@ class ControlBase(object):
         self.antimony = self.roadrunner.getAntimony()
         # Do the initializations
         self.roadrunner.reset()
-        # Ignored sets
-        self._ignored_setter_names = []
         # Validation checks
         if set(self.state_names) != set(self.species_names):
             text = "State does not include some spaces.\n"
@@ -357,15 +355,7 @@ class ControlBase(object):
         for name, value in name_dct.items():
             if isinstance(value, int):
                 value = float(value)
-            try:
-                self.roadrunner[name] = value
-            except RuntimeError:
-                if not name in self._ignored_setter_names:
-                    text = "Attempt to set an non-muteable in roadrunner: %s. Ignored."  \
-                          % name
-                    msgs.warn(text)
-                    # Only give the error once
-                    self._ignored_setter_names.append(name)
+            self.roadrunner[name] = value
 
     @staticmethod
     def _sortList(super_lst, sub_lst):
