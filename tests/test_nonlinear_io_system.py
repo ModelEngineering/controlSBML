@@ -54,11 +54,12 @@ class TestNonlinearIOSystem(unittest.TestCase):
             return
         self.init()
 
-    def init(self):
+    def init(self, do_simulate_on_update=True):
         self.ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
               input_names=["J0"], output_names=["S1", "S2"])
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb,
-               effector_dct=EFFECTOR_DCT)
+               effector_dct=EFFECTOR_DCT,
+               do_simulate_on_update=do_simulate_on_update)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -83,10 +84,14 @@ class TestNonlinearIOSystem(unittest.TestCase):
         df = pd.DataFrame(dct)
         return df
 
-    def testCtlsbUpdfcn(self):
+    def testUpdfcn(self):
         if IGNORE_TEST:
           return
         self.init()
+        df = self.runSimulation()
+        self._checkWithSimulation(df)
+        #
+        self.init(do_simulate_on_update=True)
         df = self.runSimulation()
         self._checkWithSimulation(df)
 

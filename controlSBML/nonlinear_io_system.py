@@ -12,7 +12,8 @@ MIN_ELAPSED_TIME = 1e-2
 
 class NonlinearIOSystem(control.NonlinearIOSystem):
 
-    def __init__(self, name, ctlsb, effector_dct=None, **kwargs):
+    def __init__(self, name, ctlsb, effector_dct=None,
+         do_simulate_on_update=False,  **kwargs):
         """
         Parameters
         ----------
@@ -21,6 +22,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         effector_dct: dict
             key: input defined in ControlSBML object
             value: roadrunner muteable (e.g., floating species, parameter)
+        do_simulate_on_update: bool
+            simulate to the current time before each state update
         kwargs: dict (additional keyword arguments provided by caller)
 
         Usage:
@@ -33,6 +36,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                   input2s, initial_state)
         """
         self.ctlsb = ctlsb
+        self.do_simulate_on_update = do_simulate_on_update
         # Useful properties
         self.state_names = ctlsb.state_names
         self.input_names = ctlsb.input_names
@@ -92,7 +96,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         """
         if isinstance(u_vec, float):
             u_vec = [u_vec]
-        self.ctlsb.setTime(time)  # Consider time dependent functions
+        if self.do_simulate_on_update:
+            self.ctlsb.setTime(time)  # Consider time dependent functions
         # Adust the state and input
         state_dct = {n: x_vec[i] for i, n in enumerate(self.ctlsb.state_names)}
         self.ctlsb.set(state_dct)

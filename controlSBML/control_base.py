@@ -76,8 +76,10 @@ class ControlBase(object):
         self.reaction_names = list(self.reduced_stoichiometry_df.columns)
         self.num_state = len(self.state_names)
         # Handle defaults
-        self.input_names = calcNames(self.reaction_names, input_names,
-              "reaction names", "inputs")
+        if input_names is None:
+            self.input_names = []
+        else:
+            self.input_names = input_names
         self.input_names = self._sortList(self.reaction_names, self.input_names)
         self.num_input = len(self.input_names)
         self.output_names = calcNames(self.state_names, output_names,
