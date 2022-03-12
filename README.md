@@ -1,15 +1,21 @@
 # controlSBML
-``controlSBML`` provides a means to do control analysis and design for SBML models using the CalTech ``control`` package.
-The SBML model is represented as follows:
+The [Systems Biology Markup Language (SBML)](https://co.mbine.org/standards/sbml) is a community standard for representing
+simulations of biological models, especially chemical reaction networks.
+``controlSBML`` is a package that does control analysis and design of SBML models using
+the [CalTech ``control`` package](http://python-control.sourceforge.net/manual/).
+
+``controlSBML`` uses the following "systems characterization" of an SBML model:
+
 * state variables are floating species;
 * inputs are reaction fluxes;
 * outputs are a subset of the state variables.
-Note that the implementation of a model requires a mapping from a reaction flux to an *effector*, typically a chemical
-species such as an enzyme specific to the reaction.
+
+We note that reaction fluxes cannot be manipulated directly. Thus,implementation requires a mapping from a reaction flux to an *effector*, typically a chemical
+species such as an enzyme that is specific to the reaction.
 The keyword ``effector_dct`` refers to a python dictionary that does this mapping.
 (See the ``makeNonlinearIOSystem`` method of ``ControlSBML``.)
 
-To interface with the ``control`` package, ``controlSBML`` creates two kinds of ``control`` objects for an SBML model:
+``controlSBML`` interfaes to the ``control`` package by creating two kinds of ``control`` objects for an SBML model:
 
 * ``NonlinearIOSystem``, which wraps the actual simulation of the SBML model; and
 * ``StateSpace``, which is a linear MIMO model approximation of the SBML model at a specified time in the simulation.
@@ -29,7 +35,7 @@ import controlSBML as ctl
 ctl.__version__
 ```
 
-### Installing slycot (a ``control`` package dependency)
+### Installing ``slycot`` (optional)
 To get the full set of capabilities from the ``control`` package,
 you need to install ``slycot``, a package that addresses requirements
 for more sophisticated manipulation of MIMO models (e.g.,
@@ -42,6 +48,7 @@ Google Collaboratory.
 
 Otherwise, you need to install from source. Below are the instructions
 for Ubuntu.
+
 * install cmake: ``pip install cmake --upgrade``
 * install sikit-build: ``pip install scikit-build``
 * install fortran: ``sudo apt-get install gfortran``
@@ -52,14 +59,18 @@ for Ubuntu.
 * ``python setup.py install`` 
 
 ## Constructing ControlSBML
-``ctlsb = ControlSBML(model_reference)`` where
+```
+ctlsb = ControlSBML(model_reference)
+```
+ where
 ``model_reference``can be any of the following:
 * path to a local file with the extension ``.ant`` or ``.xml``
 * a python string for an SBML or Antimony model representation
 * a URL to an XML file
 
-## Key properties
-* ``roadrunner`` is the roadrunner object for the model.
+## Technical Summary
+### Key properties
+* ``roadrunner`` is the roadrunner object for the SBML model.
 * ``jacobian_df`` is the full Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
 * ``antimony`` is the antimony representation of the model.
 * ``A_df`` is the ${\bf A}$ matrix in the linear system represented as a pandas DataFrame.
@@ -69,7 +80,7 @@ for Ubuntu.
 * ``input_names`` is a list of reaction names that specify the input vector.
 * ``output_names`` is a list of floating species that constitute the output vector.
 
-## Key methods
+### Key methods
 * ``setTime(new_time)`` resets ``roadrunner`` and runs a simulation from time zero to the time specified.
 * ``makeStateSpace()`` creates a ``control`` state space object using the Jacobian of the model at the current simulation time.
 * ``makeNonlinearIOSystem()`` creates a ``NonlinearIOSystem`` object that simulates the SBML model.
@@ -88,9 +99,9 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.1.6,
-  * Implemented ``controlSBML.NonlinearIOSystem`` that wraps an SBML model. Can be used
-    in the construction of systems using ``control.interconnect``.
-* 0.1.5,
+  * Can create ``control.NonlinearIOSystem`` that wraps an SBML model. Can be used
+    in the construction of systems using ``control.interconnect`` and in simulations using ``control.input_output_response``. One caveat is that this may work poorly for models implemented as SBML rate rules.
+* 0.1.5, 3/5/2022.
   * More options for plotting and simulations
   * plotBode
   * Inputs are identified by reaction Ids
