@@ -1,5 +1,24 @@
 # controlSBML
-``controlSBML`` provides: (1) a bridge between SBML models and the python ``control`` package and (2) capabilities for the analysis and design of control systems for SBML models.
+``controlSBML`` provides a means to do control analysis and design for SBML models using the CalTech ``control`` package.
+The SBML model is represented as follows:
+* state variables are floating species;
+* inputs are reaction fluxes;
+* outputs are a subset of the state variables.
+Note that the implementation of a model requires a mapping from a reaction flux to an *effector*, typically a chemical
+species such as an enzyme specific to the reaction.
+The keyword ``effector_dct`` refers to a python dictionary that does this mapping.
+(See the ``makeNonlinearIOSystem`` method of ``ControlSBML``.)
+
+To interface with the ``control`` package, ``controlSBML`` creates two kinds of ``control`` objects for an SBML model:
+
+* ``NonlinearIOSystem``, which wraps the actual simulation of the SBML model; and
+* ``StateSpace``, which is a linear MIMO model approximation of the SBML model at a specified time in the simulation.
+
+These objects can be used in combination with other ``control`` objects to analyze system properties,
+design controllers, and construct closed loop systems.
+
+``controlSBML`` also provides analyses of SBML models as well as a means to manipulate
+elements of the SBML model.
 
 ## Installation
 ``pip install controlSBML``
@@ -40,19 +59,20 @@ for Ubuntu.
 * a URL to an XML file
 
 ## Key properties
-* ``roadrunner`` is the roadrunner object for the model
+* ``roadrunner`` is the roadrunner object for the model.
 * ``jacobian_df`` is the full Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
-* ``antimony`` is the antimony representation of the model
-* ``A_df`` is the ${\bf A}$ matrix in the linear system
-* ``B_df`` is the ${\bf B}$ matrix in the linear system
-* ``C_df`` is the ${\bf C}$ matrix in the linear system
-* ``state_names`` is a list of floating species that constitute the state vector
-* ``input_names`` is a list of reaction names that specify the input vector
-* ``output_names`` is a list of floating species that constitute the output vector
+* ``antimony`` is the antimony representation of the model.
+* ``A_df`` is the ${\bf A}$ matrix in the linear system represented as a pandas DataFrame.
+* ``B_df`` is the ${\bf B}$ matrix in the linear system represented as a pandas DataFrame.
+* ``C_df`` is the ${\bf C}$ matrix in the linear system represented as a pandas DataFrame.
+* ``state_names`` is a list of floating species that constitute the state vector.
+* ``input_names`` is a list of reaction names that specify the input vector.
+* ``output_names`` is a list of floating species that constitute the output vector.
 
 ## Key methods
 * ``setTime(new_time)`` resets ``roadrunner`` and runs a simulation from time zero to the time specified.
 * ``makeStateSpace()`` creates a ``control`` state space object using the Jacobian of the model at the current simulation time.
+* ``makeNonlinearIOSystem()`` creates a ``NonlinearIOSystem`` object that simulates the SBML model.
 * ``plotTrueModel`` plots a roadrunner simulation.
 * ``plotLinearApproximation`` plots the linear approximation provided by an ${\bf A}$ matrix. The default ${\bf A}$ matrix
 is the Jacobian of the current ``RoadRunner`` instance. You can either specify a different ${\bf A}$ or set the ``RoadRunner`` instance to a different time.
