@@ -5,11 +5,13 @@ import pandas as pd
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
+DF = pd.DataFrame({"a": range(10)})
+DF["b"] = 10*DF["a"]
 
 
 #############################
@@ -20,12 +22,17 @@ class TestTimePlots(unittest.TestCase):
     def setUp(self):
         pass
 
-    def testPlotDF(self):
+    def testPlotOneDF(self):
         if IGNORE_TEST:
           return
-        df = pd.DataFrame({"a": range(10)})
-        df["b"] = 10*df["a"]
-        time_plots.plot1DF(df, ylabel="values", xlabel="sec", is_plot=IS_PLOT)
+        time_plots.plotOneDF(DF, ylabel="values", xlabel="sec",
+              is_plot=IS_PLOT)
+
+    def testPlotOneDF(self):
+        # TESTING
+        df = DF.applymap(lambda v: 100*v)
+        time_plots.plotManyDF(DF, df, ylabel="values", xlabel="sec",
+              is_plot=IS_PLOT, names=["first", "second"])
 
 
 
