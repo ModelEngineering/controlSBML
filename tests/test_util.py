@@ -1,12 +1,18 @@
 from controlSBML import util
 
+import pandas as pd
+import numpy as np
 import tellurium as te
 import unittest
-import numpy as np
 
 
 IGNORE_TEST = False
 IS_PLOT = False
+if IS_PLOT:
+    import matplotlib
+    matplotlib.use('TkAgg')
+DF = pd.DataFrame({"a": range(10)})
+DF["b"] = 10*DF["a"]
 
 
 #############################
@@ -40,6 +46,18 @@ class TestFunctions(unittest.TestCase):
         rr = te.loada(model_str)
         self.assertTrue("roadrunner" in str(type(rr)))
  
+    def testPlotOneTS(self):
+        if IGNORE_TEST:
+          return
+        util.plotOneTS(DF, ylabel="values", xlabel="sec",
+              is_plot=IS_PLOT)
+
+    def testPlotOneTS(self):
+        if IGNORE_TEST:
+          return
+        df = DF.applymap(lambda v: 100*v)
+        util.plotManyTS(DF, df, ylabel="values", xlabel="sec",
+              is_plot=IS_PLOT, names=["first", "second"])
 
 
 if __name__ == '__main__':

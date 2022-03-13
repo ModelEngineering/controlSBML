@@ -69,7 +69,9 @@ ctlsb = ControlSBML(model_reference)
 * a URL to an XML file
 
 ## Technical Summary
-### Key properties
+
+### ``ControlSBML``
+#### Properties
 * ``roadrunner`` is the roadrunner object for the SBML model.
 * ``jacobian_df`` is the full Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
 * ``antimony`` is the antimony representation of the model.
@@ -80,7 +82,7 @@ ctlsb = ControlSBML(model_reference)
 * ``input_names`` is a list of reaction names that specify the input vector.
 * ``output_names`` is a list of floating species that constitute the output vector.
 
-### Key methods
+#### Methods
 * ``setTime(new_time)`` resets ``roadrunner`` and runs a simulation from time zero to the time specified.
 * ``makeStateSpace()`` creates a ``control`` state space object using the Jacobian of the model at the current simulation time.
 * ``makeNonlinearIOSystem()`` creates a ``NonlinearIOSystem`` object that simulates the SBML model.
@@ -88,6 +90,14 @@ ctlsb = ControlSBML(model_reference)
 * ``plotLinearApproximation`` plots the linear approximation provided by an ${\bf A}$ matrix. The default ${\bf A}$ matrix
 is the Jacobian of the current ``RoadRunner`` instance. You can either specify a different ${\bf A}$ or set the ``RoadRunner`` instance to a different time.
 * ``plotBode`` constructs bode plots for the SISO systems formed by all combinations of inputs and outputs.
+
+### Other Functions
+* ``makeTS`` creates a time series object from an array. A time series object is a DataFrame whose index in time (in integer milliseconds),
+and the columns are variable names.
+* ``simulate`` provides a simplified way to simulate a system (which may be an ``interconnect``) by creating the times and initial,
+returns a time series DataFrame.
+* ``plotOneTS`` plots a single time series DataFrame.
+* ``plotManyTS`` plots multiple time series DataFrames structured so that each column is a separate plot that compares the different times series.
 
 ## Example
 
