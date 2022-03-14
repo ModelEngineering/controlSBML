@@ -89,7 +89,7 @@ class TestControlPlot(unittest.TestCase):
 
     def testPlotTrueModel(self):
         if IGNORE_TEST:
-            return
+          return
         self.ctlsb.plotTrueModel(is_plot=IS_PLOT, ylabel="values",
               end_time=10, title="title", figsize=(5, 10))
 

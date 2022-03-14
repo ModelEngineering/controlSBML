@@ -1,4 +1,6 @@
 from controlSBML import util
+from controlSBML.timeseries import Timeseries
+import controlSBML.constants as cn
 
 import pandas as pd
 import numpy as np
@@ -8,11 +10,13 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
+SIZE = 10
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
-DF = pd.DataFrame({"a": range(10)})
-DF["b"] = 10*DF["a"]
+times = [1.0*n for n in range(SIZE)]
+TS = Timeseries(pd.DataFrame({"a": range(SIZE)}), times=times)
+TS["b"] = 10*TS["a"]
 
 
 #############################
@@ -49,15 +53,18 @@ class TestFunctions(unittest.TestCase):
     def testPlotOneTS(self):
         if IGNORE_TEST:
           return
-        util.plotOneTS(DF, ylabel="values", xlabel="sec",
+        util.plotOneTS(TS, ylabel="values", xlabel="sec",
               is_plot=IS_PLOT)
 
-    def testPlotOneTS(self):
+    def testPlotManyTS(self):
         if IGNORE_TEST:
           return
-        df = DF.applymap(lambda v: 100*v)
-        util.plotManyTS(DF, df, ylabel="values", xlabel="sec",
+        df = TS.applymap(lambda v: 100*v)
+        ts = Timeseries(df, times=df.index)
+        util.plotManyTS(TS, ts, ylabel="values", xlabel="sec",
               is_plot=IS_PLOT, names=["first", "second"])
+        util.plotManyTS(TS, ts, ylabel="values", xlabel="sec",
+              is_plot=IS_PLOT, names=["first", "second"], ncol=2)
 
 
 if __name__ == '__main__':

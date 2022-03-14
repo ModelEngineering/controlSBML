@@ -141,3 +141,8 @@ FIG_KWARGS = list(FIG_DCT.keys())
 ALL_KWARGS = []
 for kwargs in [SIM_KWARGS, PLOT_KWARGS, FIG_KWARGS]:
     ALL_KWARGS.extend(kwargs)
+
+# TimeSeries
+MS_IN_SEC = 1000
+SEC_IN_MS = 1.0/MS_IN_SEC
+TIMESERIES_INDEX_NAME = "miliseconds"

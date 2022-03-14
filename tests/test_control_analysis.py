@@ -9,8 +9,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -97,15 +97,15 @@ class TestControlAnalysis(unittest.TestCase):
         #import pdb; pdb.set_trace()
 
     def testinearApproximationNonzeroInput(self):
-        if IGNORE_TEST:
-          return
+        # TESTING
         step_val = 2
         ctlsb = ControlAnalysis(LINEAR_MDL, input_names=["J0"])
         ctlsb.setTime(2)
         ctlsb.set({"S0": step_val})
         rr_df = ctlsb.simulateRoadrunner()
         linear_df = ctlsb.simulateLinearSystem(step_val=2)
-        squared_difference = ((rr_df-linear_df)**2).sum().sum()
+        squared_difference = (
+              (rr_df.to_pandas()-linear_df.to_pandas())**2).sum().sum()
         self.assertTrue(np.isclose(squared_difference, 0))
 
     def testSimulateLinearSystem2(self):

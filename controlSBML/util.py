@@ -66,33 +66,33 @@ def getModel(file_name=MODEL_823_FILE):
     return model_str
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
-def plotOneTS(df, **kwargs):
+def plotOneTS(ts, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
     columns are legends.
 
     Parameters
     ----------
-    df: pd.DataFrame
+    ts: TimeSeries
     #@expand
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
-    plt.plot(df.index, df)
-    legend_spec = cn.LegendSpec(df.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
+    plt.plot(ts.times, ts)
+    legend_spec = cn.LegendSpec(ts.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
     mgr.doFigOpts()
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
-def plotManyTS(*dfs, ncol=1, names=None, **kwargs):
+def plotManyTS(*tss, ncol=1, names=None, **kwargs):
     """
-    Plots multiple dataframes with the same columns so that each column
+    Plots multiple Timeseries with the same columns so that each column
     is a different plot.
 
     Parameters
     ----------
-    dfs: sequence of pd.DataFrame
+    tss: sequence of Timeseries
     ncol: int (number of columns)
     names: list-str
         Names of the dataframes
@@ -100,25 +100,27 @@ def plotManyTS(*dfs, ncol=1, names=None, **kwargs):
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
-    nrow = int(np.ceil(len(dfs)/ncol))
+    nrow = int(np.ceil(len(tss)/ncol))
     fig, axes = plt.subplots(nrow, ncol)
     axes = np.reshape(axes, (nrow, ncol))
-    columns = dfs[0].columns
+    columns = list(tss[0].columns)
     for idx, col in enumerate(columns):
+        new_mgr = mgr.copy()
         irow = int(np.floor(idx/ncol))
         icol = idx - irow*ncol
         ax = axes[irow, icol]
-        mgr.plot_opts[cn.O_AX] = ax
-        for df_idx, df in enumerate(dfs):
+        new_mgr.plot_opts.set(cn.O_AX, default=ax)
+        new_mgr.plot_opts.set(cn.O_TITLE, default=col)
+        for ts_idx, ts in enumerate(tss):
             try:
-                values = df[col]
+                values = ts[col]
             except KeyError:
                 raise ValueError("DataFrame %d lacks column %s"
-                      % (df_idx, col))
-            ax.plot(df.index, df[col])
+                      % (ts_idx, col))
+            ax.plot(ts.times, ts[col])
         if names is not None:
             legend_spec = cn.LegendSpec(names,
-                   crd=mgr.plot_opts[cn.O_LEGEND_CRD])
-            mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
-        mgr.doPlotOpts()
+                   crd=new_mgr.plot_opts[cn.O_LEGEND_CRD])
+            new_mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
+        new_mgr.doPlotOpts()
     mgr.doFigOpts()

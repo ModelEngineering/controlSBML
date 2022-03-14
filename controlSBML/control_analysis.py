@@ -1,5 +1,6 @@
 """LTI Control for SBML models. ControlAnalysis manipulates data and simulates."""
 
+from controlSBML.timeseries import Timeseries
 from controlSBML.control_base import ControlBase
 import controlSBML.constants as cn
 from controlSBML.option_management.options import Options
@@ -7,6 +8,7 @@ from controlSBML.option_management.options import Options
 import control
 from docstring_expander.expander import Expander
 import pandas as pd
+import numpy as np
 
 
 # Simulation parameters
@@ -42,9 +44,7 @@ class ControlAnalysis(ControlBase):
 
         Returns
         -------
-        pd.dataframe
-            columns: floating species
-            index: time
+        Timeseries
         """
         options = Options(kwargs, [cn.SIM_DCT])
         sim_opts = options.parse()[0]
@@ -65,10 +65,10 @@ class ControlAnalysis(ControlBase):
         # Run the linear simulation
         dt = (prms.end_time - prms.start_time)/(prms.num_point - 1)
         times = [prms.start_time + n*dt for n in range(prms.num_point)]
-        times, y_vals = control.forced_response(sys, T=times, X0=X0, U=prms.step_val)
-        df = pd.DataFrame(y_vals.transpose(), index=times)
-        df.columns = self.output_names
-        return df
+        times, y_vals = control.forced_response(sys, T=times,
+              X0=X0, U=prms.step_val)
+        return Timeseries(np.transpose(y_vals),
+              times=times, columns=self.output_names)
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def simulateRoadrunner(self, **kwargs):
@@ -90,8 +90,11 @@ class ControlAnalysis(ControlBase):
         prms = SimulationParameters(sim_opts)
         #
         self.roadrunner.reset()
-        data = self.roadrunner.simulate(prms.start_time, prms.end_time, prms.num_point)
+        data = self.roadrunner.simulate(prms.start_time, prms.end_time,
+              prms.num_point)
         columns = [c[1:-1] if c[0] =="[" else c for c in data.colnames]
-        df = pd.DataFrame(data, columns=columns)
-        df = df.set_index(cn.TIME)
-        return df
+        return Timeseries(data, columns=columns)
+        if False:
+            df = pd.DataFrame(data, columns=columns)
+            df = df.set_index(cn.TIME)
+            return df

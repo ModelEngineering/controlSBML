@@ -25,21 +25,21 @@ class ControlPlot(ControlAnalysis):
         # Parse the options
         mgr = OptionManager(kwargs)
         # Run the simulation
-        df = self.simulateRoadrunner(**mgr.sim_opts)
+        ts = self.simulateRoadrunner(**mgr.sim_opts)
         # Adjust the option values
         mgr.plot_opts.set(cn.O_XLABEL, default=cn.TIME)
-        y_max = df.max().max()
+        y_max = ts.max().max()
         mgr.plot_opts.set(cn.O_YLIM, default=[0, y_max])
         if cn.O_LEGEND_CRD in mgr.plot_opts.keys():
-            legend_spec =cn.LegendSpec(df.columns,
+            legend_spec =cn.LegendSpec(ts.columns,
                   crd=mgr.plot_opts[cn.O_LEGEND_CRD])
         else:
-            legend_spec =cn.LegendSpec(df.columns)
+            legend_spec =cn.LegendSpec(ts.columns)
         mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
         ax = mgr.getAx()
         # Do the plot
-        for col in df.columns:
-            ax.plot(df.index, df[col])
+        for col in ts.columns:
+            ax.plot(ts.times, ts[col])
         mgr.plot_opts.set(cn.O_AX, ax)
         mgr.doPlotOpts()  # Recover lost plot options
         # Finalize the figure
@@ -59,23 +59,23 @@ class ControlPlot(ControlAnalysis):
         """
         mgr = OptionManager(kwargs)
         start_time = mgr.sim_opts[cn.O_START_TIME]
-        rr_df = self.simulateRoadrunner(**mgr.sim_opts)
+        rr_ts = self.simulateRoadrunner(**mgr.sim_opts)
         nrow = 1
         ncol = len(self.output_names)
         _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
-        linear_df = self.simulateLinearSystem(timepoint=start_time,
+        linear_ts = self.simulateLinearSystem(timepoint=start_time,
               **mgr.sim_opts)
-        y_min = min(linear_df.min().min(), rr_df.min().min())
-        y_max = max(linear_df.max().max(), rr_df.max().max())
+        y_min = min(linear_ts.min().min(), rr_ts.min().min())
+        y_max = max(linear_ts.max().max(), rr_ts.max().max())
         mgr.plot_opts[cn.O_YLIM] = [y_min, y_max]
         irow = 0
-        for icol, column in enumerate(linear_df.columns):
+        for icol, column in enumerate(linear_ts.columns):
             new_mgr = mgr.copy()
             plot_opts = new_mgr.plot_opts
             ax = axes[irow, icol]
-            ax.plot(linear_df.index, linear_df[column], color="red")
-            ax.plot(rr_df.index, rr_df[column], color="blue")
+            ax.plot(linear_ts.times, linear_ts[column], color="red")
+            ax.plot(rr_ts.times, rr_ts[column], color="blue")
             if irow < nrow - 1:
                 plot_opts[cn.O_XTICKLABELS] = []
             if irow == 0:
@@ -120,19 +120,19 @@ class ControlPlot(ControlAnalysis):
             ctlsb = self.__class__(model_reference)
         else:
             ctlsb = self
-        rr_df = ctlsb.simulateRoadrunner(**mgr.sim_opts)
+        rr_ts = ctlsb.simulateRoadrunner(**mgr.sim_opts)
         nrow = len(timepoints)
         ncol = len(self.output_names)
         _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         for irow, timepoint in enumerate(timepoints):
-            linear_df = ctlsb.simulateLinearSystem(timepoint=timepoint,
+            linear_ts = ctlsb.simulateLinearSystem(timepoint=timepoint,
                   **mgr.sim_opts)
             #
             for icol, column in enumerate(self.output_names):
                 start_time = mgr.sim_opts[cn.O_START_TIME]
-                y_min = min(linear_df.min().min(), rr_df.min().min())
-                y_max = max(linear_df.max().max(), rr_df.max().max())
+                y_min = min(linear_ts.min().min(), rr_ts.min().min())
+                y_max = max(linear_ts.max().max(), rr_ts.max().max())
                 mgr.plot_opts.set(cn.O_YLIM, default=[y_min, y_max])
                 y_min, y_max = mgr.plot_opts[cn.O_YLIM]
                 x_min = start_time
@@ -142,8 +142,8 @@ class ControlPlot(ControlAnalysis):
                 new_mgr = mgr.copy()
                 ax = axes[irow, icol]
                 new_mgr.plot_opts[cn.O_AX] = ax
-                ax.plot(linear_df.index, linear_df[column], color="red")
-                ax.plot(rr_df.index, rr_df[column], color="blue")
+                ax.plot(linear_ts.times, linear_ts[column], color="red")
+                ax.plot(rr_ts.times, rr_ts[column], color="blue")
                 ax.scatter(timepoint, y_min, s=40,
                        marker="o", color="g")
                 if irow < nrow - 1:

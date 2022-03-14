@@ -1,4 +1,4 @@
-from controlSBML.timeseries import TimeSeries
+from controlSBML.timeseries import Timeseries
 import controlSBML.constants as cn
 
 import numpy as np
@@ -55,20 +55,20 @@ class TestTimeseries(unittest.TestCase):
     def testConstructorTS(self):
         if IGNORE_TEST:
           return
-        ts = TimeSeries(MAT, times=TIMES, columns=COLUMNS)
-        new_ts = TimeSeries(ts)
+        ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
+        new_ts = Timeseries(ts)
         self._validate(new_ts)
 
     def testConstructorMat(self):
         if IGNORE_TEST:
             return
-        ts = TimeSeries(MAT, times=TIMES, columns=COLUMNS)
+        ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
         self._validate(ts)
 
     def testConstructorNamedArray(self):
         if IGNORE_TEST:
           return
-        ts = TimeSeries(NAMED_ARRAY)
+        ts = Timeseries(NAMED_ARRAY)
         columns = list(ts.columns)
         columns[0] = "a"
         ts.columns = columns
@@ -80,7 +80,7 @@ class TestTimeseries(unittest.TestCase):
         df = DF.copy()
         df[cn.TIME] = df.index
         df.index = range(SIZE)
-        ts = TimeSeries(df)
+        ts = Timeseries(df)
         self._validate(ts)
 
     def testConstructorDFNoTimeColumn(self):
@@ -89,20 +89,20 @@ class TestTimeseries(unittest.TestCase):
         df = DF.copy()
         df.index = range(SIZE)
         times = list(DF.index)
-        ts = TimeSeries(df, times=times)
+        ts = Timeseries(df, times=times)
         self._validate(ts)
 
     def testGetItem(self):
         if IGNORE_TEST:
           return
-        ts = TimeSeries(MAT, times=TIMES, columns=COLUMNS)
+        ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
         new_ts = ts["a"]
         self._validate(ts)
 
     def testGetItem1(self):
         if IGNORE_TEST:
           return
-        ts = TimeSeries(MAT, times=TIMES, columns=COLUMNS)
+        ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
         ts["c"] = 10*ts["a"]
         ts["d"] = range(SIZE)
         self._validate(ts)
@@ -110,7 +110,7 @@ class TestTimeseries(unittest.TestCase):
     def testGetItem2(self):
         if IGNORE_TEST:
           return
-        ts = TimeSeries(MAT, times=TIMES, columns=COLUMNS)
+        ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
         new_ts = ts[["a", "b"]]
         self._validate(new_ts)
 
