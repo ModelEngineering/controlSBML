@@ -45,11 +45,9 @@ class Timeseries(pd.DataFrame):
                are not converted.
         """
         # The following blocks create df and times
-        is_milliseconds = False
         if isinstance(mat, Timeseries):
             df = mat
             times = list(df.index)
-            is_milliseconds = True
         elif isinstance(mat, pd.DataFrame):
             if columns is None:
                 mat_columns = list(mat.columns)
@@ -61,7 +59,6 @@ class Timeseries(pd.DataFrame):
                     times = df[cn.TIME]
                     del df[cn.TIME]
                 else:
-                    is_milliseconds = mat.index.name == cn.TIMESERIES_INDEX_NAME
                     times = list(df.index)
         #
         elif "NamedArray" in str(type(mat)):
@@ -88,8 +85,7 @@ class Timeseries(pd.DataFrame):
         else:
             raise ValueError("Unsupported data container.")
         #
-        if not is_milliseconds:
-            df.index = self._convertTime(times)
+        df.index = self._convertTime(times)
         # Fix the columns if needed
         new_columns = [c[1:-1] if c[0] == "[" else c for c in df.columns]
         df.columns = new_columns

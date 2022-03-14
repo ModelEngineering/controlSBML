@@ -9,8 +9,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -97,7 +97,8 @@ class TestControlAnalysis(unittest.TestCase):
         #import pdb; pdb.set_trace()
 
     def testinearApproximationNonzeroInput(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         step_val = 2
         ctlsb = ControlAnalysis(LINEAR_MDL, input_names=["J0"])
         ctlsb.setTime(2)
