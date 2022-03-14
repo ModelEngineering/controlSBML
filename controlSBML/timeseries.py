@@ -8,6 +8,8 @@ A Time Series (TS) object is a DataFrame structured as:
 
 Note that if complex artithematic is failing using Timeseries, then 
 use the to_pandas method and convert back to a Timeseries if needed.
+Alternatively, if a pandas object is returned from an operation,
+then use Timeseries or TimeseriesSer to reconstruct the object.
 """
 
 import controlSBML.constants as cn
@@ -15,8 +17,49 @@ import controlSBML.constants as cn
 import numpy as np
 import pandas as pd
 
+############# FUNCTIONS ###############
+def findCommonIndices(index1, index2):
+    """
+    Finds the indices common to both.
 
+    Parameters
+    ----------
+    index1: list/index
+    index2: list/index
+    
+    Returns
+    -------
+    sorted list
+    """
+    indices = list(set(index1).intersection(index2))
+    indices.sort()
+    return(indices)
+
+def align(ts1, ts2):
+    """
+    Returns objects with the same indices.
+
+    Parameters
+    ----------
+    ts1: Timeseries/TimeseriesSer
+    ts2: Timeseries/TimeseriesSer
+    
+    Returns
+    -------
+    Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
+    """
+    common_indices = findCommonIndices(ts1.index, ts2.index)
+    new_ts1 = ts1.loc[common_indices, :]
+    new_ts2 = ts2.loc[common_indices, :]
+    return new_ts1, new_ts2
+
+############# CLASSES ###############
 class TimeseriesSer(pd.Series):
+
+    def __init__(self, ser, times=None):
+        if times is None:
+            times = ser.index
+        super().__init__(ser, index=times)
 
     def to_pandas(self):
         return pd.Series(self)
@@ -26,10 +69,30 @@ class TimeseriesSer(pd.Series):
         times = np.array(self.index)
         return cn.SEC_IN_MS*times
 
+    def align(self, other):
+        """
+        Returns objects with the same indices.
+
+        Parameters
+        ----------
+        other: Timeseries/TimeseriesSer
+        
+        Returns
+        -------
+        Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
+        """
+        common_indices = findCommonIndices(self.index, other.index)
+        new_ts1 = self.loc[common_indices]
+        if isinstance(other, Timeseries):
+            new_ts2 = other.loc[common_indices, :]
+        else:
+            new_ts2 = other.loc[common_indices]
+        return new_ts1, new_ts2
+
 
 class Timeseries(pd.DataFrame):
 
-    def __init__(self, mat, times=None, columns=None, use_index=False):
+    def __init__(self, mat, times=None, columns=None):
 
         """
         Parameters
@@ -47,7 +110,9 @@ class Timeseries(pd.DataFrame):
         # The following blocks create df and times
         if isinstance(mat, Timeseries):
             df = mat
-            times = list(df.index)
+            times = df.index
+        elif isinstance(mat, pd.Series):
+            raise ValueError("Use TimeseriesSer, not TimeSeries.")
         elif isinstance(mat, pd.DataFrame):
             if columns is None:
                 mat_columns = list(mat.columns)
@@ -59,7 +124,7 @@ class Timeseries(pd.DataFrame):
                     times = df[cn.TIME]
                     del df[cn.TIME]
                 else:
-                    times = list(df.index)
+                    times = df.index
         #
         elif "NamedArray" in str(type(mat)):
             if columns is None:
@@ -142,3 +207,17 @@ class Timeseries(pd.DataFrame):
 
     def to_pandas(self):
         return pd.DataFrame(self)
+
+    def align(self, other):
+        """
+        Returns objects with the same indices.
+
+        Parameters
+        ----------
+        other: Timeseries/TimeseriesSer
+        
+        Returns
+        -------
+        Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
+        """
+        return align(self, other)

@@ -1,4 +1,4 @@
-from controlSBML.timeseries import Timeseries
+from controlSBML.timeseries import Timeseries, TimeseriesSer
 import controlSBML.constants as cn
 
 import numpy as np
@@ -7,8 +7,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -18,6 +18,7 @@ COLUMNS = ["[a]", "b"]
 SIZE = 10
 DF = pd.DataFrame([range(SIZE), range(SIZE)]).transpose()
 DF.columns = COLUMNS
+TS = Timeseries(DF)
 TIMES = 10.0*np.array(range(SIZE))
 DF.index = TIMES
 MAT = DF.values
@@ -113,6 +114,32 @@ class TestTimeseries(unittest.TestCase):
         ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
         new_ts = ts[["a", "b"]]
         self._validate(new_ts)
+
+    def testSerError(self):
+        # TESTING
+        with self.assertRaises(ValueError):
+            _ = Timeseries(TS["b"])
+
+    def testAlign(self):
+        if IGNORE_TEST:
+          return
+        def test(ts1, ts2):
+            tss = ts1.align(ts2)
+            for ts in tss:
+                self.assertEqual(len(TS), len(ts) + 2)
+        # Dataframe and Series
+        ts1 = TimeseriesSer(TS["b"].drop(index=[1000]))
+        ts2 = Timeseries(TS.drop(index=[2000]))
+        test(ts1, ts2)
+        test(ts2, ts1)
+        # Two dataframes
+        ts1 = Timeseries(TS.drop(index=[1000]))
+        ts2 = Timeseries(TS.drop(index=[2000]))
+        test(ts1, ts2)
+        # Two Series
+        ts1 = TimeseriesSer(TS["b"].drop(index=[1000]))
+        ts2 = Timeseries(TS["a"].drop(index=[2000]))
+        test(ts1, ts2)
 
 
 if __name__ == '__main__':
