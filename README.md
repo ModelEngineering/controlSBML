@@ -94,7 +94,7 @@ is the Jacobian of the current ``RoadRunner`` instance. You can either specify a
 ### Other Functions
 * ``makeTS`` creates a time series object from an array. A time series object is a DataFrame whose index in time (in integer milliseconds),
 and the columns are variable names.
-* ``simulate`` provides a simplified way to simulate a system (which may be an ``interconnect``) by creating the times and initial,
+* ``simulateSystem`` provides a simplified way to simulate a system (which may be an ``interconnect``) by creating the times and initial,
 returns a time series DataFrame.
 * ``plotOneTS`` plots a single time series DataFrame.
 * ``plotManyTS`` plots multiple time series DataFrames structured so that each column is a separate plot that compares the different times series.

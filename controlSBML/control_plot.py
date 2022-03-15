@@ -151,12 +151,13 @@ class ControlPlot(ControlAnalysis):
                 if irow == 0:
                     ax.set_title(column, rotation=45)
                     if icol == 0:
-                        ax.text(start_time-3, 0.75*y_max, "Jacobian Time")
+                        #ax.text(start_time-3, 0.75*y_max, "Jacobian Time")
                         ax.legend(["linear", "nonlinear"])
                 if icol > 0:
                     ax.set_yticklabels([])
                 else:
-                    ax.text(-2, y_max/2, "%2.1f" % timepoint)
+                    pass
+                    #ax.text(-2, y_max/2, "%2.1f" % timepoint)
                 new_mgr.doPlotOpts()
         mgr.doFigOpts()
 

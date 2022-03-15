@@ -102,7 +102,7 @@ def plotManyTS(*tss, ncol=1, names=None, **kwargs):
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
-    nrow = int(np.ceil(len(tss)/ncol))
+    nrow = int(np.ceil(len(tss[0].columns)/ncol))
     fig, axes = plt.subplots(nrow, ncol)
     axes = np.reshape(axes, (nrow, ncol))
     columns = list(tss[0].columns)

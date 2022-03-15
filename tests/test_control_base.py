@@ -31,6 +31,10 @@ k0 = 1
 k1 = 1
 k2 = 1
 """
+SIMPLE_MODEL = """
+S1 -> S2; 1
+S1 = 10; S2 = 0;
+"""
 LINEAR_MDL_INPUT_NAMES = ["J0", "J1", "J2"]
 NONLINEAR_MDL = """
 S0 -> 2 S0; S0
@@ -149,6 +153,13 @@ class TestControlBase(unittest.TestCase):
           return
         sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian_df.values)
         self.assertEqual(sys.nstates, 3)
+
+    def testMakeStateSpace2(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlBase(SIMPLE_MODEL)
+        sys = ctlsb.makeStateSpace()
+        self.assertEqual(sys.nstates, 2)
 
     def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=None,
           output_names=None, end_time=END_TIME):
