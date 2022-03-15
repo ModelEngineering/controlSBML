@@ -62,7 +62,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
 
     @property
     def inplist(self):
-        return ["%s.%s" % (self.name, self.effector_dct[n])]
+        return ["%s.%s" % (self.name, self.effector_dct[n]) for n in self.input_names]
 
     def setTime(self, time):
         self.ctlsb.setTime(time)

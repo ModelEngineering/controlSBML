@@ -10,6 +10,9 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
+if IS_PLOT:
+    import matplotlib
+    matplotlib.use('TkAgg')
 NONLINEAR_MDL = """
 J0:  -> S1; $S0
 J1: S1 -> S2; S1*S1
@@ -114,6 +117,7 @@ class TestFunctions(unittest.TestCase):
           return
         ts = ctl.simulateSystem(self.interconnect, output_names=CLOSED_OUTPUTS)
         self.assertTrue("Timeseries" in str(type(ts)))
+        util.plotOneTS(ts, figsize=(5,5), title="InterconnectedSystem")
         #
         ts = ctl.simulateSystem(self.interconnect)
         self.assertTrue(all([isinstance(c, int) for c in ts.columns]))

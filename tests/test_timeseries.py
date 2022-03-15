@@ -7,8 +7,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -116,7 +116,8 @@ class TestTimeseries(unittest.TestCase):
         self._validate(new_ts)
 
     def testSerError(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         with self.assertRaises(ValueError):
             _ = Timeseries(TS["b"])
 
@@ -148,7 +149,7 @@ class TestTimeseries(unittest.TestCase):
         test(ts1, ts2)
         # Two Series
         ts1 = TimeseriesSer(TS["b"].drop(index=[1000]))
-        ts2 = Timeseries(TS["a"].drop(index=[2000]))
+        ts2 = TimeseriesSer(TS["a"].drop(index=[2000]))
         test(ts1, ts2)
 
 

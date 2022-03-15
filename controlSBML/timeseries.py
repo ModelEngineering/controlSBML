@@ -222,4 +222,10 @@ class Timeseries(pd.DataFrame):
         -------
         Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
         """
-        return align(self, other)
+        common_indices = findCommonIndices(self.index, other.index)
+        new_self = self.loc[common_indices, :]
+        if isinstance(other, pd.DataFrame):
+            new_other = other.loc[common_indices, :]
+        else:  # Series
+            new_other = other.loc[common_indices]
+        return new_self, new_other
