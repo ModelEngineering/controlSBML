@@ -1,5 +1,7 @@
 import controlSBML.constants as cn
+import controlSBML as ctl
 from controlSBML.option_management.option_manager import OptionManager
+from controlSBML.option_management.options import Options
 
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
@@ -124,3 +126,24 @@ def plotManyTS(*tss, ncol=1, names=None, **kwargs):
             new_mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
         new_mgr.doPlotOpts()
     mgr.doFigOpts()
+
+def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
+      points_per_time=cn.POINTS_PER_TIME):
+    """
+    Constructs the times for a simulation using the simulation options.
+
+    Parameters
+    ----------
+    start_time: float
+    end_time: float
+    points_per_time: int
+    
+    Returns
+    -------
+    np.ndarray
+    """
+    num_point = int(points_per_time*(end_time - start_time))
+    dt = (end_time - start_time)/num_point
+    times = [start_time + dt*n for n in range(num_point)]
+    times.append(end_time)  # Include the endpoint
+    return np.array(times)

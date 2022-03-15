@@ -106,7 +106,7 @@ class TestControlAnalysis(unittest.TestCase):
         rr_df = ctlsb.simulateRoadrunner()
         linear_df = ctlsb.simulateLinearSystem(step_val=2)
         squared_difference = (
-              (rr_df.to_pandas()-linear_df.to_pandas())**2).sum().sum()
+              (rr_df.df - linear_df.df)**2).sum().sum()
         self.assertTrue(np.isclose(squared_difference, 0))
 
     def testSimulateLinearSystem2(self):

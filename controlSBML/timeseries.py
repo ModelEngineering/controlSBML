@@ -7,7 +7,7 @@ A Time Series (TS) object is a DataFrame structured as:
   - name attribute is "Timeseries"
 
 Note that if complex artithematic is failing using Timeseries, then 
-use the to_pandas method and convert back to a Timeseries if needed.
+use the ".df" and ".ser" properties to convert back to a pandas objects if needed.
 Alternatively, if a pandas object is returned from an operation,
 then use Timeseries or TimeseriesSer to reconstruct the object.
 """
@@ -61,7 +61,8 @@ class TimeseriesSer(pd.Series):
             times = ser.index
         super().__init__(ser, index=times)
 
-    def to_pandas(self):
+    @property
+    def ser(self):
         return pd.Series(self)
 
     @property
@@ -205,7 +206,8 @@ class Timeseries(pd.DataFrame):
         new_arr = new_arr.astype(int)
         return new_arr
 
-    def to_pandas(self):
+    @property
+    def df(self):
         return pd.DataFrame(self)
 
     def align(self, other):

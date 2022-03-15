@@ -120,6 +120,16 @@ class TestTimeseries(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = Timeseries(TS["b"])
 
+    def test_df(self):
+        if IGNORE_TEST:
+          return
+        self.assertTrue(isinstance(TS, pd.DataFrame))
+
+    def test_ser(self):
+        if IGNORE_TEST:
+          return
+        self.assertTrue(isinstance(TS["a"], pd.Series))
+
     def testAlign(self):
         if IGNORE_TEST:
           return

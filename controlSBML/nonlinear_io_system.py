@@ -62,8 +62,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
 
     @property
     def inplist(self):
-        return ["%s.%s" % (self.name, self.effector_dct[n])
-              for n in self.input_names]
+        return ["%s.%s" % (self.name, self.effector_dct[n])]
+
+    def setTime(self, time):
+        self.ctlsb.setTime(time)
 
     def getStateSer(self, time=0):
         """
@@ -77,7 +79,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         pd.Series
         """
-        self.ctlsb.setTime(time)
+        self.setTime(time)
         return self.ctlsb.state_ser
 
     def updfcn(self, time, x_vec, u_vec, _):
@@ -99,7 +101,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         if isinstance(u_vec, float):
             u_vec = [u_vec]
         if self.do_simulate_on_update:
-            self.ctlsb.setTime(time)  # Consider time dependent functions
+            self.setTime(time)  # Consider time dependent functions
         # Adust the state
         state_dct = {n: x_vec[i] for i, n in enumerate(self.state_names)}
         self.ctlsb.set(state_dct)

@@ -66,6 +66,19 @@ class TestFunctions(unittest.TestCase):
         util.plotManyTS(TS, ts, ylabel="values", xlabel="sec",
               is_plot=IS_PLOT, names=["first", "second"], ncol=2)
 
+    def testMakeSimulationTimes(self):
+        if IGNORE_TEST:
+          return
+        times = util.makeSimulationTimes()
+        self.assertTrue(isinstance(times, np.ndarray))
+        #
+        times = util.makeSimulationTimes(start_time=1, end_time=4)
+        self.assertTrue(times[0] == 1)
+        self.assertTrue(times[-1] == 4)
+        #
+        time1s = util.makeSimulationTimes(start_time=1, end_time=4,
+            points_per_time=100)
+        self.assertGreater(len(time1s), len(times))
 
 if __name__ == '__main__':
   unittest.main()

@@ -248,7 +248,8 @@ class ControlBase(object):
 
     def setTime(self, time):
         self.roadrunner.reset()
-        _ = self.roadrunner.simulate(0, time)
+        if time > 0.01:
+            _ = self.roadrunner.simulate(0.0, time)
 
     # FIXME: Doesn't update "sets" done to roadrunner
     def copy(self):
