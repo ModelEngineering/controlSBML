@@ -3,6 +3,7 @@ __pycache__
 dist/
 sym
 .ipynb_*
+~$*
 data/*.xml
 ctl/
 ctl_tst/
