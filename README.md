@@ -108,8 +108,11 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.1.6,
-  * Can create ``control.NonlinearIOSystem`` that wraps an SBML model. Can be used
+* 0.1.7
+* 0.1.6, 3/16/2022
+  * ``Using-Control-SBML.ipynb`` has an example of doing feedback control design
+with ``controlSBML``.
+  * ``control.NonlinearIOSystem`` wraps an SBML model. Can be used
     in the construction of systems using ``control.interconnect`` and in simulations using ``control.input_output_response``. One caveat is that this may work poorly for models implemented as SBML rate rules.
 * 0.1.5, 3/5/2022.
   * More options for plotting and simulations
