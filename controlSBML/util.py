@@ -90,7 +90,7 @@ def plotOneTS(ts, **kwargs):
 def plotManyTS(*tss, ncol=1, names=None, **kwargs):
     """
     Plots multiple Timeseries with the same columns so that each column
-    is a different plot.
+     is a different plot.
 
     Parameters
     ----------
