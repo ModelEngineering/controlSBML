@@ -1,5 +1,5 @@
 # controlSBML
-The [Systems Biology Markup Language (SBML)](https://co.mbine.org/standards/sbml) is a community standard for representing
+ The [Systems Biology Markup Language (SBML)](https://co.mbine.org/standards/sbml) is a community standard for representing
 simulations of biological models, especially chemical reaction networks.
 ``controlSBML`` is a package that does control analysis and design of SBML models using
 the [CalTech ``control`` package](http://python-control.sourceforge.net/manual/).
