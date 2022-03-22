@@ -108,7 +108,7 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.1.7
+* 0.2.0 - Version for class
   * ppMat - pretty print a matrix
   * plotMat - display a heatmap for a matrix
   * mat2TS - convert a matrix to a timeseries

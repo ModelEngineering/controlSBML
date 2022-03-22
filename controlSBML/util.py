@@ -188,8 +188,9 @@ def ppMat(mat, column_names=None, row_names=None, is_print=True):
     column_names: list-str
     row_names: list-str
     """
+    df = mat2DF(mat, column_names=column_names, row_names=row_names)
     if is_print:
-        print(mat2DF(mat(column_names=column_names, row_names=row_names)))
+        print(df)
 
 def plotMat(mat, column_names=None, row_names=None, is_plot=True, **kwargs):
     """
