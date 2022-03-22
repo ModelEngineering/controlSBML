@@ -17,7 +17,13 @@ if IS_PLOT:
 times = [1.0*n for n in range(SIZE)]
 TS = Timeseries(pd.DataFrame({"a": range(SIZE)}), times=times)
 TS["b"] = 10*TS["a"]
-
+MDL = "A->B; 1; A=0; B=0;"
+MDL_RR = te.loada(MDL)
+NAMED_ARRAY = MDL_RR.simulate()
+MAT = np.array(range(10))
+MAT = np.reshape(MAT, (2, 5))
+DF = pd.DataFrame(NAMED_ARRAY, columns=NAMED_ARRAY.colnames)
+        
 
 #############################
 # Tests
@@ -79,6 +85,28 @@ class TestFunctions(unittest.TestCase):
         time1s = util.makeSimulationTimes(start_time=1, end_time=4,
             points_per_time=100)
         self.assertGreater(len(time1s), len(times))
+
+    def testPpMat(self):
+        if IGNORE_TEST:
+          return
+        mat = np.array(range(10))
+        result1 = util.ppMat(mat, column_names=["a"], is_print=IS_PLOT)
+        mat = np.reshape(mat, (5,2))
+        result2 = util.ppMat(mat, column_names=["a", "b"], is_print=IS_PLOT)
+
+    def testMat2DF(self):
+        if IGNORE_TEST:
+          return
+        for mat in [MAT, NAMED_ARRAY, DF]:
+            df = util.mat2DF(mat)
+            self.assertTrue(isinstance(df, pd.DataFrame))
+
+    def testplotMat(self):
+        if IGNORE_TEST:
+          return
+        for mat in [MAT, NAMED_ARRAY, DF]:
+            util.plotMat(mat, title="test", figsize=(5,5), is_plot=IS_PLOT)
+
 
 if __name__ == '__main__':
   unittest.main()

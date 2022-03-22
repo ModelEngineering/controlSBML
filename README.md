@@ -109,6 +109,8 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.1.7
+  * ppMat - pretty print a matrix
+  * plotMat - display a heatmap for a matrix
 * 0.1.6, 3/16/2022
   * ``Using-Control-SBML.ipynb`` has an example of doing feedback control design
 with ``controlSBML``.

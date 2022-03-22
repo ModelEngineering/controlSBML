@@ -3,7 +3,7 @@ from controlSBML._version import __version__
 from controlSBML.control_sbml import ControlSBML
 from controlSBML.constants import LegendSpec
 from controlSBML.nonlinear_io_system import NonlinearIOSystem
-from controlSBML.util import plotOneTS, plotManyTS
+from controlSBML.util import plotOneTS, plotManyTS, ppMat, mat2DF, plotMat
 from controlSBML.sequential_model import SequentialModel
 from controlSBML.simulate_system import simulateSystem
 from controlSBML.timeseries import Timeseries, TimeseriesSer

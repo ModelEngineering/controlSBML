@@ -7,6 +7,7 @@ from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 import urllib.request
 
 
@@ -147,3 +148,64 @@ def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
     times = [start_time + dt*n for n in range(num_point)]
     times.append(end_time)  # Include the endpoint
     return np.array(times)
+
+def mat2DF(mat, column_names=None, row_names=None):
+    """
+    Converts a numpy ndarray to a DataFrame.
+
+    Parameters
+    ----------
+    mat: np.Array, NamedArray, DataFrame
+    column_names: list-str
+    row_names: list-str
+    """
+    if isinstance(mat, pd.DataFrame):
+        df = mat
+    else:
+        if len(np.shape(mat)) == 1:
+            mat = np.reshape(mat, (len(mat), 1))
+        if column_names is None:
+            if ("NamedArray" in str(type(mat))):
+                column_names = mat.colnames
+            else:
+                column_names = range(np.shape(mat)[1])
+        if row_names is None:
+            if ("NamedArray" in str(type(mat))):
+                if len(mat.rownames) > 0:
+                    row_names = mat.rownames
+        if row_names is None:
+            row_names = list(range(np.shape(mat)[0]))
+        df = pd.DataFrame(mat, columns=column_names, index=row_names)
+    return df
+
+def ppMat(mat, column_names=None, row_names=None, is_print=True):
+    """
+    Provides a pretty print for a matrix or DataFrame)
+
+    Parameters
+    ----------
+    mat: np.Array, NamedArray, DataFrame
+    column_names: list-str
+    row_names: list-str
+    """
+    if is_print:
+        print(mat2DF(mat(column_names=column_names, row_names=row_names)))
+
+def plotMat(mat, column_names=None, row_names=None, is_plot=True, **kwargs):
+    """
+    Creates a heatmap for the matrix.
+
+    Parameters
+    ----------
+    mat: np.Array, NamedArray, DataFrame
+    column_names: list-str
+    row_names: list-str
+    """
+    df = mat2DF(mat, column_names=column_names, row_names=row_names)
+    if is_plot:
+        mgr = OptionManager(kwargs)
+        ax = mgr.getAx()
+        sns.heatmap(df, cmap="seismic", ax=ax)
+        mgr.doPlotOpts()
+        mgr.doFigOpts()
+ 
