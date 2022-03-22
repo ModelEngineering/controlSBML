@@ -151,7 +151,7 @@ def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
 
 def mat2DF(mat, column_names=None, row_names=None):
     """
-    Converts a numpy ndarray to a DataFrame.
+    Converts a numpy ndarray or array-like to a DataFrame.
 
     Parameters
     ----------

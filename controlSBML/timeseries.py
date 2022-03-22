@@ -12,6 +12,7 @@ Alternatively, if a pandas object is returned from an operation,
 then use Timeseries or TimeseriesSer to reconstruct the object.
 """
 
+import controlSBML as ctl
 import controlSBML.constants as cn
 
 import numpy as np
@@ -153,7 +154,8 @@ class Timeseries(pd.DataFrame):
         #
         df.index = self._convertTime(times)
         # Fix the columns if needed
-        new_columns = [c[1:-1] if c[0] == "[" else c for c in df.columns]
+        new_columns = [str(c)[1:-1] 
+              if str(c)[0] == "[" else c for c in df.columns]
         df.columns = new_columns
         super().__init__(df)
         self.index.name = cn.TIMESERIES_INDEX_NAME
@@ -229,3 +231,19 @@ class Timeseries(pd.DataFrame):
         else:  # Series
             new_other = other.loc[common_indices]
         return new_self, new_other
+
+    @staticmethod
+    def mat2TS(mat, column_names=None, row_names=None):
+        """
+        Converts a numpy ndarray or array-like to a Timeseries.
+    
+        Parameters
+        ----------
+        mat: np.Array, NamedArray, DataFrame
+        column_names: list-str
+        row_names: list-str
+        """
+        df = ctl.mat2DF(mat, column_names=column_names, row_names=row_names)
+        return Timeseries(df)
+
+    

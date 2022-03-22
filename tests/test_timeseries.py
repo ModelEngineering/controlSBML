@@ -131,6 +131,11 @@ class TestTimeseries(unittest.TestCase):
           return
         self.assertTrue(isinstance(TS["a"], pd.Series))
 
+    def testMat2TS(self):
+        if IGNORE_TEST:
+          return
+        self.assertTrue(isinstance(Timeseries.mat2TS(MAT), Timeseries))
+
     def testAlign(self):
         if IGNORE_TEST:
           return

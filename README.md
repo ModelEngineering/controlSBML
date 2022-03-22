@@ -111,6 +111,8 @@ that continuous integration is done only *without* ``slycot``.
 * 0.1.7
   * ppMat - pretty print a matrix
   * plotMat - display a heatmap for a matrix
+  * mat2TS - convert a matrix to a timeseries
+  * mat2DF - convert a matrix to a dataframe
 * 0.1.6, 3/16/2022
   * ``Using-Control-SBML.ipynb`` has an example of doing feedback control design
 with ``controlSBML``.
