@@ -173,8 +173,6 @@ def mat2DF(mat, column_names=None, row_names=None):
             if ("NamedArray" in str(type(mat))):
                 if len(mat.rownames) > 0:
                     row_names = mat.rownames
-        if row_names is None:
-            row_names = list(range(np.shape(mat)[0]))
         df = pd.DataFrame(mat, columns=column_names, index=row_names)
     return df
 

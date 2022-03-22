@@ -108,6 +108,7 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 0.2.2, 3/22/2022 - Bug fix
 * 0.2.1, 3/22/2022 - Bug fix
 * 0.2.0, 3/22/2022 - Version for class
   * ppMat - pretty print a matrix
