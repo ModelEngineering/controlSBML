@@ -108,6 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 0.2.4
+* 0.2.3, 3/22/2022 - Bug fix for mat2DF
 * 0.2.2, 3/22/2022 - Bug fix
 * 0.2.1, 3/22/2022 - Bug fix
 * 0.2.0, 3/22/2022 - Version for class
