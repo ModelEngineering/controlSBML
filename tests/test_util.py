@@ -97,9 +97,12 @@ class TestFunctions(unittest.TestCase):
     def testMat2DF(self):
         if IGNORE_TEST:
           return
-        for mat in [MAT, NAMED_ARRAY, DF]:
+        for mat in [NAMED_ARRAY, DF]:
             df = util.mat2DF(mat)
             self.assertTrue(isinstance(df, pd.DataFrame))
+            self.assertTrue(any(["A" in c for c in df.columns]))
+        df = util.mat2DF(MAT)
+        self.assertTrue(isinstance(df, pd.DataFrame))
 
     def testplotMat(self):
         if IGNORE_TEST:

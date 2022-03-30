@@ -165,13 +165,13 @@ def mat2DF(mat, column_names=None, row_names=None):
         if len(np.shape(mat)) == 1:
             mat = np.reshape(mat, (len(mat), 1))
         if column_names is None:
-            if ("NamedArray" in str(type(mat))):
+            if ("colnames" in str(dir(mat))):
                 column_names = mat.colnames
         if column_names is not None:
             if len(column_names) == 0:
                 column_names = None
         if row_names is None:
-            if ("NamedArray" in str(type(mat))):
+            if ("rownames" in str(dir(mat))):
                 if len(mat.rownames) > 0:
                     row_names = mat.rownames
         if row_names is not None:

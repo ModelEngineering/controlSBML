@@ -109,6 +109,7 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.2.4
+  * mat2Df - fixed bug with printing column names
 * 0.2.3, 3/22/2022 - Bug fix for mat2DF
 * 0.2.2, 3/22/2022 - Bug fix
 * 0.2.1, 3/22/2022 - Bug fix
