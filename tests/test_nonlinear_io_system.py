@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -85,7 +85,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
         return df
 
     def testUpdfcn(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         self.init()
         df = self.runSimulation()
         self._checkWithSimulation(df)
