@@ -108,7 +108,7 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.4
+* 0.2.4 3/31/2024 - Create reduced A matrix
   * mat2Df - fixed bug with printing column names
   * Create reduced A matrix for makeStateSpace so that A is non-singular
     Default output_names is all floating species
