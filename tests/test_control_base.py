@@ -31,7 +31,7 @@ k0 = 1
 k1 = 1
 k2 = 1
 """
-SIMPLE_MODEL = """
+SIMPLE_MDL = """
 S1 -> S2; 1
 S1 = 10; S2 = 0;
 """
@@ -63,6 +63,27 @@ S1 = 10
 S2 = 0
 S3 = 0
 """
+REDUCABLE_MDL = """
+J0: S0 -> S1; S0
+J1: S1 -> S2; S1
+J2: S2 -> S3; S2
+J3: S2 -> S3; S3
+J0a: S0a -> S1a; S0a
+J1a: S1a -> S2a; S1a
+J2a: S2a -> S3a; S2a
+J3a: S2a -> S3a; S3a
+S0a = 10
+S1a = 0
+S2a = 0
+S3a = 0
+S0 = 10
+S1 = 0
+S2 = 0
+S3 = 0
+"""
+
+OUTPUT_NAMES_REDUCABLE = [
+  "S0a", "S1a", "S2a", "S3a", "S0", "S1", "S2", "S3"]
 
 SPECIES_NAMES = ["S0", "S1", "S2"]
 
@@ -78,6 +99,12 @@ def setList(lst, default):
 class TestControlBase(unittest.TestCase):
 
     def setUp(self):
+        # Cannot modify self.control
+        if IGNORE_TEST:
+          return
+        self.init()
+
+    def init(self):
         # Cannot modify self.control
         self.ctlsb = ControlBase(ANTIMONY_FILE)
 
@@ -151,15 +178,28 @@ class TestControlBase(unittest.TestCase):
     def testMakeStateSpace1(self):
         if IGNORE_TEST:
           return
+        self.init()
         sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian_df.values)
         self.assertEqual(sys.nstates, 3)
 
     def testMakeStateSpace2(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlBase(SIMPLE_MODEL)
+        ctlsb = ControlBase(SIMPLE_MDL)
         sys = ctlsb.makeStateSpace()
-        self.assertEqual(sys.nstates, 2)
+        self.assertEqual(sys.nstates, 1)
+        times = [0.1*v for v in range(50)]
+        X0 = ctlsb.state_ser.values
+        _, y_vals = control.forced_response(sys, T=times, X0=X0)
+        self.assertEqual(len(y_vals), 2)  # S1, S2 are outputs
+        self.assertEqual(len(y_vals[0]), len(times))
+
+    def testMakeStateSpaceReducable(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlBase(REDUCABLE_MDL, output_names=OUTPUT_NAMES_REDUCABLE)
+        sys = ctlsb.makeStateSpace()
+        self.assertGreater(np.shape(sys.C)[0], np.shape(sys.A)[0])
 
     def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=None,
           output_names=None, end_time=END_TIME):

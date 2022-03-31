@@ -38,7 +38,8 @@ cleanIt = lambda n: n if n[0] != "[" else n[1:-1]
 
 class ControlBase(object):
 
-    def __init__(self, model_reference, input_names=None, output_names=None):
+    def __init__(self, model_reference, input_names=None, output_names=None,
+          is_reduced=True):
         """
         Initializes instance variables
         model_reference: str
@@ -46,22 +47,19 @@ class ControlBase(object):
         input_names: name (id) of reaction whose flux is being controlled
         output_names: list-str
             output species
+        is_reduced: bool
+            construct a reduced model so that the A matrix is nonsingular
         """
         def calcNames(superset_names, subset_names, superset_name, subset_name):
             if subset_names is None:
                 return list(superset_names)
             else:
-                if not set(subset_names) <= set(superset_names):
-                    text = "%s %s are not a subset of the %s %s" % \
-                          (subset_name, subset_names, superset_name,
-                          superset_names)
-                    raise ValueError(text)
                 return subset_names
+        self.is_reduced = is_reduced
         # Iinitial model calculations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
         # Set defaults
-        self.state_names = list(self.roadrunner.getFullJacobian().rownames)
         self.species_names = list(
               self.roadrunner.getFullStoichiometryMatrix().rownames)
         self.depeendent_names = list(
@@ -69,12 +67,10 @@ class ControlBase(object):
         if not set(self.state_names) <= set(self.species_names):
             import pdb; pdb.set_trace()
             raise RuntimeError("State name is not a species name.")
-        self.state_names = self._sortList(self.species_names, self.state_names)
         self.full_stoichiometry_df, self.reduced_stoichiometry_df  \
               = self._makeStoichiometryDF()
         # Check for consistency on the state specification
         self.reaction_names = list(self.reduced_stoichiometry_df.columns)
-        self.num_state = len(self.state_names)
         # Handle defaults
         if input_names is None:
             self.input_names = []
@@ -82,19 +78,17 @@ class ControlBase(object):
             self.input_names = input_names
         self.input_names = self._sortList(self.reaction_names, self.input_names)
         self.num_input = len(self.input_names)
-        self.output_names = calcNames(self.state_names, output_names,
+        self.output_names = calcNames(self.species_names, output_names,
               "states", "outputs")
         self.output_names = self._sortList(self.species_names, self.output_names)
         self.num_output = len(self.output_names)
         # Other calculations
-        self.B_df = self._makeBDF()
-        self.C_df = self._makeCDF()
-        self.state_names = list(self.jacobian_df.columns)
         self.antimony = self.roadrunner.getAntimony()
         # Do the initializations
         self.roadrunner.reset()
         # Validation checks
-        if set(self.state_names) != set(self.species_names):
+        if not set(self.state_names) <= set(self.species_names):
+            import pdb; pdb.set_trace()
             text = "State does not include some spaces.\n"
             text += "  Species are: %s" % str(self.species_names)
             text += "  States are: %s" % str(self.state_names)
@@ -104,6 +98,14 @@ class ControlBase(object):
             text = "Outputs must be species. The following outputs are not species"
             text += "The following outputs are not species: %s" % str(diff)
             raise ValueError(text)
+
+    @property
+    def B_df(self):
+        return self._makeBDF()
+
+    @property
+    def C_df(self):
+        return self._makeCDF()
 
     @staticmethod
     def _makeDF(mat):
@@ -135,35 +137,14 @@ class ControlBase(object):
         -------
         pd.DataFrame
         """
-        mat = np.identity(len(self.state_names))
-        C_df = pd.DataFrame(mat, columns=self.species_names,
-              index=self.species_names)
-        # Adjust to outputs
-        for name in self.species_names:
-            if not name in self.output_names:
-                C_df = C_df.drop(name)
-        # TODO: Address conserved moieties
-        if False:
-            # Handle computed outputs
-            if self.roadrunner.getNumConservedMoieties() == 0:
-                if not set(self.output_names) <= set(self.state_names):
-                    import pdb; pdb.set_trace()
-                    raise RuntimeError("Cannot compute output from states.")
-            else:
-                # Add the conservation matrix
-                mat = self.roadrunner.getConservationMat()
-                colnames = list(mat.colnames)
-                if set(colnames) != set(self.state_names):
-                    import pdb; pdb.set_trace()
-                    raise RuntimeError(
-                          "Not all states are columns of the conservation matrix.")
-                rownames = list(mat.rownames)
-                df = pd.DataFrame(self.roadrunner.getConservationMat(),
-                       columns=colnames, index=rownames)
-                # Remove overlapping rows
-                for rowname in rownames:
-                    if rowname in self.output_names:
-                        C_df[rowname] = df[rowname]
+        state_names = self.state_names
+        C_df = pd.DataFrame(np.eye(self.num_state), columns=state_names,
+              index=state_names)
+        L0 = self.roadrunner.getL0Matrix()
+        if len(L0) > 0:
+            L0_df = pd.DataFrame(L0, columns=L0.colnames, index=L0.rownames)
+            C_df = pd.concat([C_df, L0_df], axis=0)
+        C_df = C_df.loc[self.output_names, :]
         return C_df
 
     @property
@@ -230,13 +211,27 @@ class ControlBase(object):
         """
         # FIXME: Use reduced stoichiometry matrix once it's clear how
         #        to calculate dependent spcies
-        jacobian_mat = self.roadrunner.getFullJacobian()
+        if self.is_reduced:
+            current_bool = self.roadrunner.conservedMoietyAnalysis
+            self.roadrunner.conservedMoietyAnalysis = True
+            jacobian_mat = self.roadrunner.getReducedJacobian()
+            self.roadrunner.conservedMoietyAnalysis = current_bool
+        else:
+            jacobian_mat = self.roadrunner.getFullJacobian()
         if len(jacobian_mat.rownames) != len(jacobian_mat.colnames):
             raise RuntimeError("Jacobian is not square!")
         names = list(jacobian_mat.colnames)
         jacobian_df = pd.DataFrame(jacobian_mat, columns=names, index=names)
-        jacobian_df = jacobian_df.loc[self.state_names, self.state_names]
         return jacobian_df
+
+    @property
+    def state_names(self):
+        state_names = list(self.jacobian_df.columns)
+        return self._sortList(self.species_names, state_names)
+
+    @property
+    def num_state(self):
+        return len(self.state_names)
 
     @property
     def A_df(self):
@@ -383,12 +378,18 @@ class ControlBase(object):
         -------
         np.ndarray (n X p), where p = len(input_names)
         """
-        # Select the columns needed from the stoichiometry matrix
-        B_df = self.full_stoichiometry_df[self.input_names]
-        # Subset to the states
-        sub_names = list(set(B_df.index).intersection(self.state_names))
-        sub_names = self._sortList(self.state_names, sub_names)
-        B_df = B_df.loc[sub_names, :]
+        if len(self.input_names) > 0:
+            # Select the columns needed from the stoichiometry matrix
+            B_df = self.full_stoichiometry_df[self.input_names]
+            # Subset to the states
+            sub_names = list(set(B_df.index).intersection(self.state_names))
+            sub_names = self._sortList(self.state_names, sub_names)
+            B_df = B_df.loc[sub_names, :]
+        else:
+            ncol = 1
+            B_mat = np.repeat(0, self.num_state)
+            B_mat = np.reshape(B_mat, (self.num_state, ncol))
+            B_df = pd.DataFrame(B_mat, index=self.state_names)
         #
         return B_df
 
@@ -425,13 +426,20 @@ class ControlBase(object):
         if A_mat is None:
             A_mat = self.jacobian_df.values
         if B_mat is None:
-            B_mat = self.B_df.values
+            B_df = self.B_df
+            if B_df is None:
+                B_mat = None
+            else:
+                B_mat = self.B_df.values
         if C_mat is None:
             # Construct the output matrix
             C_mat = self.C_df.values
         if D_mat is None:
             nrow = len(self.output_names)
-            ncol = np.shape(B_mat)[1]
+            if B_mat is None:
+                ncol = 1
+            else:
+                ncol = np.shape(B_mat)[1]
             D_mat = np.repeat(0, nrow*ncol)
             D_mat = np.reshape(D_mat, (nrow, ncol))
         return control.StateSpace(A_mat, B_mat, C_mat, D_mat)
