@@ -12,7 +12,6 @@ Notes:
 
 
 from controlSBML.make_roadrunner import makeRoadrunner
-from controlSBML import msgs
 import controlSBML as ctl
 
 import control
@@ -45,11 +44,6 @@ class ControlBase(object):
         is_reduced: bool
             construct a reduced model so that the A matrix is nonsingular
         """
-        def calcNames(superset_names, subset_names, superset_name, subset_name):
-            if subset_names is None:
-                return list(superset_names)
-            else:
-                return subset_names
         self.is_reduced = is_reduced
         # Iinitial model calculations
         self.model_reference = model_reference
@@ -75,8 +69,9 @@ class ControlBase(object):
             self.input_names = input_names
         self.input_names = self._sortList(self.reaction_names, self.input_names)
         self.num_input = len(self.input_names)
-        self.output_names = calcNames(self.species_names, output_names,
-              "states", "outputs")
+        if output_names is None:
+            output_names = self.species_names
+        self.output_names = output_names
         self.output_names = self._sortList(self.species_names, self.output_names)
         self.num_output = len(self.output_names)
         # Other calculations
@@ -163,8 +158,8 @@ class ControlBase(object):
                self.roadrunner.getBoundarySpeciesIds(),
                self.roadrunner.getGlobalParameterIds(),
                ]:
-            for id in id_lst:
-                 dct[id] = self.get(id)
+            for idx in id_lst:
+                 dct[idx] = self.get(idx)
         return dct
 
     @property
@@ -267,7 +262,7 @@ class ControlBase(object):
     def getTime(self):
         """
         Gets current simulation time.
-        
+
         Returns
         -------
         float
@@ -451,14 +446,14 @@ class ControlBase(object):
         """
         Creates an object that can be used in connections with the
         control package.
- 
+
         Parameters
         ----------
         name: str (name of the system)
         effector_dct: dict (maps reaction inputs to roadrunner muteables)
             key: str (input name)
             value: str (name of roadrunner muteable)
-        
+
         Returns
         -------
         controlSBML.NonelinearIOSystem
