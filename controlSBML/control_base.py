@@ -7,14 +7,9 @@ Outputs are chemical species.
 
 Notes:
 1. Reaction enzymes are identified by the SBML reaction ID.
+2. The Jacobian is only recalculated if there is a change in timepoint
 """
 
-"""
-TO DO:
-
-1. Plot difference between time jacoabian at reference vs. Current.
-2. Plot TOTAL residual SSQ vs. jacobian difference
-"""
 
 from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML import msgs
@@ -59,6 +54,8 @@ class ControlBase(object):
         # Iinitial model calculations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
+        self._jacobian_timepoint = None
+        self._jacobian_df = None
         # Set defaults
         self.species_names = list(
               self.roadrunner.getFullStoichiometryMatrix().rownames)
@@ -205,12 +202,16 @@ class ControlBase(object):
     @property
     def jacobian_df(self):
         """
+        Calculates the Jacobian, or a reduced Jacobian if the option is selected.
+        Improves efficiency by using a previous calculation if the time has not changed.
+
         Returns
         -------
         pd.DataFrame, species_names
         """
-        # FIXME: Use reduced stoichiometry matrix once it's clear how
-        #        to calculate dependent spcies
+        if self.getTime() == self._jacobian_timepoint:
+            if self._jacobian_df is not None:
+                return self._jacobian_df
         if self.is_reduced:
             current_bool = self.roadrunner.conservedMoietyAnalysis
             self.roadrunner.conservedMoietyAnalysis = True
@@ -221,8 +222,9 @@ class ControlBase(object):
         if len(jacobian_mat.rownames) != len(jacobian_mat.colnames):
             raise RuntimeError("Jacobian is not square!")
         names = list(jacobian_mat.colnames)
-        jacobian_df = pd.DataFrame(jacobian_mat, columns=names, index=names)
-        return jacobian_df
+        self._jacobian_df = pd.DataFrame(jacobian_mat, columns=names, index=names)
+        self._jacobian_timepoint = self.getTime()
+        return self._jacobian_df
 
     @property
     def state_names(self):
@@ -243,6 +245,7 @@ class ControlBase(object):
 
     def setTime(self, time):
         self.roadrunner.reset()
+        self._jacobian_timepoint = None
         if time > 0.01:
             _ = self.roadrunner.simulate(0.0, time)
 

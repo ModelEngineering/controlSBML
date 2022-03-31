@@ -117,7 +117,8 @@ class TestFunctions(unittest.TestCase):
           return
         ts = ctl.simulateSystem(self.interconnect, output_names=CLOSED_OUTPUTS)
         self.assertTrue("Timeseries" in str(type(ts)))
-        util.plotOneTS(ts, figsize=(5,5), title="InterconnectedSystem")
+        util.plotOneTS(ts, figsize=(5,5), title="InterconnectedSystem",
+              is_plot=IS_PLOT)
         #
         ts = ctl.simulateSystem(self.interconnect)
         self.assertTrue(all([isinstance(c, int) for c in ts.columns]))

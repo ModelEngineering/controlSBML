@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -63,7 +63,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def testConstructor(self):
         if IGNORE_TEST:
-            return
+          return
         self.assertTrue(isinstance(self.ctlsb, ctl.ControlSBML))
 
     def runSimulation(self, states=None):
@@ -71,7 +71,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.ctlsb.setTime(TIMES[0])
         x_vec = self.ctlsb.state_ser.values
         dct = {n: [] for n in self.ctlsb.state_names}
-        for time in TIMES:
+        for idx, time in enumerate(TIMES):
             dx_vec = self.sys.updfcn(time, x_vec, u_vec, {})
             new_x_vec = x_vec + DT*dx_vec
             [dct[n].append(v) for n, v in
@@ -85,8 +85,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         return df
 
     def testUpdfcn(self):
-        if IGNORE_TEST:
-          return
+        # TESTING
         self.init()
         df = self.runSimulation()
         self._checkWithSimulation(df)
@@ -113,7 +112,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         names = self.sys.outlist
         self.assertTrue(all([self.sys.name in n for n in names]))
         self.assertEqual(len(names), self.ctlsb.num_output)
-
+#################
     def testGetStateSer(self):
         if IGNORE_TEST:
           return
