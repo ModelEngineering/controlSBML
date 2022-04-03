@@ -134,7 +134,6 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         Parameters
         ----------
         x_vec: np.array(float): state vector
-        u_vec: np.array(float): input vector (in log10 units)
 
         Returns
         -------

@@ -10,6 +10,7 @@ pip>20
 pylint
 python-libsbml
 seaborn
+symmathSBML
 #slycot
 sympy
 tellurium
