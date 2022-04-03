@@ -6,7 +6,7 @@ from controlSBML.nonlinear_io_system import NonlinearIOSystem
 from controlSBML.util import plotOneTS, plotManyTS, ppMat, mat2DF, plotMat,  \
       makeSimulationTimes
 from controlSBML.sequential_model import SequentialModel
-from controlSBML.simulate_system import simulateSystem
+from controlSBML.simulate_system import simulateSystem, makeStateVector
 from controlSBML.timeseries import Timeseries, TimeseriesSer
 mat2TS = Timeseries.mat2TS
 BIOMODELS_DCT = {

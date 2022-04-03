@@ -110,6 +110,7 @@ that continuous integration is done only *without* ``slycot``.
 ## Version History
 * 0.2.5
   * Improve performance by not recalculating Jacobian
+  * Fix bugs related to implementation of is_reduced as applied on NonlinearIOSystem
 * 0.2.4 3/31/2024 - Create reduced A matrix
   * mat2Df - fixed bug with printing column names
   * Create reduced A matrix for makeStateSpace so that A is non-singular

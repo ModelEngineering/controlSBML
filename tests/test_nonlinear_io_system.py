@@ -68,14 +68,14 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def runSimulation(self, states=None):
         u_vec = np.repeat(0.0, len(self.ctlsb.input_names))
-        self.ctlsb.setTime(TIMES[0])
-        x_vec = self.ctlsb.state_ser.values
-        dct = {n: [] for n in self.ctlsb.state_names}
+        self.sys.setTime(TIMES[0])
+        x_vec = self.sys.makeStateSer().values
+        dct = {n: [] for n in self.sys.state_names}
         for idx, time in enumerate(TIMES):
             dx_vec = self.sys.updfcn(time, x_vec, u_vec, {})
             new_x_vec = x_vec + DT*dx_vec
             [dct[n].append(v) for n, v in
-                  zip(self.ctlsb.state_names, new_x_vec)]
+                  zip(self.sys.state_names, new_x_vec)]
             x_vec = new_x_vec
         if states is None:
            newDct = dct
@@ -100,11 +100,11 @@ class TestNonlinearIOSystem(unittest.TestCase):
           return
         self.init()
         time = 3
-        self.ctlsb.setTime(time)
-        x_vec = self.ctlsb.state_ser.values
-        u_vec = np.repeat(0, len(self.ctlsb.input_names))
+        self.sys.setTime(time)
+        x_vec = self.sys.makeStateSer().values
+        u_vec = np.repeat(0, len(self.sys.input_names))
         out_vec = self.sys.outfcn(time, x_vec, u_vec, None)
-        self.assertEqual(len(out_vec), len(self.ctlsb.output_names))
+        self.assertEqual(len(out_vec), self.sys.num_output)
 
     def testOutlist(self):
         if IGNORE_TEST:
@@ -112,14 +112,14 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         names = self.sys.outlist
         self.assertTrue(all([self.sys.name in n for n in names]))
-        self.assertEqual(len(names), self.ctlsb.num_output)
-#################
+        self.assertEqual(len(names), self.sys.num_output)
+
     def testGetStateSer(self):
         if IGNORE_TEST:
           return
         self.init()
-        ser_0 = self.sys.getStateSer()
-        ser_1 = self.sys.getStateSer(time=1)
+        ser_0 = self.sys.makeStateSer()
+        ser_1 = self.sys.makeStateSer(time=1)
         self.assertGreater(ser_0.loc["S0"], ser_1.loc["S1"])
 
     def testInplist(self):
@@ -128,7 +128,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         names = self.sys.inplist
         self.assertTrue(all([self.sys.name in n for n in names]))
-        self.assertEqual(len(names), self.ctlsb.num_input)
+        self.assertEqual(len(names), self.sys.num_input)
 
     def _checkWithSimulation(self, df):
         df_rr = self.ctlsb.simulateRoadrunner(start_time=0, end_time=END_TIME,
@@ -144,12 +144,12 @@ class TestNonlinearIOSystem(unittest.TestCase):
     def runInputOutputResponse(self, u_val, end_time=END_TIME):
         u_val = np.array(u_val)
         #
-        x_vec = self.ctlsb.state_ser.values
-        u_vec = np.repeat(u_val, len(self.ctlsb.input_names))
+        x_vec = self.sys.makeStateSer().values
+        u_vec = np.repeat(u_val, self.sys.num_input)
         u_vecs = np.array([np.array(u_vec) for _ in range(NUM_TIME)])
         u_vecs = np.reshape(u_vecs, (1, NUM_TIME))
         t, y = control.input_output_response(self.sys, TIMES, u_vecs, x_vec)
-        df = pd.DataFrame(y, self.ctlsb.output_names)
+        df = pd.DataFrame(y, self.sys.output_names)
         return df.transpose()
 
     def testWithInputOutputResponse(self):

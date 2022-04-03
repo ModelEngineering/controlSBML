@@ -12,7 +12,8 @@ from controlSBML.control_plot import ControlPlot
 
 class ControlSBML(ControlPlot):
 
-    def __init__(self, model_reference, input_names=None, output_names=None):
+    def __init__(self, model_reference, input_names=None, output_names=None,
+          is_reduced=True):
         """
         Initializes instance variables
         model_reference: str
@@ -20,7 +21,10 @@ class ControlSBML(ControlPlot):
         input_names: name (id) of reaction whose flux is being controlled
         output_names: list-str
             output species
+        is_reduced: bool
+            construct a reduced model so that the A matrix is nonsingular
         """
         super().__init__(model_reference,
-              input_names=input_names, output_names=output_names)
+              input_names=input_names, output_names=output_names,
+              is_reduced=is_reduced)
         

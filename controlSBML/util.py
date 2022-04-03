@@ -211,4 +211,57 @@ def plotMat(mat, column_names=None, row_names=None, is_plot=True, **kwargs):
         sns.heatmap(df, cmap="seismic", ax=ax)
         mgr.doPlotOpts()
         mgr.doFigOpts()
- 
+
+# TODO: Tests
+def makeRoadrunnerSer(roadrunner, names):
+    """
+    Contructs a Series for the roadrunner names.
+
+    Parameters
+    ----------
+    roadrunner: ExtendedRoadrunner
+    names: list-str
+
+    Returns
+    -------
+    pd.Series
+    """
+    values = list(getRoadrunnerValue(roadrunner, names).values())
+    return pd.Series(values, index=names)
+
+# TODO: Tests
+def getRoadrunnerValue(roadrunner, names):
+    """
+    Provides the roadrunner values for a name. If no name,
+    then all values are given.
+
+    Parameters
+    ----------
+    roadrunner: ExtendedRoadrunner
+    name: str/list-str
+
+    Returns
+    -------
+    object/dict
+    """
+    if isinstance(names, str):
+        return roadrunner[names]
+    if names is None:
+        names = roadrunner.keys()
+    return {n: roadrunner[n] for n in names}
+
+# TODO: Tests
+def setRoadrunnerValue(roadrunner, name_dct):
+    """
+    Sets the values of names and values.
+
+    Parameters
+    ----------
+    name_dct: dict
+        key: str
+        value: value
+    """
+    for name, value in name_dct.items():
+        if isinstance(value, int):
+            value = float(value)
+        roadrunner[name] = value

@@ -64,6 +64,7 @@ INTERCONNECT = control.interconnect(
   inplist=["controller.in"],
   outlist=CLOSED_OUTPUTS,
 )
+MTOR_OUTPUT_NAMES = ["mTORC1_DEPTOR", "mTORC2_DEPTOR"]
 
 
 #############################
@@ -123,6 +124,63 @@ class TestFunctions(unittest.TestCase):
         ts = ctl.simulateSystem(self.interconnect)
         self.assertTrue(all([isinstance(c, int) for c in ts.columns]))
         self.assertTrue("Timeseries" in str(type(ts)))
+
+    def makeMtor(self, timepoint=0, input_names=None, output_names=None):
+        # Creates a NonlinearIOSystem named "mtro"
+        if output_names is None:
+            output_names = MTOR_OUTPUT_NAMES
+        if input_names is None:
+            input_names=["v1", "v11"]
+        ctlsb = ctl.ControlSBML(
+            "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
+            input_names=input_names,
+            output_names=output_names,
+            is_reduced=True)
+        ctlsb.setTime(timepoint)
+        return ctlsb.makeNonlinearIOSystem("mtor")
+
+    def testMtorBug1(self):
+        if IGNORE_TEST:
+          return
+        non_linear_mtor = self.makeMtor()
+        ts = ctl.simulateSystem(non_linear_mtor)
+        self.assertEqual(len(ts.columns), len(MTOR_OUTPUT_NAMES))
+
+    def testMtorBug2(self):
+        if IGNORE_TEST:
+          return
+        mtor = self.makeMtor(timepoint=0)
+        input_names = ["v6"]
+        output_names = ["mTORC1_DEPTOR", "pAkt"]
+        mtor = self.makeMtor(input_names=input_names, output_names=output_names)
+        xeq = [100]  # Desired concentration for mTORC1_DEPTOR
+        def outfcn(t, x, u, _):
+            # State is accumulated error
+            new_err = xeq[0] - u[0]
+            return -30*new_err
+        controller = control.NonlinearIOSystem(
+          None,
+          outfcn,
+          inputs=['in'],
+          outputs=['out'], name='controller')
+        # Create the closed loop system
+        closed_outputs = list(mtor.outlist)
+        closed_outputs.append('controller.out')
+        #closed_outputs.append("controller.out")  # Make this visible as well
+        mtor_closed = control.interconnect(
+          [mtor, controller],       # systems
+          connections=[
+            ['mtor.v6', 'controller.out'],
+            ['controller.in',  'mtor.mTORC1_DEPTOR'],
+          ],
+          inplist=["controller.in"],
+          outlist=closed_outputs,
+        )
+        initial_x_vec = ctl.makeStateVector(mtor_closed)
+        ts = ctl.simulateSystem(mtor_closed,
+              output_names=closed_outputs,
+              initial_x_vec=initial_x_vec, end_time=200)
+        self.assertGreater(len(ts), 0)
 
 
 if __name__ == '__main__':

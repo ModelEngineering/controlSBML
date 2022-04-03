@@ -13,6 +13,7 @@ Notes:
 
 from controlSBML.make_roadrunner import makeRoadrunner
 import controlSBML as ctl
+from controlSBML import util
 
 import control
 import numpy as np
@@ -25,6 +26,7 @@ END_TIME = 5  # Default endtime
 POINTS_PER_TIME = 10
 TIME = "time"
 IS_DEBUG = False
+TIMEPOINT_NULL = 1
 
 
 cleanIt = lambda n: n if n[0] != "[" else n[1:-1]
@@ -48,7 +50,7 @@ class ControlBase(object):
         # Iinitial model calculations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
-        self._jacobian_timepoint = None
+        self._jacobian_timepoint = TIMEPOINT_NULL
         self._jacobian_df = None
         # Set defaults
         self.species_names = list(
@@ -56,7 +58,6 @@ class ControlBase(object):
         self.depeendent_names = list(
               set(self.species_names).symmetric_difference(self.state_names))
         if not set(self.state_names) <= set(self.species_names):
-            import pdb; pdb.set_trace()
             raise RuntimeError("State name is not a species name.")
         self.full_stoichiometry_df, self.reduced_stoichiometry_df  \
               = self._makeStoichiometryDF()
@@ -99,11 +100,6 @@ class ControlBase(object):
     def C_df(self):
         return self._makeCDF()
 
-    @staticmethod
-    def _makeDF(mat):
-        df = pd.DataFrame(mat, columns=mat.colnames, index=mat.rownames)
-        return df
-
     def _makeStoichiometryDF(self):
         """
         Creates the reduced stoichiometry matrix and the auxiliary matrix
@@ -114,9 +110,9 @@ class ControlBase(object):
         DataFrame - reduced stoichiometry matrix
         """
         #
-        reduced_stoichiometry_df = self._makeDF(
+        reduced_stoichiometry_df = util.mat2DF(
               self.roadrunner.getReducedStoichiometryMatrix())
-        full_stoichiometry_df = self._makeDF(
+        full_stoichiometry_df = util.mat2DF(
               self.roadrunner.getFullStoichiometryMatrix())
         return full_stoichiometry_df, reduced_stoichiometry_df
 
@@ -132,11 +128,15 @@ class ControlBase(object):
         state_names = self.state_names
         C_df = pd.DataFrame(np.eye(self.num_state), columns=state_names,
               index=state_names)
-        L0 = self.roadrunner.getL0Matrix()
-        if len(L0) > 0:
-            L0_df = pd.DataFrame(L0, columns=L0.colnames, index=L0.rownames)
-            C_df = pd.concat([C_df, L0_df], axis=0)
+        if self.is_reduced:
+            L0 = self.roadrunner.getL0Matrix()
+            if len(L0) > 0:
+                L0_df = pd.DataFrame(L0, columns=L0.colnames, index=L0.rownames)
+                C_df = pd.concat([C_df, L0_df], axis=0)
         C_df = C_df.loc[self.output_names, :]
+        values = C_df.values.flatten()
+        if any([np.isnan(v) for v in values]):
+            import pdb; pdb.set_trace()
         return C_df
 
     @property
@@ -146,7 +146,7 @@ class ControlBase(object):
 
         Parameters
         ----------
-
+:
         Returns
         -------
         dict
@@ -171,7 +171,8 @@ class ControlBase(object):
         -------
         np.ndarray: N X 1
         """
-        return self._makeSer(self.state_names)
+        ser = util.makeRoadrunnerSer(self.roadrunner, self.state_names)
+        return ser
 
     @property
     def output_ser(self):
@@ -182,17 +183,7 @@ class ControlBase(object):
         -------
         np.ndarray: N X 1
         """
-        return self._makeSer(self.output_names)
-
-    def _makeSer(self, names):
-        """
-        Contructs a Series for the names.
-
-        Returns
-        -------
-        pd.Series
-        """
-        return pd.Series(list(self.get(names).values()), index=names)
+        return util.makeSer(self.roadrunner, self.output_names)
 
     @property
     def jacobian_df(self):
@@ -204,7 +195,7 @@ class ControlBase(object):
         -------
         pd.DataFrame, species_names
         """
-        if self.getTime() == self._jacobian_timepoint:
+        if np.isclose(self.getTime(), self._jacobian_timepoint):
             if self._jacobian_df is not None:
                 return self._jacobian_df
         if self.is_reduced:
@@ -240,7 +231,7 @@ class ControlBase(object):
 
     def setTime(self, time):
         self.roadrunner.reset()
-        self._jacobian_timepoint = None
+        self._jacobian_timepoint = TIMEPOINT_NULL
         if time > 0.01:
             _ = self.roadrunner.simulate(0.0, time)
 
@@ -330,11 +321,9 @@ class ControlBase(object):
         -------
         object/dict
         """
-        if isinstance(names, str):
-            return self.roadrunner[names]
         if names is None:
             names = self.roadrunner.keys()
-        return {n: self.roadrunner[n] for n in names}
+        return util.getRoadrunnerValue(self.roadrunner, names)
 
     def set(self, name_dct):
         """
@@ -346,10 +335,7 @@ class ControlBase(object):
             key: str
             value: value
         """
-        for name, value in name_dct.items():
-            if isinstance(value, int):
-                value = float(value)
-            self.roadrunner[name] = value
+        util.setRoadrunnerValue(self.roadrunner, name_dct)
 
     @staticmethod
     def _sortList(super_lst, sub_lst):
@@ -440,6 +426,10 @@ class ControlBase(object):
                 ncol = np.shape(B_mat)[1]
             D_mat = np.repeat(0, nrow*ncol)
             D_mat = np.reshape(D_mat, (nrow, ncol))
+        try:
+            ss = control.StateSpace(A_mat, B_mat, C_mat, D_mat)
+        except:
+            import pdb; pdb.set_trace()
         return control.StateSpace(A_mat, B_mat, C_mat, D_mat)
 
     def makeNonlinearIOSystem(self, name, effector_dct=None):

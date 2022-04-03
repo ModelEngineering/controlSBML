@@ -2,6 +2,7 @@
 
 import controlSBML.constants as cn
 from controlSBML import msgs
+from controlSBML import util
 
 import control
 import numpy as np
@@ -10,6 +11,7 @@ import pandas as pd
 
 ARG_LST = [cn.TIME, cn.STATE, cn.INPUT, cn.PARAMS]
 MIN_ELAPSED_TIME = 1e-2
+
 
 class NonlinearIOSystem(control.NonlinearIOSystem):
 
@@ -39,9 +41,12 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.ctlsb = ctlsb
         self.do_simulate_on_update = do_simulate_on_update
         # Useful properties
-        self.state_names = ctlsb.state_names
+        self.state_names = ctlsb.species_names
         self.input_names = ctlsb.input_names
         self.output_names = ctlsb.output_names
+        self.num_state = len(self.state_names)
+        self.num_input = len(self.input_names)
+        self.num_output = len(self.output_names)
         #
         self.effector_dct = effector_dct
         if self.effector_dct is None:
@@ -52,7 +57,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                 self.effector_dct[input_name] = input_name
         self._ignored_inputs = []  # Note setable inputs
         # Initialize the controlNonlinearIOSystem object
-        super().__init__(self.updfcn, self.outfcn,
+        super().__init__(self._updfcn, self._outfcn,
               inputs=self.input_names, outputs=self.output_names,
               states=self.state_names, name=name)
 
@@ -67,27 +72,27 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     def setTime(self, time):
         self.ctlsb.setTime(time)
 
-    def getStateSer(self, time=0):
+    def makeStateSer(self, time=0):
         """
         Gets the values of state at the specified time.
 
         Parameters
         ----------
         time: float
-        
+
         Returns
         -------
         pd.Series
         """
         self.setTime(time)
-        return self.ctlsb.state_ser
+        return util.makeRoadrunnerSer(self.ctlsb.roadrunner, self.state_names)
 
-    def updfcn(self, time, x_vec, u_vec, _):
-        """ 
+    def _updfcn(self, time, x_vec, u_vec, _):
+        """
         Computes the change in state. This is done by having roadrunner
         calculate fluxes. No simulation is run, and so this technique
         may not always work.
-        
+
         Parameters
         ----------
         time: float: time
@@ -122,13 +127,12 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         dstate_ser = pd.Series(self.ctlsb.get(dstate_names))
         return dstate_ser.values
 
-    def outfcn(self, time, x_vec, u_vec, _): 
-        """ 
+    def _outfcn(self, _, x_vec, __, ___):
+        """
         Calculates the values of outputs.
-        
+
         Parameters
         ----------
-        time: float: time
         x_vec: np.array(float): state vector
         u_vec: np.array(float): input vector (in log10 units)
 
@@ -138,8 +142,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         """
         out_vec = np.repeat(np.nan, self.ctlsb.num_output)
         for out_idx, name in enumerate(self.output_names):
-            state_idx = self.state_names.index(name)
-            out_vec[out_idx] = x_vec[state_idx]
+            if name in self.state_names:
+                state_idx = self.state_names.index(name)
+                out_vec[out_idx] = x_vec[state_idx]
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
         return out_vec

@@ -2,8 +2,7 @@
 
 import controlSBML.constants as cn
 import controlSBML as ctl
-import controlSBML.util as util
-from controlSBML.option_management.options import Options
+from controlSBML import util
 
 import control
 import numpy as np
@@ -18,7 +17,7 @@ def makeStateVector(sys, start_time=0):
     ----------
     sys: inherits from control.InputOutputSystem
     start_time: float
-    
+
     Returns
     -------
     list
@@ -28,11 +27,12 @@ def makeStateVector(sys, start_time=0):
         for sub_sys in sys.syslist:
             x_lst.extend(makeStateVector(sub_sys, start_time=start_time))
     elif isinstance(sys, ctl.NonlinearIOSystem):
-        x_lst.extend(sys.getStateSer(start_time).values)
+        x_lst.extend(sys.makeStateSer().values)
     else:
         new_state = list(np.repeat(0, sys.nstates))
         x_lst.extend(new_state)
-    return [float(v) for v in x_lst]
+    result = [float(v) for v in x_lst]
+    return result
 
 def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
       start_time=cn.START_TIME, end_time=cn.END_TIME,
@@ -51,7 +51,7 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
     start_time: float (start of simulation)
     end_time: float (end of simulation)
     points_per_time: int (number of simulation timepoints per second)
-    
+
     Returns
     -------
     Timeseries
