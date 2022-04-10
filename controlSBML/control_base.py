@@ -446,15 +446,18 @@ class ControlBase(object):
         """
         return ctl.NonlinearIOSystem(name, self, effector_dct=effector_dct)
 
-    def makeTransferFunction(self):
+    @staticmethod
+    def reduceTransferFunction(tf):
         """
-        Creates a transfer function for the system. Verifies that there
-        is a single input and a single output. Reduces the order of the
-        transfer function as needed.
+        Reduces the order of a transfer function if trailing zeroes.
+
+        Parameters
+        ----------
+        tf: control.TransferFunction
         
         Returns
         -------
-        control.TransferFunction
+        tf: control.TransferFunction
         """
         def findOrderOfFirstNonzeroDigit(polynomial):
             for idx in range(len(polynomial)):
@@ -466,15 +469,6 @@ class ControlBase(object):
             pos = len(polynomial) - new_order
             return polynomial[0:pos]
         #
-        # Validity checks
-        if len(self.input_names) != 1:
-            raise ValueError("Must have exactly one input.")
-        if len(self.output_names) != 1:
-            raise ValueError("Must have exactly one output.")
-        # Get initial transfer function
-        state_space = self.makeStateSpace()
-        tf = control.ss2tf(state_space)
-        # See if the transfer function can be reduced
         numerator = tf.num[0][0]
         denominator = tf.den[0][0]
         lowest_order = min(findOrderOfFirstNonzeroDigit(numerator),
@@ -484,3 +478,24 @@ class ControlBase(object):
         new_denominator = reduceOrder(denominator, lowest_order)
         new_tf = control.TransferFunction(new_numerator, new_denominator)
         return new_tf
+
+    def makeTransferFunction(self):
+        """
+        Creates a transfer function for the system. Verifies that there
+        is a single input and a single output. Reduces the order of the
+        transfer function as needed.
+        
+        Returns
+        -------
+        control.TransferFunction
+        """
+        # Validity checks
+        if len(self.input_names) != 1:
+            raise ValueError("Must have exactly one input.")
+        if len(self.output_names) != 1:
+            raise ValueError("Must have exactly one output.")
+        # Get initial transfer function
+        state_space = self.makeStateSpace()
+        tf = control.ss2tf(state_space)
+        #
+        return self.reduceTransferFunction(tf)

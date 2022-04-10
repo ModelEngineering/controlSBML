@@ -337,6 +337,33 @@ class TestControlBase(unittest.TestCase):
             ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"] )
             tf = ctlsb.makeTransferFunction()
 
+    def testReduceTransferFunction(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        def test(num_numerator_zero, num_denominator_zero):
+            numerator_ply = list(np.repeat(0, num_numerator_zero))
+            numerator_ply.insert(0, 1)
+            denominator_ply = list(np.repeat(0, num_denominator_zero))
+            denominator_ply.insert(0, 1)
+            denominator_ply.insert(0, 1)
+            tf = control.TransferFunction(numerator_ply, denominator_ply)
+            new_tf = self.ctlsb.reduceTransferFunction(tf)
+            dcgain = new_tf.dcgain()
+            if num_numerator_zero == num_denominator_zero:
+                self.assertTrue(np.isclose(new_tf.dcgain(), 1.0))
+            elif num_numerator_zero > num_denominator_zero:
+                self.assertTrue(np.isclose(new_tf.dcgain(), 0))
+            elif num_numerator_zero < num_denominator_zero:
+                self.assertEqual(new_tf.dcgain(), np.inf)
+        #
+        test(0, 0)
+        test(1, 1)
+        test(0, 1)
+        test(1, 2)
+        test(1, 0)
+        test(2, 1)
+
     def testMakeTransferFunction2(self):
         if IGNORE_TEST:
           return
