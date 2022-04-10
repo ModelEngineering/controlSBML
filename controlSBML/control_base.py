@@ -81,7 +81,6 @@ class ControlBase(object):
         self.roadrunner.reset()
         # Validation checks
         if not set(self.state_names) <= set(self.species_names):
-            import pdb; pdb.set_trace()
             text = "State does not include some spaces.\n"
             text += "  Species are: %s" % str(self.species_names)
             text += "  States are: %s" % str(self.state_names)
@@ -426,11 +425,8 @@ class ControlBase(object):
                 ncol = np.shape(B_mat)[1]
             D_mat = np.repeat(0, nrow*ncol)
             D_mat = np.reshape(D_mat, (nrow, ncol))
-        try:
-            ss = control.StateSpace(A_mat, B_mat, C_mat, D_mat)
-        except:
-            import pdb; pdb.set_trace()
-        return control.StateSpace(A_mat, B_mat, C_mat, D_mat)
+        ss = control.StateSpace(A_mat, B_mat, C_mat, D_mat)
+        return ss
 
     def makeNonlinearIOSystem(self, name, effector_dct=None):
         """
@@ -453,15 +449,38 @@ class ControlBase(object):
     def makeTransferFunction(self):
         """
         Creates a transfer function for the system. Verifies that there
-        is a single input and a single output.
+        is a single input and a single output. Reduces the order of the
+        transfer function as needed.
         
         Returns
         -------
         control.TransferFunction
         """
+        def findOrderOfFirstNonzeroDigit(polynomial):
+            for idx in range(len(polynomial)):
+                pos = len(polynomial) - idx - 1
+                if not np.isclose(polynomial[pos], 0):
+                    return idx
+            return len(polynomial) - 1
+        def reduceOrder(polynomial, new_order):
+            pos = len(polynomial) - new_order
+            return polynomial[0:pos]
+        #
+        # Validity checks
         if len(self.input_names) != 1:
             raise ValueError("Must have exactly one input.")
         if len(self.output_names) != 1:
             raise ValueError("Must have exactly one output.")
+        # Get initial transfer function
         state_space = self.makeStateSpace()
-        return control.ss2tf(state_space)
+        tf = control.ss2tf(state_space)
+        # See if the transfer function can be reduced
+        numerator = tf.num[0][0]
+        denominator = tf.den[0][0]
+        lowest_order = min(findOrderOfFirstNonzeroDigit(numerator),
+              findOrderOfFirstNonzeroDigit(denominator))
+        #
+        new_numerator = reduceOrder(numerator, lowest_order)
+        new_denominator = reduceOrder(denominator, lowest_order)
+        new_tf = control.TransferFunction(new_numerator, new_denominator)
+        return new_tf

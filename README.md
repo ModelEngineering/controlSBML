@@ -108,7 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.6
+* 0.2.7
+* 0.2.6 4/10/2020
   * Default for constructor: is_reduced=False
   * makeTransferFunction
 * 0.2.5 4/8/2022

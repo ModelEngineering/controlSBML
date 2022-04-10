@@ -337,6 +337,15 @@ class TestControlBase(unittest.TestCase):
             ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"] )
             tf = ctlsb.makeTransferFunction()
 
+    def testMakeTransferFunction2(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlBase(
+            "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
+            input_names=["v11"], output_names=["mTORC1_DEPTOR"])
+        tf = ctlsb.makeTransferFunction()
+        self.assertLess(tf.dcgain(), 0)
+
 
 if __name__ == '__main__':
   unittest.main()
