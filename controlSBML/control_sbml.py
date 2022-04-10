@@ -13,7 +13,7 @@ from controlSBML.control_plot import ControlPlot
 class ControlSBML(ControlPlot):
 
     def __init__(self, model_reference, input_names=None, output_names=None,
-          is_reduced=True):
+          is_reduced=False):
         """
         Initializes instance variables
         model_reference: str

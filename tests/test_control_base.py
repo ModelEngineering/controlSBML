@@ -106,7 +106,7 @@ class TestControlBase(unittest.TestCase):
 
     def init(self):
         # Cannot modify self.control
-        self.ctlsb = ControlBase(ANTIMONY_FILE)
+        self.ctlsb = ControlBase(ANTIMONY_FILE, is_reduced=True)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -185,7 +185,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeStateSpace2(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlBase(SIMPLE_MDL)
+        ctlsb = ControlBase(SIMPLE_MDL, is_reduced=True)
         sys = ctlsb.makeStateSpace()
         self.assertEqual(sys.nstates, 1)
         times = [0.1*v for v in range(50)]
@@ -197,7 +197,8 @@ class TestControlBase(unittest.TestCase):
     def testMakeStateSpaceReducable(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlBase(REDUCABLE_MDL, output_names=OUTPUT_NAMES_REDUCABLE)
+        ctlsb = ControlBase(REDUCABLE_MDL, output_names=OUTPUT_NAMES_REDUCABLE,
+              is_reduced=True)
         sys = ctlsb.makeStateSpace()
         self.assertGreater(np.shape(sys.C)[0], np.shape(sys.A)[0])
 
@@ -322,6 +323,19 @@ class TestControlBase(unittest.TestCase):
         effector_dct = {"J0": "S0"}
         non_sys = ctlsb.makeNonlinearIOSystem("tst", effector_dct=effector_dct)
         self.assertTrue("NonlinearIOSystem" in str(type(non_sys)))
+
+    def testMakeTransferFunction(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"], output_names=["S1"])
+        tf = ctlsb.makeTransferFunction()
+        self.assertTrue("TransferFunction" in str(type(tf)))
+        with(self.assertRaises(ValueError)):
+            ctlsb = ControlBase(LINEAR_MDL, output_names=["S1"])
+            tf = ctlsb.makeTransferFunction()
+        with(self.assertRaises(ValueError)):
+            ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"] )
+            tf = ctlsb.makeTransferFunction()
 
 
 if __name__ == '__main__':

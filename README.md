@@ -108,7 +108,10 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.5
+* 0.2.6
+  * Default for constructor: is_reduced=False
+  * makeTransferFunction
+* 0.2.5 4/8/2022
   * Improve performance by not recalculating Jacobian
   * Fix bugs related to implementation of is_reduced as applied on NonlinearIOSystem
 * 0.2.4 3/31/2024 - Create reduced A matrix

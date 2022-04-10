@@ -35,7 +35,7 @@ cleanIt = lambda n: n if n[0] != "[" else n[1:-1]
 class ControlBase(object):
 
     def __init__(self, model_reference, input_names=None, output_names=None,
-          is_reduced=True):
+          is_reduced=False):
         """
         Initializes instance variables
         model_reference: str
@@ -449,3 +449,19 @@ class ControlBase(object):
         controlSBML.NonelinearIOSystem
         """
         return ctl.NonlinearIOSystem(name, self, effector_dct=effector_dct)
+
+    def makeTransferFunction(self):
+        """
+        Creates a transfer function for the system. Verifies that there
+        is a single input and a single output.
+        
+        Returns
+        -------
+        control.TransferFunction
+        """
+        if len(self.input_names) != 1:
+            raise ValueError("Must have exactly one input.")
+        if len(self.output_names) != 1:
+            raise ValueError("Must have exactly one output.")
+        state_space = self.makeStateSpace()
+        return control.ss2tf(state_space)
