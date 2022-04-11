@@ -110,6 +110,7 @@ that continuous integration is done only *without* ``slycot``.
 ## Version History
 * 0.2.7
   * Species can be inputs
+  * makeStateSpace, makeTransferFunction have timepoint argument
 * 0.2.6 4/10/2020
   * Default for constructor: is_reduced=False
   * makeTransferFunction

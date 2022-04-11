@@ -400,7 +400,7 @@ class ControlBase(object):
         #
         return B_df
 
-    def makeStateSpace(self, A_mat=None, B_mat=None,
+    def makeStateSpace(self, timepoint=None, A_mat=None, B_mat=None,
           C_mat=None, D_mat=None):
         """
         Creates a state space control object for
@@ -410,6 +410,7 @@ class ControlBase(object):
         ----------
         The default values of the matrices are calculated in the constructor.
         These can be overridden.
+        timepoint: float (time at which Jacobian is obtained)
         A_mat: np.array(n X n) or DataFrame
         B_mat: np.array(n X p) or DataFrame
         C_mat: np.array(q X n) or DataFrame
@@ -431,7 +432,12 @@ class ControlBase(object):
         C_mat = df2Mat(C_mat)
         D_mat = df2Mat(D_mat)
         if A_mat is None:
+            if timepoint is not None:
+                current_time = self.getTime()
+                self.setTime(timepoint)
             A_mat = self.jacobian_df.values
+            if timepoint is not None:
+                self.setTime(current_time)
         if B_mat is None:
             B_df = self.B_df
             if B_df is None:
@@ -503,11 +509,15 @@ class ControlBase(object):
         new_tf = control.TransferFunction(new_numerator, new_denominator)
         return new_tf
 
-    def makeTransferFunction(self):
+    def makeTransferFunction(self, timepoint=None):
         """
         Creates a transfer function for the system. Verifies that there
         is a single input and a single output. Reduces the order of the
         transfer function as needed.
+        
+        Parameters
+        ----------
+        timepoint: float (time at which Jacobian is obtained)
         
         Returns
         -------
@@ -519,7 +529,7 @@ class ControlBase(object):
         if len(self.output_names) != 1:
             raise ValueError("Must have exactly one output.")
         # Get initial transfer function
-        state_space = self.makeStateSpace()
+        state_space = self.makeStateSpace(timepoint=timepoint)
         tf = control.ss2tf(state_space)
         #
         return self.reduceTransferFunction(tf)
