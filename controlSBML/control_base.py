@@ -41,6 +41,7 @@ class ControlBase(object):
         model_reference: str
             string, SBML file or Roadrunner object
         input_names: name (id) of reaction whose flux is being controlled
+                     or the name of a chemical species
         output_names: list-str
             output species
         is_reduced: bool
@@ -50,11 +51,11 @@ class ControlBase(object):
         # Iinitial model calculations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
-        self._jacobian_timepoint = TIMEPOINT_NULL
-        self._jacobian_df = None
-        # Set defaults
         self.species_names = list(
               self.roadrunner.getFullStoichiometryMatrix().rownames)
+        self._jacobian_timepoint = TIMEPOINT_NULL
+        self._jacobian_df = None
+        # Set defaults.
         self.depeendent_names = list(
               set(self.species_names).symmetric_difference(self.state_names))
         if not set(self.state_names) <= set(self.species_names):
@@ -68,7 +69,7 @@ class ControlBase(object):
             self.input_names = []
         else:
             self.input_names = input_names
-        self.input_names = self._sortList(self.reaction_names, self.input_names)
+        #self.input_names = self._sortList(self.reaction_names, self.input_names)
         self.num_input = len(self.input_names)
         if output_names is None:
             output_names = self.species_names
@@ -89,6 +90,12 @@ class ControlBase(object):
             diff = list(set(self.output_names).difference(self.species_names))
             text = "Outputs must be species. The following outputs are not species"
             text += "The following outputs are not species: %s" % str(diff)
+            raise ValueError(text)
+        possible_input_names = set(self.state_names).union(self.reaction_names)
+        if not set(self.input_names) <= set(possible_input_names):
+            diff = list(set(self.input_names).difference(possible_input_names))
+            text = "Inputs must be a species or a reaction."
+            text += "   Invalid names are: %s" % str(diff)
             raise ValueError(text)
 
     @property
@@ -353,21 +360,38 @@ class ControlBase(object):
         new_super_lst = list(super_lst)
         return sorted(sub_lst, key=lambda v: new_super_lst.index(v))
 
+    def separateSpeciesReactionInputs(self):
+        species_inputs = [n for n in self.input_names if n in self.species_names]
+        reaction_inputs = [n for n in self.input_names if n in self.reaction_names]
+        return species_inputs, reaction_inputs
+
     def _makeBDF(self):
         """
         Constructs a dataframe for the B matrix.
+        The columns must be in the same order as the input_names.
 
         Returns
         -------
         np.ndarray (n X p), where p = len(input_names)
         """
         if len(self.input_names) > 0:
+            # Determine which inputs are reactions and which inputs are species
+            species_inputs, reaction_inputs = self.separateSpeciesReactionInputs()
+            # Construct the matrix for species inputs
+            if len(species_inputs) > 0:
+                eye = np.eye(self.num_state)
+                B_species_df = pd.DataFrame(eye, columns=self.state_names,
+                      index=self.state_names)
+                B_species_df = B_species_df[species_inputs]
+                B_df = B_species_df
+            if len(reaction_inputs) > 0:
+                B_reaction_df = self.full_stoichiometry_df[reaction_inputs]
+                B_df = B_reaction_df
             # Select the columns needed from the stoichiometry matrix
-            B_df = self.full_stoichiometry_df[self.input_names]
-            # Subset to the states
-            sub_names = list(set(B_df.index).intersection(self.state_names))
-            sub_names = self._sortList(self.state_names, sub_names)
-            B_df = B_df.loc[sub_names, :]
+            # Merge the two
+            if (len(species_inputs) > 0) and (len(reaction_inputs) > 0):
+                B_df = pd.concat([B_species_df, B_reaction_df], axis=1)
+            B_df = B_df[self.input_names]
         else:
             ncol = 1
             B_mat = np.repeat(0, self.num_state)

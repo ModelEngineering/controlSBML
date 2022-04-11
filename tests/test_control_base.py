@@ -15,7 +15,7 @@ IS_PLOT = False
 HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
-INPUT_NAMES = ["J0"]
+REACTION_NAMES = ["J1"]
 OUTPUT_NAMES = ["S3", "S2"]
 END_TIME = 20
 LINEAR_MDL = """
@@ -35,7 +35,8 @@ SIMPLE_MDL = """
 S1 -> S2; 1
 S1 = 10; S2 = 0;
 """
-LINEAR_MDL_INPUT_NAMES = ["J0", "J1", "J2"]
+LINEAR_MDL_REACTION_NAMES = ["J0", "J1", "J2"]
+LINEAR_MDL_SPECIES_NAMES = ["S1", "S2"]
 NONLINEAR_MDL = """
 S0 -> 2 S0; S0
 S0 -> S1; S0
@@ -217,7 +218,7 @@ class TestControlBase(unittest.TestCase):
         -------
         array-float
         """
-        input_names = setList(input_names, INPUT_NAMES)
+        input_names = setList(input_names, REACTION_NAMES)
         output_names = setList(output_names, OUTPUT_NAMES)
         ctlsb = ControlBase(mdl,
               input_names=input_names, output_names=output_names)
@@ -295,10 +296,10 @@ class TestControlBase(unittest.TestCase):
         jac_00 = self.ctlsb.jacobian_df
         isEqual(jac_00, jac_0, True)
 
-    def testMakeBMatrix(self):
+    def testMakeBMatrixReactionInputs(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_INPUT_NAMES)
+        ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_REACTION_NAMES)
         B_df = ctlsb._makeBDF()
         self.assertEqual(np.shape(B_df.values), (3, 3))
         self.assertTrue(all(B_df.values.flatten()
@@ -307,6 +308,21 @@ class TestControlBase(unittest.TestCase):
         ctlsb = ControlBase(LINEAR_MDL, input_names=["J0", "J2"])
         B_df = ctlsb._makeBDF()
         self.assertEqual(np.shape(B_df.values), (3, 2))
+
+    def testMakeBMatrixSpeciesInputs(self):
+        if IGNORE_TEST:
+          return
+        input_names = ["J0", "S1", "J2"]
+        ctlsb = ControlBase(LINEAR_MDL, input_names=input_names)
+        B_df = ctlsb._makeBDF()
+        trues = [x == y for x, y in zip(B_df.columns, input_names)]
+        self.assertEqual(np.shape(B_df.values), (3, 3))
+        #
+        ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_SPECIES_NAMES)
+        B_df = ctlsb._makeBDF()
+        self.assertEqual(np.shape(B_df.values), (3, 2))
+        trues = [x == y for x, y in zip(B_df.columns, LINEAR_MDL_SPECIES_NAMES)]
+        self.assertTrue(all(trues))
 
     def testMakeUserError(self):
         if IGNORE_TEST:
