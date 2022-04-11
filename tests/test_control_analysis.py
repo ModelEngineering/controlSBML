@@ -114,8 +114,8 @@ class TestControlAnalysis(unittest.TestCase):
           return
         ctlsb = ControlAnalysis(
               "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml")
-        timepoint = 1
-        linear_df = ctlsb.simulateLinearSystem(end_time=10, timepoint=timepoint)
+        time = 1
+        linear_df = ctlsb.simulateLinearSystem(end_time=10, time=time)
         self.assertTrue(isinstance(linear_df, pd.DataFrame))
 
 

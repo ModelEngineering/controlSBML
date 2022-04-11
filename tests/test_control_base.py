@@ -183,9 +183,9 @@ class TestControlBase(unittest.TestCase):
         sys = self.ctlsb.makeStateSpace(A_mat=self.ctlsb.jacobian_df.values)
         self.assertEqual(sys.nstates, 3)
         #
-        sys1 = self.ctlsb.makeStateSpace(timepoint=4)
+        sys1 = self.ctlsb.makeStateSpace(time=4)
         self.assertFalse(sys.A[0][0] == sys1.A[0][0])
-        sys2 = self.ctlsb.makeStateSpace(timepoint=0)
+        sys2 = self.ctlsb.makeStateSpace(time=0)
         self.assertTrue(np.isclose(sys.A[0][0], sys2.A[0][0]))
 
     def testMakeStateSpace2(self):

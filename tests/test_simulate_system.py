@@ -125,7 +125,7 @@ class TestFunctions(unittest.TestCase):
         self.assertTrue(all([isinstance(c, int) for c in ts.columns]))
         self.assertTrue("Timeseries" in str(type(ts)))
 
-    def makeMtor(self, timepoint=0, input_names=None, output_names=None):
+    def makeMtor(self, time=0, input_names=None, output_names=None):
         # Creates a NonlinearIOSystem named "mtro"
         if output_names is None:
             output_names = MTOR_OUTPUT_NAMES
@@ -136,7 +136,7 @@ class TestFunctions(unittest.TestCase):
             input_names=input_names,
             output_names=output_names,
             is_reduced=True)
-        ctlsb.setTime(timepoint)
+        ctlsb.setTime(time)
         return ctlsb.makeNonlinearIOSystem("mtor")
 
     def testMtorBug1(self):
@@ -149,7 +149,7 @@ class TestFunctions(unittest.TestCase):
     def testMtorBug2(self):
         if IGNORE_TEST:
           return
-        mtor = self.makeMtor(timepoint=0)
+        mtor = self.makeMtor(time=0)
         input_names = ["v6"]
         output_names = ["mTORC1_DEPTOR", "pAkt"]
         mtor = self.makeMtor(input_names=input_names, output_names=output_names)

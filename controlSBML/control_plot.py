@@ -64,7 +64,7 @@ class ControlPlot(ControlAnalysis):
         ncol = len(self.output_names)
         _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
-        linear_ts = self.simulateLinearSystem(timepoint=start_time,
+        linear_ts = self.simulateLinearSystem(time=start_time,
               **mgr.sim_opts)
         y_min = min(linear_ts.min().min(), rr_ts.min().min())
         y_max = max(linear_ts.max().max(), rr_ts.max().max())
@@ -96,37 +96,37 @@ class ControlPlot(ControlAnalysis):
         mgr.doFigOpts()
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotAccuracy(self, model_reference=None, timepoints=0, **kwargs):
+    def plotAccuracy(self, model_reference=None, times=0, **kwargs):
         """
         Creates a plot that evaluates the
         accouract of a linear model where the Jacobian is calculated
-        at multiple timepoints. X0 is taken at the start of the simulation.
+        at multiple times. X0 is taken at the start of the simulation.
 
         Parameters
         ----------
         model_reference: as required by constructor
             default: current model
-        timepoints: list-float
+        times: list-float
             Time at which Jacobian is calculated
             default: [0]
         #@expand
         """
-        if timepoints == 0:
-            timepoints = [0]
+        if times == 0:
+            times = [0]
         mgr = OptionManager(kwargs)
-        if isinstance(timepoints, float) or isinstance(timepoints, int):
-            timepoints = [timepoints]
+        if isinstance(times, float) or isinstance(times, int):
+            times = [times]
         if model_reference is not None:
             ctlsb = self.__class__(model_reference)
         else:
             ctlsb = self
         rr_ts = ctlsb.simulateRoadrunner(**mgr.sim_opts)
-        nrow = len(timepoints)
+        nrow = len(times)
         ncol = len(self.output_names)
         _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
-        for irow, timepoint in enumerate(timepoints):
-            linear_ts = ctlsb.simulateLinearSystem(timepoint=timepoint,
+        for irow, time in enumerate(times):
+            linear_ts = ctlsb.simulateLinearSystem(time=time,
                   **mgr.sim_opts)
             #
             for icol, column in enumerate(self.output_names):
@@ -144,7 +144,7 @@ class ControlPlot(ControlAnalysis):
                 new_mgr.plot_opts[cn.O_AX] = ax
                 ax.plot(linear_ts.times, linear_ts[column], color="red")
                 ax.plot(rr_ts.times, rr_ts[column], color="blue")
-                ax.scatter(timepoint, y_min, s=40,
+                ax.scatter(time, y_min, s=40,
                        marker="o", color="g")
                 if irow < nrow - 1:
                     new_mgr.plot_opts[cn.O_XTICKLABELS] = []
@@ -157,7 +157,7 @@ class ControlPlot(ControlAnalysis):
                     ax.set_yticklabels([])
                 else:
                     pass
-                    #ax.text(-2, y_max/2, "%2.1f" % timepoint)
+                    #ax.text(-2, y_max/2, "%2.1f" % time)
                 new_mgr.doPlotOpts()
         mgr.doFigOpts()
 

@@ -30,7 +30,7 @@ class SimulationParameters(object):
 class ControlAnalysis(ControlBase):
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def simulateLinearSystem(self, timepoint=0, **kwargs):
+    def simulateLinearSystem(self, time=0, **kwargs):
         """
         Creates an approximation of the SBML model based on the Jacobian, and
         constructs predictions based on this Jacobian and the values of
@@ -38,7 +38,7 @@ class ControlAnalysis(ControlBase):
 
         Parameters
         ----------
-        timepoint: float
+        time: float
             Time at which Jacobian is taken
         #@expand
 
@@ -50,7 +50,7 @@ class ControlAnalysis(ControlBase):
         sim_opts = options.parse()[0]
         prms = SimulationParameters(sim_opts)
         cur_time = self.get(cn.TIME)
-        self.setTime(timepoint)
+        self.setTime(time)
         if prms.B_df is None:
             prms.B_df = self._makeBDF()
         sys =self.makeStateSpace(A_mat=prms.A_df, B_mat=prms.B_df,
