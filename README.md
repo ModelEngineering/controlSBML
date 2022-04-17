@@ -108,7 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.8
+* 0.2.9
+* 0.2.8 4/17/2022
   * Added options to plotTrueModel
   * Updated Using ControlSBML with an example of doing feedback 
 * 0.2.7 4/11/2022
