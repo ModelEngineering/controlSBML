@@ -14,18 +14,22 @@ import numpy as np
 class ControlPlot(ControlAnalysis):
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotTrueModel(self, **kwargs):
+    def plotTrueModel(self, names=None, **kwargs):
         """
         Plots the underlying SBML model.
 
         Parameters
         ----------
+        names: list-str
+            variables to to plot
         #@expand
         """
         # Parse the options
         mgr = OptionManager(kwargs)
         # Run the simulation
         ts = self.simulateRoadrunner(**mgr.sim_opts)
+        if names is not None:
+            ts = ts[names]
         # Adjust the option values
         mgr.plot_opts.set(cn.O_XLABEL, default=cn.TIME)
         y_max = ts.max().max()
