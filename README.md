@@ -109,6 +109,7 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.2.9
+  * Fluxes can be outputs
 * 0.2.8 4/17/2022
   * Added options to plotTrueModel
   * Updated Using ControlSBML with an example of doing feedback 

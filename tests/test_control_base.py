@@ -120,6 +120,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeCDF(self):
         if IGNORE_TEST:
           return
+        self.init()
         C_df = self.ctlsb._makeCDF()
         num_row = len(self.ctlsb.output_names)
         num_col = self.ctlsb.num_state
@@ -208,6 +209,20 @@ class TestControlBase(unittest.TestCase):
         sys = ctlsb.makeStateSpace()
         self.assertGreater(np.shape(sys.C)[0], np.shape(sys.A)[0])
 
+    def testMakeStateSpaceReducableWithOutputFlux(self):
+        if IGNORE_TEST:
+          return
+        def test(time, is_equal):
+            ctlsb = ControlBase(REDUCABLE_MDL, output_names=["S1", "J1"],
+                  is_reduced=True)
+            ctlsb.setTime(time)
+            sys = ctlsb.makeStateSpace()
+            is_equal = all([x == y for x, y in zip(sys.C[0, :], sys.C[1,:])])
+            self.assertEqual(is_equal, is_equal)
+        #
+        test(0, False)
+        test(1, True)
+
     def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=None,
           output_names=None, end_time=END_TIME):
         """
@@ -249,6 +264,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeStateSpaceZeroInput(self):
         if IGNORE_TEST:
           return
+        self.init()
         input_names = ["J0"]
         ctlsb = ControlBase(LINEAR_MDL,
               input_names=input_names, output_names=["S3", "S2"])

@@ -14,6 +14,7 @@ Notes:
 from controlSBML.make_roadrunner import makeRoadrunner
 import controlSBML as ctl
 from controlSBML import util
+from controlSBML import msgs
 
 import control
 import numpy as np
@@ -47,12 +48,23 @@ class ControlBase(object):
         is_reduced: bool
             construct a reduced model so that the A matrix is nonsingular
         """
-        self.is_reduced = is_reduced
-        # Iinitial model calculations
+        # First initializations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
         self.species_names = list(
               self.roadrunner.getFullStoichiometryMatrix().rownames)
+        if output_names is None:
+            output_names = self.species_names
+        self.output_names = output_names
+        # Initializations with error checks
+        self.is_reduced = is_reduced
+        if len(set(self.roadrunner.getReactionIds()).intersection(self.output_names)) > 0:
+            if self.is_reduced:
+                self.is_reduced = False
+                text = "Cannot have a flux output and is_reduced=True."
+                text += "  Setting is_reduced=False."
+                msgs.warn(text)
+        # Iinitial model calculations
         self._jacobian_time = TIMEPOINT_NULL
         self._jacobian_df = None
         # Set defaults.
@@ -63,7 +75,10 @@ class ControlBase(object):
         self.full_stoichiometry_df, self.reduced_stoichiometry_df  \
               = self._makeStoichiometryDF()
         # Check for consistency on the state specification
-        self.reaction_names = list(self.reduced_stoichiometry_df.columns)
+        if self.is_reduced:
+            self.reaction_names = list(self.reduced_stoichiometry_df.columns)
+        else:
+            self.reaction_names = list(self.reduced_stoichiometry_df.columns)
         # Handle defaults
         if input_names is None:
             self.input_names = []
@@ -71,10 +86,8 @@ class ControlBase(object):
             self.input_names = input_names
         #self.input_names = self._sortList(self.reaction_names, self.input_names)
         self.num_input = len(self.input_names)
-        if output_names is None:
-            output_names = self.species_names
-        self.output_names = output_names
-        self.output_names = self._sortList(self.species_names, self.output_names)
+        # FIXME: Is this necessary?
+        # self.output_names = self._sortList(self.species_names, self.output_names)
         self.num_output = len(self.output_names)
         # Other calculations
         self.antimony = self.roadrunner.getAntimony()
@@ -86,14 +99,15 @@ class ControlBase(object):
             text += "  Species are: %s" % str(self.species_names)
             text += "  States are: %s" % str(self.state_names)
             raise RuntimeError(text)
-        if not set(self.output_names) <= set(self.species_names):
+        possible_names = set(self.species_names).union(self.reaction_names)
+        if not set(self.output_names) <= set(possible_names):
             diff = list(set(self.output_names).difference(self.species_names))
-            text = "Outputs must be species. The following outputs are not species"
-            text += "The following outputs are not species: %s" % str(diff)
+            text = "Outputs must be species or fluxes."
+            text += "The following outputs are invalid: %s" % str(diff)
             raise ValueError(text)
-        possible_input_names = set(self.state_names).union(self.reaction_names)
-        if not set(self.input_names) <= set(possible_input_names):
-            diff = list(set(self.input_names).difference(possible_input_names))
+        possible_names = set(self.species_names).union(self.reaction_names)
+        if not set(self.input_names) <= set(possible_names):
+            diff = list(set(self.input_names).difference(possible_names))
             text = "Inputs must be a species or a reaction."
             text += "   Invalid names are: %s" % str(diff)
             raise ValueError(text)
@@ -126,27 +140,48 @@ class ControlBase(object):
         """
         Creates the output C dataframe based on the requested output_names.
         Columns should be the states. Rows are the outputs.
+        There are 3 cases for outputs:
+         1) The output is a state
+         2) The output is a floating species whose concentration
+            is a linear function of the other state variables
+         3) The output is a flux and this
+            is a linear function of the other state variables
 
         Returns
         -------
         pd.DataFrame
         """
         # FIXME: Not correctly constructing the C matrix
+        # Initializations 
         state_names = self.state_names
         num_output = len(self.output_names)
-        C_df = pd.DataFrame(np.eye(num_output), columns=state_names,
-              index=self.output_names)
-        if self.is_reduced:
-            L0 = self.roadrunner.getL0Matrix()
-            if len(L0) > 0:
-                L0_df = pd.DataFrame(L0, columns=L0.colnames, index=L0.rownames)
-                C_df = pd.concat([C_df, L0_df], axis=0)
-        C_df = C_df.loc[self.output_names, :]
-        # Handle reaction fluxes
-        flux_jacobian_df = self.makeFluxJacobian()
-        for reaction_name in set(self.output_names).intersection(self.reaction_names):
-            C_df.loc[reaction_name, :] = flux_jacobian_df.loc[reaction_name, :]
-        # Structure as a vector
+        if len(set(self.reaction_names).intersection(self.output_names)) > 0:
+            flux_jacobian_df = self.makeFluxJacobian()
+        else:
+            flux_jacobian_df = None
+        L0 = self.roadrunner.getL0Matrix()
+        if len(L0) > 0:
+            L0_df = pd.DataFrame(L0, columns=L0.colnames, index=L0.rownames)
+        else:
+            L0_df = None
+        # Iterate across each output to construct the transpose of the C matrix
+        C_T_dct = {}
+        for name in self.output_names:
+            if name in self.state_names:
+                values = np.repeat(0, self.num_state)
+                idx = self.state_names.index(name)
+                values[idx] = 1
+                C_T_dct[name] = values
+            elif name in self.species_names:
+                if L0_df is None:
+                    raise RuntimeError("Species missing from L0")
+                if not name in L0.rownames:
+                    raise RuntimeError("Species missing from L0")
+                C_T_dct[name] = L0_df.loc[name, :]
+            elif name in self.reaction_names:
+                C_T_dct[name] = flux_jacobian_df.loc[name, :]
+        C_df_T = pd.DataFrame(C_T_dct, index=state_names)
+        C_df = C_df_T.transpose()
         values = C_df.values.flatten()
         if any([np.isnan(v) for v in values]):
             raise RuntimeError("Nan value encountered.")

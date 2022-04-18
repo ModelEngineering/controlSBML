@@ -8,5 +8,5 @@ def error(text):
   sys.exit()
 
 def warn(text):
-  print("***Warning***\n")
+  print("\n\n***Warning***\n")
   print("   %s" % text)
