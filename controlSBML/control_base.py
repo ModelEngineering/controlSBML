@@ -131,18 +131,25 @@ class ControlBase(object):
         -------
         pd.DataFrame
         """
+        # FIXME: Not correctly constructing the C matrix
         state_names = self.state_names
-        C_df = pd.DataFrame(np.eye(self.num_state), columns=state_names,
-              index=state_names)
+        num_output = len(self.output_names)
+        C_df = pd.DataFrame(np.eye(num_output), columns=state_names,
+              index=self.output_names)
         if self.is_reduced:
             L0 = self.roadrunner.getL0Matrix()
             if len(L0) > 0:
                 L0_df = pd.DataFrame(L0, columns=L0.colnames, index=L0.rownames)
                 C_df = pd.concat([C_df, L0_df], axis=0)
         C_df = C_df.loc[self.output_names, :]
+        # Handle reaction fluxes
+        flux_jacobian_df = self.makeFluxJacobian()
+        for reaction_name in set(self.output_names).intersection(self.reaction_names):
+            C_df.loc[reaction_name, :] = flux_jacobian_df.loc[reaction_name, :]
+        # Structure as a vector
         values = C_df.values.flatten()
         if any([np.isnan(v) for v in values]):
-            import pdb; pdb.set_trace()
+            raise RuntimeError("Nan value encountered.")
         return C_df
 
     @property
@@ -533,3 +540,43 @@ class ControlBase(object):
         tf = control.ss2tf(state_space)
         #
         return self.reduceTransferFunction(tf)
+
+    def makeFluxJacobian(self, time=None):
+        """
+        Constructs the Jacobian of the reaction flux vector.
+
+        Parameters
+        ----------
+        time: float
+            Time at which this is calculated
+        
+        Returns
+        -------
+        pd.DataFrame
+            index: reaction id
+            column: species
+        """
+        # FIXME : Handle case where state_names < species_names
+        # This calculation only works if state_names == species_names
+        diff = set(self.state_names).symmetric_difference(self.species_names)
+        if len(diff) > 0:
+            raise RuntimeError(
+                  "Code doesn't work if species_names != state_names")
+        # Adjust time if necessary
+        cur_time = self.getTime()
+        if time is None:
+            time = cur_time
+        if not np.isclose(time, cur_time):
+            self.setTime(time)
+        #
+        dct = {}
+        for state_name in self.state_names:
+            dct[state_name] = []
+            for reaction_name in self.reaction_names:
+                dct[state_name].append(self.roadrunner.getEE(
+                      reaction_name, state_name))
+        #
+        df = pd.DataFrame(dct, index=self.reaction_names)
+        if time != cur_time:
+            self.setTime(cur_time)
+        return df

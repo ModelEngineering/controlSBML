@@ -394,6 +394,19 @@ class TestControlBase(unittest.TestCase):
         tf = ctlsb.makeTransferFunction()
         self.assertLess(tf.dcgain(), 0)
 
+    def testMakeFluxJacobian(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ControlBase(
+            "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
+            input_names=["v11"], output_names=["mTORC1_DEPTOR"])
+        df_0 = ctlsb.makeFluxJacobian(0)
+        df_2 = ctlsb.makeFluxJacobian(2)
+        df = df_0 - df_2
+        df = df.applymap(lambda v: np.abs(v))
+        max_val = df.max().max()
+        self.assertGreater(max_val, 0.5)
+
 
 if __name__ == '__main__':
   unittest.main()
