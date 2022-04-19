@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 
 
+ATOL = 1e-8  # Absolute tolerance for comparisons
 TIME = "time"
 START_TIME = 0  # Default start time
 END_TIME = 5  # Default endtime
@@ -519,7 +520,7 @@ class ControlBase(object):
         return ctl.NonlinearIOSystem(name, self, effector_dct=effector_dct)
 
     @staticmethod
-    def reduceTransferFunction(tf):
+    def reduceTransferFunction(tf, atol=ATOL):
         """
         Reduces the order of a transfer function if trailing zeroes.
 
@@ -534,7 +535,7 @@ class ControlBase(object):
         def findOrderOfFirstNonzeroDigit(polynomial):
             for idx in range(len(polynomial)):
                 pos = len(polynomial) - idx - 1
-                if not np.isclose(polynomial[pos], 0):
+                if not np.isclose(polynomial[pos], 0, atol=atol):
                     return idx
             return len(polynomial) - 1
         def reduceOrder(polynomial, new_order):
@@ -551,7 +552,7 @@ class ControlBase(object):
         new_tf = control.TransferFunction(new_numerator, new_denominator)
         return new_tf
 
-    def makeTransferFunction(self, time=None):
+    def makeTransferFunction(self, time=None, atol=ATOL):
         """
         Creates a transfer function for the system. Verifies that there
         is a single input and a single output. Reduces the order of the
@@ -560,6 +561,7 @@ class ControlBase(object):
         Parameters
         ----------
         time: float (time at which Jacobian is obtained)
+        atol: absolute tolerance for comparison
         
         Returns
         -------
@@ -574,7 +576,7 @@ class ControlBase(object):
         state_space = self.makeStateSpace(time=time)
         tf = control.ss2tf(state_space)
         #
-        return self.reduceTransferFunction(tf)
+        return self.reduceTransferFunction(tf, atol=atol)
 
     def makeFluxJacobian(self, time=None):
         """
