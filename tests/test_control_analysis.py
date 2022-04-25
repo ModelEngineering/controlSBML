@@ -2,6 +2,7 @@ from controlSBML.control_analysis import ControlAnalysis
 from controlSBML import control_analysis
 import helpers
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import os
@@ -79,16 +80,24 @@ class TestControlAnalysis(unittest.TestCase):
           return
         self.ctlsb = ControlAnalysis(ANTIMONY_FILE)
 
+    def plot(self, df1, df2):
+        for name in df1.columns:
+            randoms = np.random.rand(len(df1[name]))
+            plt.plot(df1.index, df1[name]+0.1*randoms)
+            plt.plot(df2.index, df2[name])
+        plt.show()
+
     def testSimulateLinearSystemRoadrunner(self):
         if IGNORE_TEST:
           return
         ctlsb = ControlAnalysis(LINEAR_MDL)
         linear_df = ctlsb.simulateLinearSystem(step_val=0)
         rr_df = ctlsb.simulateRoadrunner()
-        for column in linear_df.columns[1:]:
-            linear_arr = linear_df[column].values
-            rr_arr = rr_df[column].values
-            self.assertLess(np.abs(linear_arr[-1] - rr_arr[-1]), 0.1)
+        ams = np.sqrt(np.sum((rr_df.to_numpy() - linear_df.to_numpy())**2))
+        ams = ams/len(rr_df)
+        self.assertLess(np.abs(ams), 1e-4)
+        if IS_PLOT:
+            self.plot(linear_df, rr_df)
 
     def testReducedStoich(self):
         if IGNORE_TEST:

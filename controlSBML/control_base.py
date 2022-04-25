@@ -152,9 +152,17 @@ class ControlBase(object):
         -------
         pd.DataFrame
         """
-        # FIXME: Not correctly constructing the C matrix
+        # FIXME: This may fail if is_reduced = True because
+        #        and input_names includes state since these states are dropped
+        is_state_input = len(set(self.input_names).intersection(
+              self.state_names)) > 0
+        if self.is_reduced and is_state_input:
+            raise ValueError("Cannot handle input states for is_reduced=True")
         # Initializations 
-        state_names = self.state_names
+        state_names = list(set(self.state_names).difference(self.input_names))
+        state_names = sorted(state_names,
+              key=lambda n: self.state_names.index(n))
+        num_state = len(state_names)
         num_output = len(self.output_names)
         if len(set(self.reaction_names).intersection(self.output_names)) > 0:
             flux_jacobian_df = self.makeFluxJacobian()
@@ -168,9 +176,9 @@ class ControlBase(object):
         # Iterate across each output to construct the transpose of the C matrix
         C_T_dct = {}
         for name in self.output_names:
-            if name in self.state_names:
-                values = np.repeat(0, self.num_state)
-                idx = self.state_names.index(name)
+            if name in state_names:
+                values = np.repeat(0, num_state)
+                idx = state_names.index(name)
                 values[idx] = 1
                 C_T_dct[name] = values
             elif name in self.species_names:
@@ -277,6 +285,27 @@ class ControlBase(object):
     @staticmethod
     def isRoadrunnerKey(key):
         return not ((key[0] == "_") or ("(" in key) or (key[-1] == "'"))
+
+    def getJacobian(self, time=None):
+        """
+        Calculates the Jacobian at the specified time.
+
+        Parameters
+        ----------
+        time: float
+        
+        Returns
+        -------
+        pd.DataFrame
+        """
+        # Calculate the Jacobian
+        if time is not None:
+            current_time = self.getTime()
+            self.setTime(time)
+        jacobian_df = self.jacobian_df.copy()
+        if time is not None:
+            self.setTime(current_time)
+        return jacobian_df
 
     def setTime(self, time):
         self.roadrunner.reset()
@@ -408,10 +437,14 @@ class ControlBase(object):
         reaction_inputs = [n for n in self.input_names if n in self.reaction_names]
         return species_inputs, reaction_inputs
 
-    def _makeBDF(self):
+    def _makeBDF(self, time=None):
         """
         Constructs a dataframe for the B matrix.
         The columns must be in the same order as the input_names.
+
+        Parameters
+        ---------
+        time: float
 
         Returns
         -------
@@ -422,10 +455,9 @@ class ControlBase(object):
             species_inputs, reaction_inputs = self.separateSpeciesReactionInputs()
             # Construct the matrix for species inputs
             if len(species_inputs) > 0:
-                eye = np.eye(self.num_state)
-                B_species_df = pd.DataFrame(eye, columns=self.state_names,
-                      index=self.state_names)
-                B_species_df = B_species_df[species_inputs]
+                jacobian_df = self.getJacobian(time=time)
+                df = jacobian_df.drop(species_inputs, axis=0)
+                B_species_df = df[species_inputs]
                 B_df = B_species_df
             if len(reaction_inputs) > 0:
                 B_reaction_df = self.full_stoichiometry_df[reaction_inputs]
@@ -474,19 +506,24 @@ class ControlBase(object):
         B_mat = df2Mat(B_mat)
         C_mat = df2Mat(C_mat)
         D_mat = df2Mat(D_mat)
+        # Calculate the Jacobian
+        #
         if A_mat is None:
-            if time is not None:
-                current_time = self.getTime()
-                self.setTime(time)
-            A_mat = self.jacobian_df.values
-            if time is not None:
-                self.setTime(current_time)
+            A_df = self.getJacobian(time)
+            columns = A_df.columns
+            # Remove any state that's an input
+            for name in self.input_names:
+                if name in columns:
+                    A_df = A_df.drop(name, axis=0)
+                    A_df = A_df.drop(name, axis=1)
+            A_mat = A_df.values
+        #
         if B_mat is None:
-            B_df = self.B_df
+            B_df = self._makeBDF(time=time)
             if B_df is None:
                 B_mat = None
             else:
-                B_mat = self.B_df.values
+                B_mat = B_df.values
         if C_mat is None:
             # Construct the output matrix
             C_mat = self.C_df.values

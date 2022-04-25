@@ -67,8 +67,9 @@ class ControlAnalysis(ControlBase):
         times = [prms.start_time + n*dt for n in range(prms.num_point)]
         times, y_vals = control.forced_response(sys, T=times,
               X0=X0, U=prms.step_val)
-        return Timeseries(np.transpose(y_vals),
+        ts = Timeseries(np.transpose(y_vals),
               times=times, columns=self.output_names)
+        return ts
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def simulateRoadrunner(self, **kwargs):
@@ -94,7 +95,3 @@ class ControlAnalysis(ControlBase):
               prms.num_point)
         columns = [c[1:-1] if c[0] =="[" else c for c in data.colnames]
         return Timeseries(data, columns=columns)
-        if False:
-            df = pd.DataFrame(data, columns=columns)
-            df = df.set_index(cn.TIME)
-            return df

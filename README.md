@@ -108,8 +108,11 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.9
+* 0.2.10
+  * Fix bug in calculating transfer function that incorrectly considered state
+* 0.2.9 4/19/2022
   * Fluxes can be outputs
+  * Construction of transfer function includes atol option for simplification
 * 0.2.8 4/17/2022
   * Added options to plotTrueModel
   * Updated Using ControlSBML with an example of doing feedback 
