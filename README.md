@@ -108,7 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.10
+* 0.2.12
+* 0.2.11 4/25/2022
   * Fix bug in calculating transfer function that incorrectly considered state
 * 0.2.9 4/19/2022
   * Fluxes can be outputs
