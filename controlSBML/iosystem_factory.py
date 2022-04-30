@@ -105,7 +105,7 @@ class IosystemFactory(object):
     def makeAdder(self, name, num_input=2):
         """
         Inputs two or more elements. Outputs their sum. Name is "sum".
-        The inputs are "inp1", "inp2", ...
+        The inputs are "in1", "in2", ...
         The output is "out".
         
         Parameters
@@ -116,7 +116,7 @@ class IosystemFactory(object):
         -------
         NonlinearIOSystem
         """
-        inputs = ["inp%d" % n for n in range(1, num_input+1)]
+        inputs = ["in%d" % n for n in range(1, num_input+1)]
         def outfcn(_, __, u_vec, ___):
             """
             Creates a sine wave at the frequency specified.
@@ -169,3 +169,43 @@ class IosystemFactory(object):
         return control.NonlinearIOSystem(
             updfcn, outfcn, outputs=['out'], inputs=["in"], states=["x"],
             name=name)
+
+    def makeConstant(self, name, constant):
+        """
+        Outputs a constant value.
+        
+        Parameters
+        ----------
+        name: str
+        constant: float
+        
+        Returns
+        -------
+        NonlinearIOSystem
+        """
+        def outfcn(_, __, ___, ____):
+            return constant
+        #
+        return control.NonlinearIOSystem(
+            None, outfcn, outputs=['out'], inputs=[], name=name)
+
+    def makeMultiplier(self, name, factor):
+        """
+        Outputs a multiple of the input signal.
+        
+        Parameters
+        ----------
+        name: str
+        factor: float
+        
+        Returns
+        -------
+        NonlinearIOSystem
+        """
+        def outfcn(_, __, u_vec, ____):
+            if not "len" in dir(u_vec):
+                u_vec = [u_vec]
+            return [factor*u_vec[0]]
+        #
+        return control.NonlinearIOSystem(
+            None, outfcn, outputs=['out'], inputs=['in'], name=name)

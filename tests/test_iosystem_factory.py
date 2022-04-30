@@ -72,6 +72,25 @@ class TestIosystemFactory(unittest.TestCase):
         lin_sys = sys.linearize(x0=0, u0=0)
         self.assertTrue(lin_sys.dcgain() == 1)
 
+    def testMakeConstant(self):
+        if IGNORE_TEST:
+          return
+        constant = 3
+        sys = self.factory.makeConstant("constant", constant)
+        result = control.input_output_response(sys, T=TIMES)
+        self.assertTrue(np.var(result.y) == 0)
+        self.assertTrue(result.y.flatten()[0] == constant)
+
+    def testMakeMultiplier(self):
+        if IGNORE_TEST:
+          return
+        factor = 3
+        sys = self.factory.makeMultiplier("multiplier", factor)
+        U = np.repeat(1, len(TIMES)).flatten()
+        result = control.input_output_response(sys, T=TIMES.flatten(), U=U)
+        self.assertTrue(np.var(result.y) == 0)
+        self.assertTrue(result.y.flatten()[0] == factor)
+
 
 
 if __name__ == '__main__':

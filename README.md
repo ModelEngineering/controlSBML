@@ -109,6 +109,8 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.2.12
+  * IosystemFactory creates IOSystem objects for Adder, Multiplier,
+    Filter, PIDController, Sinusoid, Constant
 * 0.2.11 4/25/2022
   * Fix bug in calculating transfer function that incorrectly considered state
 * 0.2.9 4/19/2022
