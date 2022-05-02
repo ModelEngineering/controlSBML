@@ -159,9 +159,13 @@ class ControlBase(object):
         if self.is_reduced and is_state_input:
             raise ValueError("Cannot handle input states for is_reduced=True")
         # Initializations 
-        state_names = list(set(self.state_names).difference(self.input_names))
-        state_names = sorted(state_names,
-              key=lambda n: self.state_names.index(n))
+        state_names = self.state_names
+        # FIXME: remove "if False"
+        if False:
+            # Don't delete input_names that are state
+            state_names = list(set(self.state_names).difference(self.input_names))
+            state_names = sorted(state_names,
+                  key=lambda n: self.state_names.index(n))
         num_state = len(state_names)
         num_output = len(self.output_names)
         if len(set(self.reaction_names).intersection(self.output_names)) > 0:
@@ -415,6 +419,20 @@ class ControlBase(object):
         """
         util.setRoadrunnerValue(self.roadrunner, name_dct)
 
+    def add(self, name_dct):
+        """
+        Adds the indicated value to the current value of the variable.
+
+        Parameters
+        ----------
+        name_dct: dict
+            key: str
+            value: value
+        """
+        cur_dct = util.getRoadrunnerValue(self.roadrunner, name_dct.keys())
+        new_dct = {n: cur_dct[n] + name_dct[n] for n in name_dct.keys()}
+        util.setRoadrunnerValue(self.roadrunner, new_dct)
+
     @staticmethod
     def _sortList(super_lst, sub_lst):
         """
@@ -456,7 +474,12 @@ class ControlBase(object):
             # Construct the matrix for species inputs
             if len(species_inputs) > 0:
                 jacobian_df = self.getJacobian(time=time)
-                df = jacobian_df.drop(species_inputs, axis=0)
+                # FIXME: remove "if False"
+                if False:
+                    # Don't address state for input species
+                    df = jacobian_df.drop(species_inputs, axis=0)
+                else:
+                    df = jacobian_df
                 B_species_df = df[species_inputs]
                 B_df = B_species_df
             if len(reaction_inputs) > 0:
@@ -512,10 +535,13 @@ class ControlBase(object):
             A_df = self.getJacobian(time)
             columns = A_df.columns
             # Remove any state that's an input
-            for name in self.input_names:
-                if name in columns:
-                    A_df = A_df.drop(name, axis=0)
-                    A_df = A_df.drop(name, axis=1)
+            # FIXME: remove "if False"
+            if False:
+                # Allow state to be generated internally
+                for name in self.input_names:
+                    if name in columns:
+                        A_df = A_df.drop(name, axis=0)
+                        A_df = A_df.drop(name, axis=1)
             A_mat = A_df.values
         #
         if B_mat is None:

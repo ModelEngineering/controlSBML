@@ -3,6 +3,7 @@ import controlSBML.constants as cn
 from controlSBML import util
 
 import control
+import control
 import pandas as pd
 import numpy as np
 import unittest
@@ -30,22 +31,12 @@ OUTPUT_NAMES = ["S1", "S2"]
 ##### HELPERS ###
 # Defined only in terms of control system
 xeq = [4]
-def updfcn(t, x, u, _):
-    # x[0] - current error
-    # x[1] - integral of error
-    err, acc_err = x
-    new_err = xeq - u
-    acc_err += new_err
-    return new_err, acc_err
 def outfcn(t, x, u, _):
     # State is accumulated error
-    control_error = x[0] + x[1] 
-    control_error = min(control_error, 25)
-    return control_error
+    return xeq - u
 CONTROLLER = control.NonlinearIOSystem(
-  updfcn,
+  None,
   outfcn,
-  states=["error", "accumulated_error"],
   inputs=['in'],
   outputs=['out'], name='controller')
 # Control sbml
@@ -96,7 +87,7 @@ class TestFunctions(unittest.TestCase):
         if IGNORE_TEST:
           return
         x_vec = ctl.simulate_system.makeStateVector(self.interconnect)
-        self.assertEqual(len(x_vec), 5)
+        self.assertEqual(len(x_vec), 3)
 
     def testSimulateSystemCtlNonlinearIOSystem(self):
         if IGNORE_TEST:
@@ -116,14 +107,14 @@ class TestFunctions(unittest.TestCase):
     def testSimulateSystemControlInterconnectedSystem(self):
         if IGNORE_TEST:
           return
+        ts = ctl.simulateSystem(self.interconnect)
+        self.assertTrue(all([isinstance(c, int) for c in ts.columns]))
+        self.assertTrue("Timeseries" in str(type(ts)))
+        #
         ts = ctl.simulateSystem(self.interconnect, output_names=CLOSED_OUTPUTS)
         self.assertTrue("Timeseries" in str(type(ts)))
         util.plotOneTS(ts, figsize=(5,5), title="InterconnectedSystem",
               is_plot=IS_PLOT)
-        #
-        ts = ctl.simulateSystem(self.interconnect)
-        self.assertTrue(all([isinstance(c, int) for c in ts.columns]))
-        self.assertTrue("Timeseries" in str(type(ts)))
 
     def makeMtor(self, time=0, input_names=None, output_names=None):
         # Creates a NonlinearIOSystem named "mtro"

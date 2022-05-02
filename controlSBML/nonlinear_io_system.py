@@ -92,6 +92,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         Computes the change in state. This is done by having roadrunner
         calculate fluxes. No simulation is run, and so this technique
         may not always work.
+        Inputs that change floating species are viewed as additions to the species,
+        not setting the level of the species.       
 
         Parameters
         ----------
@@ -115,7 +117,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                      for i, n in enumerate(self.input_names)}
         for input_name, input_value in input_dct.items():
             try:
-                self.ctlsb.set({input_name: input_value})
+                self.ctlsb.add({input_name: input_value})
             except RuntimeError:
                 if input_name not in self._ignored_inputs:
                     self._ignored_inputs.append(input_name)

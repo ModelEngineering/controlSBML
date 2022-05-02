@@ -184,6 +184,18 @@ class TestControlBase(unittest.TestCase):
         value = self.ctlsb.get("S0")
         self.assertTrue(np.isclose(VALUE, value))
 
+    def testAdd(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        dct = {"S1": 1, "S2": 2}
+        names = dct.keys()
+        cur_dct = self.ctlsb.get(names)
+        self.ctlsb.add(dct)
+        new_dct = self.ctlsb.get(names)
+        trues = [new_dct[n] == cur_dct[n] + dct[n] for n in names]
+        self.assertTrue(all(trues))
+
     def testCopyEquals(self):
         if IGNORE_TEST:
           return
@@ -224,7 +236,7 @@ class TestControlBase(unittest.TestCase):
         sys = ctlsb.makeStateSpace()
         tf = control.ss2tf(sys)
         num = tf.num[0][0]
-        self.assertEqual(num[0], 2)
+        self.assertTrue(np.isclose(num[0], 2))
         den = tf.den[0][0]
         self.assertEqual(den[0], 1)
 
@@ -369,7 +381,7 @@ class TestControlBase(unittest.TestCase):
         #
         ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_SPECIES_NAMES)
         B_df = ctlsb._makeBDF()
-        self.assertEqual(np.shape(B_df.values), (1, 2))
+        self.assertEqual(np.shape(B_df.values), (3, 2))
 
     def testMakeUserError(self):
         if IGNORE_TEST:
