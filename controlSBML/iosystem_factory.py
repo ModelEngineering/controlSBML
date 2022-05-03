@@ -4,6 +4,14 @@
 Creates IOsystems to be used in constructing closed loop systems.
 Inputs have the form in, in1, in2, ...
 Outpus have the form out, out1, out2, ... 
+
+IOSystems created:
+    makeFilter: creates an exponential filter
+    makeConstant: outputs a constant value
+    makeAdder: creates an IOSystem that outputs the sum of the inputs
+    makePassthur: creates an IOSystem that outputs the input
+    makePIDController: creates a PID controller
+    makeSinusoid: creates an IOSystem that outputs a sinusoid
 """
 
 
@@ -188,6 +196,24 @@ class IosystemFactory(object):
         #
         return control.NonlinearIOSystem(
             None, outfcn, outputs=['out'], inputs=[], name=name)
+
+    def makePassthru(self, name):
+        """
+        Makes a pass through system that outputs its input.
+        
+        Parameters
+        ----------
+        name: str
+        
+        Returns
+        -------
+        NonlinearIOSystem
+        """
+        def outfcn(_, __, u_vec, ____):
+            return u_vec
+        #
+        return control.NonlinearIOSystem(
+            None, outfcn, outputs=['out'], inputs=['in'], name=name)
 
     def makeMultiplier(self, name, factor):
         """

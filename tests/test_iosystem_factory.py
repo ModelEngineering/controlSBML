@@ -13,7 +13,7 @@ IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
-TIMES = ctl.makeSimulationTimes(0, 5, 500)
+TIMES = ctl.makeSimulationTimes(0, 5, 50)
 
 
 #############################
@@ -90,6 +90,14 @@ class TestIosystemFactory(unittest.TestCase):
         result = control.input_output_response(sys, T=TIMES.flatten(), U=U)
         self.assertTrue(np.var(result.y) == 0)
         self.assertTrue(result.y.flatten()[0] == factor)
+
+    def testPassthru(self):
+        if IGNORE_TEST:
+          return
+        sys = self.factory.makePassthru("passthru")
+        result = control.input_output_response(sys, T=TIMES.flatten(), U=TIMES)
+        trues = [x == y for x, y in zip(TIMES, result.outputs.flatten())]
+        self.assertTrue(all(trues))
 
 
 
