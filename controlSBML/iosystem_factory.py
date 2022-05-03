@@ -22,7 +22,7 @@ import numpy as np
 import pandas as pd
 
 
-class IosystemFactory(object):
+class IOSystemFactory(object):
 
     def __init__(self):
         pass

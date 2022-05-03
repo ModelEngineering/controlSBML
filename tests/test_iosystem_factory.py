@@ -1,4 +1,4 @@
-from controlSBML.iosystem_factory import IosystemFactory
+from controlSBML.iosystem_factory import IOSystemFactory
 import controlSBML as ctl
 
 import control
@@ -19,10 +19,10 @@ TIMES = ctl.makeSimulationTimes(0, 5, 50)
 #############################
 # Tests
 #############################
-class TestIosystemFactory(unittest.TestCase):
+class TestIOSystemFactory(unittest.TestCase):
 
     def setUp(self):
-        self.factory = IosystemFactory()
+        self.factory = IOSystemFactory()
 
     # TODO: More tests for integral and differential control
     def testMakePIDController(self):
