@@ -524,6 +524,31 @@ class ControlBase(object):
             else:
                 return df
         #
+        if time is None:
+            time = self.getTime()
+        # The following linearization works if the following conditions hold:
+        #  1. All floating species are in the state
+        #  2. None of the matrices are specified
+        #  3. States are used as input and output
+        is_default_matrices = (A_mat is None) and (B_mat is None)  \
+              and (C_mat is None)  and (D_mat is None)
+        inputs_and_outputs = set(self.input_names).union(self.output_names)
+        is_subset_state = inputs_and_outputs <= set(self.state_names)
+        #
+        if (not self.is_reduced) and is_default_matrices and is_subset_state:
+            cur_time = self.getTime()
+            if time != self.getTime():
+                self.setTime(time)
+            nonlinear_sys = self.makeNonlinearIOSystem("system")
+            state_values = self.state_ser.values
+            ueq = np.repeat(1, nonlinear_sys.ninputs)
+            state_space = control.linearize(nonlinear_sys, state_values,
+                  ueq=ueq)
+            if self.getTime() != cur_time:
+                self.setTime(cur_time)
+            return state_space
+        # Do custom linearization
+        # At least one matrix is specified
         # Construct the matrices
         A_mat = df2Mat(A_mat)
         B_mat = df2Mat(B_mat)

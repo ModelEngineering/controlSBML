@@ -50,7 +50,8 @@ class SISOClosedLoopSystem(object):
         self.sum_R_F = None
         self.sum_U_D = None
 
-    def evaluateControllability(self, times, input_names=None, output_names=None):
+    def evaluateControllability(self, times, input_names=None,
+           output_names=None):
         """
         Evaluates the controllability of the inputs on the outputs.
         If no input (output) is specified, then all inputs (outputs)
@@ -81,12 +82,13 @@ class SISOClosedLoopSystem(object):
             for input_name in input_names:
                 ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
                       input_names=[input_name],
-                      output_names=[output_names],
+                      output_names=[output_name],
                       is_reduced=self.ctlsb.is_reduced)
-                dct[time][output_name] = []
                 for time in times:
-                     tf = ctlsb.makeTransferFunction(time)
-                     dct[time][output_name].append(tf.dcgain())
+                    dct[time][output_name] = []
+                for time in times:
+                    tf = ctlsb.makeTransferFunction(time)
+                    dct[time][output_name].append(tf.dcgain())
         # Construct the DataFrames
         result_dct = {}
         for time in dct.keys():
