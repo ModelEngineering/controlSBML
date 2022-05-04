@@ -1,7 +1,7 @@
 """Builds and Evaluates SISO Systems"""
 
 """
-The SISO system has:
+The SISO closed loop system has:
   * A ControlSBML SISO System
   * PID Controller
   * Filter (with dcgain = 1)
@@ -17,18 +17,38 @@ Evaluations provided are:
 """
 
 import controlSBML as ctl
+from controlSBML.simulate_system import makeStateVector
 from controlSBML import msgs
+from controlSBML import util
 
 import control
 import numpy as np
 import pandas as pd
 
 
-class SISOBuilder(object):
+class SISOClosedLoopSystem(object):
+    # Constructs and evaluates a SISO closed loop system.
 
     def __init__(self, ctlsb):
         self.ctlsb = ctlsb
         self.factory = ctl.IOSystemFactory()
+        self.closed_loop_system = None
+        self.component_names = ["system", "controller", "fltr", 
+              "reference", "noise",
+              "disturbance", "sum_Y_N", "sum_R_R", "sum_U_D"]
+        # Elements in the closed loop system 
+        ## Subsysems
+        self.system = None
+        self.controller = None
+        self.fltr = None
+        ## External signals
+        self.reference = None
+        self.noise = None
+        self.disturbance = None
+        ## Summations
+        self.sum_Y_N = None
+        self.sum_R_F = None
+        self.sum_U_D = None
 
     def evaluateControllability(self, times, input_names=None, output_names=None):
         """
@@ -130,28 +150,29 @@ class SISOBuilder(object):
         if closed_loop_outputs is None:
             closed_loop_outputs = "sum_R_F.out"
         # Create the elements of the feedback loop
-        reference = self.factory.makeMultiplier("reference", ref)
-        noise = self.factory.makeSinusoid("noise", noise_amp, noise_frq)
-        disturbance = self.factory.makeSinusoid("disturbance", 
+        self.reference = self.factory.makeMultiplier("reference", ref)
+        self.noise = self.factory.makeSinusoid("noise", noise_amp, noise_frq)
+        self.disturbance = self.factory.makeSinusoid("disturbance", 
               disturbance_amp, disturbance_frq)
-        ctlsb = ctl.ControlSBML(MODEL, input_names=[input_name],
+        self.ctlsb = ctl.ControlSBML(MODEL, input_names=[input_name],
               output_names=[output_name])
-        system = ctlsb.makeNonlinearIOSystem("system")
-        controller = self.factory.makePIDController("controller",
+        self.system = ctlsb.makeNonlinearIOSystem("system")
+        self.controller = self.factory.makePIDController("controller",
               kp=kp, ki=ki, kd=kd)
         if kf is None:
             filter = self.factory.makePasshtru("fltr")
         else:
             fltr = self.factory.makeFilter("fltr", kf)
-        sum_Y_N = self.factory.makeAdder("sum_Y_N")
-        sum_U_D = self.factory.makeAdder("sum_U_D")
-        sum_R_F = self.factory.makeAdder("sum_R_F")
+        self.sum_Y_N = self.factory.makeAdder("sum_Y_N")
+        self.sum_U_D = self.factory.makeAdder("sum_U_D")
+        self.sum_R_F = self.factory.makeAdder("sum_R_F")
         # Construct the interconnected system
         system_inp = "system.%s" % system_input
         system_out = "system.%s" % system_output
-        closed_loop = control.interconnect(
-              [reference, noise, disturbance, sum_Y_N, sum_R_F, sum_U_D,
-              system, fltr, controller ], 
+        self.closed_loop_system = control.interconnect(
+              [self.reference, self.noise, self.disturbance,
+              self.sum_Y_N, self.sum_R_F, self.sum_U_D,
+              self.system, self.fltr, self.controller], 
               connections=[
                 ['controller.in', 'sum_R_F.out'],    # e(t)
                 ['sum_U_D.in1', 'controller.out'],   # u(t)
@@ -166,5 +187,25 @@ class SISOBuilder(object):
               inplist=["reference.in"],
               outlist=closed_loop_outputs,
             )
-        #
-        return closed_loop
+
+    def makeStepResponse(self, time=0, **sim_opts):
+        """
+        Simulates the step response.
+
+        Parameters
+        ----------
+        time: float
+            time used for state in the ControlSBML system
+        sim_opts: Options
+            start_time, end_time, points_per_time
+        
+        Returns
+        -------
+        Timeseries
+        """
+        times = ctl.makeSimulationTimes(**sim_opts)
+        X0 = makeStateVector(self.closed_loop_system, start_time=time)
+        timeresponse = control.input_output_response(self.closed_loop_system,
+              times, U=1, X0=X0)
+        return util.timeresponse2Timeseries(timeresponse)
+  

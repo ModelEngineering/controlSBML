@@ -265,3 +265,25 @@ def setRoadrunnerValue(roadrunner, name_dct):
         if isinstance(value, int):
             value = float(value)
         roadrunner[name] = value
+
+def timeresponse2Timeseries(timeresponse, column_names=None):
+    """
+    Converts a control.Timeresponse object to a time series.
+
+    Parameters
+    ----------
+    timeresponse: control.Timeresponse
+    column_names: list-str
+    
+    Returns
+    -------
+    Timeseries
+    """
+    if len(np.shape(timeresponse.outputs)) == 1:
+        df = pd.DataFrame({0: timeresponse.outputs})
+    else:
+        df = pd.DataFrame(timeresponse.outputs)
+    if column_names is not None:
+        df.columns = column_names
+    df.index = timeresponse.t
+    return ctl.Timeseries(df)

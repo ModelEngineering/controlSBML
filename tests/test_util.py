@@ -1,7 +1,9 @@
 from controlSBML import util
 from controlSBML.timeseries import Timeseries
 import controlSBML.constants as cn
+import controlSBML as ctl
 
+import control
 import pandas as pd
 import numpy as np
 import tellurium as te
@@ -104,11 +106,22 @@ class TestFunctions(unittest.TestCase):
         df = util.mat2DF(MAT)
         self.assertTrue(isinstance(df, pd.DataFrame))
 
-    def testplotMat(self):
+    def testPlotMat(self):
         if IGNORE_TEST:
           return
         for mat in [MAT, NAMED_ARRAY, DF]:
             util.plotMat(mat, title="test", figsize=(5,5), is_plot=IS_PLOT)
+
+    def testTimeresponse2Timeseries(self):
+        if IGNORE_TEST:
+          return
+        SIZE = 10
+        factory = ctl.IOSystemFactory()
+        sys = factory.makePassthru("sys")
+        times = list(range(SIZE))
+        timeresponse = control.input_output_response(sys, times, U=times)
+        ts = util.timeresponse2Timeseries(timeresponse)
+        self.assertEqual(len(ts), SIZE)
 
 
 if __name__ == '__main__':
