@@ -282,7 +282,7 @@ def timeresponse2Timeseries(timeresponse, column_names=None):
     if len(np.shape(timeresponse.outputs)) == 1:
         df = pd.DataFrame({0: timeresponse.outputs})
     else:
-        df = pd.DataFrame(timeresponse.outputs)
+        df = pd.DataFrame(timeresponse.outputs.transpose())
     if column_names is not None:
         df.columns = column_names
     df.index = timeresponse.t

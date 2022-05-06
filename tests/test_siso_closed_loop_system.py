@@ -4,15 +4,16 @@ from controlSBML.siso_closed_loop_system import SISOClosedLoopSystem
 
 import control
 import pandas as pd
+import matplotlib.pyplot as plt
 import numpy as np
 import tellurium as te
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 SIZE = 10
-HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
+BIOMD823 = "/home/ubuntu/controlSBML/data/BIOMD0000000823.xml"
 HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
         
 if IS_PLOT:
@@ -88,6 +89,35 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         times = [0, 1, 2, 3]
         dct = siso.evaluateControllability(times)
         self.assertEqual(len(times), len(dct))
+
+    def testMakeClosedLoopSystem1(self):
+        if IGNORE_TEST:
+          return
+        self.siso.makeClosedLoopSystem("cl_sys")
+        times = ctl.makeSimulationTimes(end_time=100)
+        result = control.input_output_response(self.siso.closed_loop_system,
+              times, U=1)
+        if IS_PLOT:
+            plt.plot(result.t.flatten(), result.y.flatten())
+            plt.show()
+        self.assertGreater(np.var(result.y.flatten()), 2)
+
+    def testMakeClosedLoopSystem2(self):
+        # TESTING
+        ctlsb = ctl.ControlSBML(BIOMD823)
+        state_names = ctlsb.state_names
+        ctlsb = ctl.ControlSBML(BIOMD823, input_names=["IR"],
+              output_names=["pDEPTOR"])
+        siso = SISOClosedLoopSystem(ctlsb)
+        closed_loop_outputs=["sum_Y_N.out", "sum_R_F.out", "system.pDEPTOR"]
+        siso.makeClosedLoopSystem("cl_sys", kp=50, ki=10, ref_val=10,
+            noise_amp=0.1, noise_frq=20,
+            closed_loop_outputs=closed_loop_outputs)
+        ts = siso.makeStepResponse(time=1, end_time=200, points_per_time=1)
+        ts.columns = ["output", "e(t)", "pDEPTOR"]
+        if IS_PLOT:
+            ctl.plotOneTS(ts)
+            plt.ylim([-10, 20])
 
 
 if __name__ == '__main__':

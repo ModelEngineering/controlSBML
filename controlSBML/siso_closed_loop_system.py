@@ -42,7 +42,6 @@ class SISOClosedLoopSystem(object):
         self.controller = None
         self.fltr = None
         ## External signals
-        self.reference = None
         self.noise = None
         self.disturbance = None
         ## Summations
@@ -96,12 +95,15 @@ class SISOClosedLoopSystem(object):
         #
         return result_dct
 
-    def makeClosedLoopSystem(self, name, 
+    def makeClosedLoopSystem(self, name,
+          ref_val=1,
           kp=1, ki=0, kd=0,                       # Controller parameters
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
           kf=None,                                # Filter
+          is_neg_feedback=True,                   # Negative feedback?
           system_input=None, system_name=None,    # SISO input, output
+          system_output=None,
           closed_loop_outputs=None):              # list of outputs from closed loop system
         """
         Creates a closed loop system for a ControlSBML object. The closed loop system
@@ -111,6 +113,8 @@ class SISOClosedLoopSystem(object):
         ----------
         name: str
             Name of the resulting system.
+        ref_val: float
+            Reference value used by the controller
         kp: float
             Proportional constant for controller
         ki: float
@@ -127,6 +131,8 @@ class SISOClosedLoopSystem(object):
             frequency of the sine wave for noise
         kf: float
             Constant for filter. If None, no filter.
+        is_neg_feedback: bool
+            subtract filter output from reference
         system_input: str
             name of the input used in the SISO system
             the name must be present in the ControlSBML object
@@ -139,54 +145,52 @@ class SISOClosedLoopSystem(object):
         Returns
         -------
         control.IOSystem.InterconnectedSystem
-            inputs:
-                "system."system_input
-                "controller.in"
-                "filter.in"
-            outputs:
-                "sum_Y_N.out"  - sum of output and noise
-                "sum_U_D.out"  - sum of controller output and disurbance
-                "sum_R_F.out"  - difference of reference and filter output
         """
         # Initializations
         if closed_loop_outputs is None:
-            closed_loop_outputs = "sum_R_F.out"
+            closed_loop_outputs = "sum_Y_N.out"
         # Create the elements of the feedback loop
-        self.reference = self.factory.makeMultiplier("reference", ref)
         self.noise = self.factory.makeSinusoid("noise", noise_amp, noise_frq)
         self.disturbance = self.factory.makeSinusoid("disturbance", 
               disturbance_amp, disturbance_frq)
-        self.ctlsb = ctl.ControlSBML(MODEL, input_names=[input_name],
-              output_names=[output_name])
+        if system_input is None:
+            system_input = self.ctlsb.input_names[0]
+        if system_output is None:
+            system_output = self.ctlsb.output_names[0]
+        ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
+              input_names=[system_input], output_names=[system_output])
         self.system = ctlsb.makeNonlinearIOSystem("system")
         self.controller = self.factory.makePIDController("controller",
               kp=kp, ki=ki, kd=kd)
         if kf is None:
-            filter = self.factory.makePasshtru("fltr")
+            self.fltr = self.factory.makePassthru("fltr")
         else:
-            fltr = self.factory.makeFilter("fltr", kf)
+            self.fltr = self.factory.makeFilter("fltr", kf)
         self.sum_Y_N = self.factory.makeAdder("sum_Y_N")
         self.sum_U_D = self.factory.makeAdder("sum_U_D")
         self.sum_R_F = self.factory.makeAdder("sum_R_F")
         # Construct the interconnected system
+        if is_neg_feedback:
+            filter_str = "-fltr.out"
+        else:
+            filter_str = "fltr.out"
         system_inp = "system.%s" % system_input
         system_out = "system.%s" % system_output
-        self.closed_loop_system = control.interconnect(
-              [self.reference, self.noise, self.disturbance,
+        sys_lst = [self.noise, self.disturbance,
               self.sum_Y_N, self.sum_R_F, self.sum_U_D,
-              self.system, self.fltr, self.controller], 
+              self.system, self.fltr, self.controller]
+        self.closed_loop_system = control.interconnect(sys_lst,
               connections=[
                 ['controller.in', 'sum_R_F.out'],    # e(t)
                 ['sum_U_D.in1', 'controller.out'],   # u(t)
                 ['sum_U_D.in2', 'disturbance.out'],  # d(t)
-                [system.inp,   'sum_U_D.out'],
-                ['sum_Y_N.in1', system.out],        # y(t)
+                [system_inp,   'sum_U_D.out'],
+                ['sum_Y_N.in1', system_out],        # y(t)
                 ['sum_Y_N.in2', 'noise.out'],        # n(t)
                 ['fltr.in',     'sum_Y_N.out'],
-                ['sum_R_F.in1', '-fltr.out'],
-                ['sum_R_F.in2', 'reference.out'],
+                ['sum_R_F.in1', filter_str],
               ],
-              inplist=["reference.in"],
+              inplist=["sum_R_F.in2"],
               outlist=closed_loop_outputs,
             )
 
