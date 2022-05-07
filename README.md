@@ -111,6 +111,7 @@ that continuous integration is done only *without* ``slycot``.
 * 0.2.13
   * SISOClosedLoopSystem provides a way to construct a closed loop system
     for an SBML model. The system has a PID controller and a filter.
+  * IosysemFactory has a log
 * 0.2.12 5/3/2022
   * IosystemFactory creates IOSystem objects for Adder, Multiplier,
     Filter, PIDController, Sinusoid, Constant, Passthru

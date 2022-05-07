@@ -16,9 +16,9 @@ if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
 
-HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
+MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
 LINEAR_MDL = """
 J0: $S0 -> S1; $S0
 J1: S1 -> S2; S1
@@ -121,8 +121,7 @@ class TestControlAnalysis(unittest.TestCase):
     def testSimulateLinearSystem2(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlAnalysis(
-              "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml")
+        ctlsb = ControlAnalysis(MODEL_FILE)
         time = 1
         linear_df = ctlsb.simulateLinearSystem(end_time=10, time=time)
         self.assertTrue(isinstance(linear_df, pd.DataFrame))

@@ -4,6 +4,7 @@ from controlSBML import util
 
 import control
 import control
+import os
 import pandas as pd
 import numpy as np
 import unittest
@@ -14,6 +15,8 @@ IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
 NONLINEAR_MDL = """
 J0:  -> S1; $S0
 J1: S1 -> S2; S1*S1
@@ -122,8 +125,7 @@ class TestFunctions(unittest.TestCase):
             output_names = MTOR_OUTPUT_NAMES
         if input_names is None:
             input_names=["v1", "v11"]
-        ctlsb = ctl.ControlSBML(
-            "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
+        ctlsb = ctl.ControlSBML(MODEL_FILE,
             input_names=input_names,
             output_names=output_names,
             is_reduced=True)

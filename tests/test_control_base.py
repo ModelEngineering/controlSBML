@@ -11,9 +11,8 @@ import tellurium as te
 
 IGNORE_TEST = False
 IS_PLOT = False
-
-HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 REACTION_NAMES = ["J1"]
 OUTPUT_NAMES = ["S3", "S2"]
@@ -442,8 +441,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeTransferFunction2(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlBase(
-            "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
+        ctlsb = ControlBase(MODEL_FILE,
             input_names=["DEPTOR"], output_names=["mTORC1"])
         #   input_names=["v11"], output_names=["mTORC1_DEPTOR"])
         tf = ctlsb.makeTransferFunction(time=3.3, atol=1e-3)
@@ -452,8 +450,7 @@ class TestControlBase(unittest.TestCase):
     def testMakeFluxJacobian(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlBase(
-            "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
+        ctlsb = ControlBase(MODEL_FILE,
             input_names=["v11"], output_names=["mTORC1_DEPTOR"])
         df_0 = ctlsb.makeFluxJacobian(0)
         df_2 = ctlsb.makeFluxJacobian(2)

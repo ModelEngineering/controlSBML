@@ -10,7 +10,7 @@ IS_PLOT = False
 HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
-XML_FILE = os.path.join(TEST_DIR, "BIOMD0000000056.xml")
+XML_FILE_56 = os.path.join(TEST_DIR, "BIOMD0000000056.xml")
 LINEAR_MDL = """
 $S0 -> S1; $S0
 S1 -> S2; S1
@@ -52,13 +52,13 @@ class TestMakeRoadrunner(unittest.TestCase):
     def testXMLFile(self):
         if IGNORE_TEST:
             return
-        rr = makeRoadrunner(XML_FILE)
+        rr = makeRoadrunner(XML_FILE_56)
         self.assertTrue("RoadRunner" in str(type(rr)))
 
     def testXMLString(self):
         if IGNORE_TEST:
             return
-        with open(XML_FILE, "r") as fd:
+        with open(XML_FILE_56, "r") as fd:
             lines = fd.readlines()
         model_str = "".join(lines)
         rr = makeRoadrunner(model_str)

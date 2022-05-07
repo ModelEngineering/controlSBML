@@ -14,9 +14,9 @@ if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
 
-HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
+MODEL_FILE = os.path.join(TEST_DIR, "tests/BIOMD0000000206.xml")
 LINEAR_MDL = """
 J0: $S0 -> S1; $S0
 J1: S1 -> S2; S1

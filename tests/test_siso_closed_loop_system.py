@@ -3,6 +3,7 @@ import controlSBML as ctl
 from controlSBML.siso_closed_loop_system import SISOClosedLoopSystem
 
 import control
+import os
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -13,9 +14,8 @@ import unittest
 IGNORE_TEST = False
 IS_PLOT = False
 SIZE = 10
-BIOMD823 = "/home/ubuntu/controlSBML/data/BIOMD0000000823.xml"
-HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
-        
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+BIOMD823 = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
