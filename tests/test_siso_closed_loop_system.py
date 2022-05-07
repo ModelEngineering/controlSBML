@@ -109,12 +109,13 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["IR"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
-        closed_loop_outputs=["sum_Y_N.out", "sum_R_F.out", "system.pDEPTOR"]
-        siso.makeClosedLoopSystem("cl_sys", kp=50, ki=10, ref_val=10,
+        closed_loop_outputs=["sum_Y_N.out", "sum_R_F.out", 
+              "sum_U_D.out", "system.pDEPTOR"]
+        siso.makeClosedLoopSystem("cl_sys", kp=0.0001, ki=0.01,
             noise_amp=0.1, noise_frq=20,
             closed_loop_outputs=closed_loop_outputs)
-        ts = siso.makeStepResponse(time=1, end_time=200, points_per_time=1)
-        ts.columns = ["output", "e(t)", "pDEPTOR"]
+        ts = siso.makeStepResponse(time=1, step_size=10, end_time=400, points_per_time=10)
+        ts.columns = ["output", "e(t)", "system.in", "pDEPTOR"]
         if IS_PLOT:
             ctl.plotOneTS(ts)
             plt.ylim([-10, 20])

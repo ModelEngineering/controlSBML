@@ -96,7 +96,6 @@ class SISOClosedLoopSystem(object):
         return result_dct
 
     def makeClosedLoopSystem(self, name,
-          ref_val=1,
           kp=1, ki=0, kd=0,                       # Controller parameters
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
@@ -113,8 +112,6 @@ class SISOClosedLoopSystem(object):
         ----------
         name: str
             Name of the resulting system.
-        ref_val: float
-            Reference value used by the controller
         kp: float
             Proportional constant for controller
         ki: float
@@ -146,6 +143,8 @@ class SISOClosedLoopSystem(object):
         -------
         control.IOSystem.InterconnectedSystem
         """
+        # FIXME: not using ref_val
+        # FIXME: converges to 0?
         # Initializations
         if closed_loop_outputs is None:
             closed_loop_outputs = "sum_Y_N.out"
@@ -194,7 +193,7 @@ class SISOClosedLoopSystem(object):
               outlist=closed_loop_outputs,
             )
 
-    def makeStepResponse(self, time=0, **sim_opts):
+    def makeStepResponse(self, time=0, step_size=1, **sim_opts):
         """
         Simulates the step response.
 
@@ -212,6 +211,6 @@ class SISOClosedLoopSystem(object):
         times = ctl.makeSimulationTimes(**sim_opts)
         X0 = makeStateVector(self.closed_loop_system, start_time=time)
         timeresponse = control.input_output_response(self.closed_loop_system,
-              times, U=1, X0=X0)
+              times, U=step_size, X0=X0)
         return util.timeresponse2Timeseries(timeresponse)
   

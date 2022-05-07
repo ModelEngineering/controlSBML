@@ -25,7 +25,11 @@ import pandas as pd
 class IOSystemFactory(object):
 
     def __init__(self):
-        pass
+        self.registered_names = []  # List of names logged
+        self.log_dct = {}  # key: name, value: list
+
+    def initializeLog(self):
+        self.log_dct = {n: [] for n in self.registered_names}
 
     def makePIDController(self, name, kp=2, ki=0, kd=0):
         """
