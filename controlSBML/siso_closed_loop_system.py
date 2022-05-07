@@ -155,7 +155,7 @@ class SISOClosedLoopSystem(object):
         if system_input is None:
             system_input = self.ctlsb.input_names[0]
         if system_output is None:
-            system_output = self.ctlsb.output_names[0]
+            system_output = self.ctlsb.output_names[-1]
         ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
               input_names=[system_input], output_names=[system_output])
         self.system = ctlsb.makeNonlinearIOSystem("system")

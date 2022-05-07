@@ -24,21 +24,23 @@ class TestIOSystemFactory(unittest.TestCase):
     def setUp(self):
         self.factory = IOSystemFactory()
 
+    def runController(self, name="controller", **kwargs):
+        factory = IOSystemFactory()
+        controller = factory.makePIDController(name, **kwargs)
+        times = list(range(20))
+        return factory, control.input_output_response(controller, T=times, U=times)
+
     # TODO: More tests for integral and differential control
     def testMakePIDController(self):
         if IGNORE_TEST:
           return
         kp = 2
-        controller = self.factory.makePIDController("controller", kp=kp)
-        times = [0, 1, 2, 3, 4]
-        result = control.input_output_response(controller, T=times, U=times)
+        _, result = self.runController(kp=kp)
         trues = [r == kp*( t) for t, r in zip(result.t, result.outputs)]
         self.assertTrue(all(trues))
         #
-        controller = self.factory.makePIDController("controller", ki=kp)
-        result_ki = control.input_output_response(controller, T=times, U=times)
-        controller = self.factory.makePIDController("controller", kd=kp)
-        result_kd = control.input_output_response(controller, T=times, U=times)
+        _, result_ki = self.runController(ki=kp)
+        _, result_kd = self.runController(kd=kp)
         trues = [v1 <= v2 for v1, v2 in 
               zip(result_kd.y.flatten(), result_ki.y.flatten())]
         self.assertTrue(all(trues))
@@ -66,11 +68,15 @@ class TestIOSystemFactory(unittest.TestCase):
         if IGNORE_TEST:
           return
         sys = self.factory.makeFilter("filter", -1)
-        U = 5 + 10*np.random.rand(len(TIMES))  # Average value is 10
+        U = range(len(TIMES)) + 0.1*np.random.rand(len(TIMES))
         result = control.input_output_response(sys, T=TIMES, U=U)
         self.assertTrue(len(result.y) > 0)
         lin_sys = sys.linearize(x0=0, u0=0)
         self.assertTrue(lin_sys.dcgain() == 1)
+        df = self.factory.report()
+        if IS_PLOT:
+             plt.scatter(df["in"], df["out"])
+             plt.show()
 
     def testMakeConstant(self):
         if IGNORE_TEST:
@@ -99,6 +105,16 @@ class TestIOSystemFactory(unittest.TestCase):
         trues = [x == y for x, y in zip(TIMES, result.outputs.flatten())]
         self.assertTrue(all(trues))
 
+    def testMakeLogReport(self):
+        if IGNORE_TEST:
+          return
+        def test():
+            factory, _ = self.runController()
+            df = factory.report()
+            self.assertGreater(len(df), 0)
+            self.assertEqual(len(df.columns), 4)
+        #
+        test()
 
 
 if __name__ == '__main__':

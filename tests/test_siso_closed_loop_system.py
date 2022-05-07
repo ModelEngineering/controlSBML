@@ -10,8 +10,8 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 SIZE = 10
 BIOMD823 = "/home/ubuntu/controlSBML/data/BIOMD0000000823.xml"
 HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
@@ -41,6 +41,14 @@ S0 = 10
 S1 = 0
 S2 = 10
 S3 = 0
+"""
+MODEL3 = """
+S0 -> S1; S0
+S1 -> S2; S1
+
+S0 = 10
+S1 = 0
+S2 = 0
 """
         
 
@@ -81,9 +89,9 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
     def testEvaluateControllability3(self):
         if IGNORE_TEST:
           return
-        ctlsb = ctl.ControlSBML(HTTP_FILE)
+        ctlsb = ctl.ControlSBML(BIOMD823)
         state_names = ctlsb.state_names
-        ctlsb = ctl.ControlSBML(HTTP_FILE, input_names=state_names[0:3],
+        ctlsb = ctl.ControlSBML(BIOMD823, input_names=state_names[0:3],
               output_names=state_names[-3:])
         siso = SISOClosedLoopSystem(ctlsb)
         times = [0, 1, 2, 3]
@@ -93,32 +101,38 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
     def testMakeClosedLoopSystem1(self):
         if IGNORE_TEST:
           return
-        self.siso.makeClosedLoopSystem("cl_sys")
+        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S2"],
+              output_names=["S3"])
+        siso = SISOClosedLoopSystem(ctlsb)
+        siso.makeClosedLoopSystem("cl_sys", kp=20)
         times = ctl.makeSimulationTimes(end_time=100)
-        result = control.input_output_response(self.siso.closed_loop_system,
+        result = control.input_output_response(siso.closed_loop_system,
               times, U=1)
         if IS_PLOT:
             plt.plot(result.t.flatten(), result.y.flatten())
             plt.show()
-        self.assertGreater(np.var(result.y.flatten()), 2)
+        outputs = result.y.flatten()
+        self.assertGreater(outputs[-1], 0.7)
 
     def testMakeClosedLoopSystem2(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         ctlsb = ctl.ControlSBML(BIOMD823)
         state_names = ctlsb.state_names
-        ctlsb = ctl.ControlSBML(BIOMD823, input_names=["IR"],
+        ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
-        closed_loop_outputs=["sum_Y_N.out", "sum_R_F.out", 
-              "sum_U_D.out", "system.pDEPTOR"]
-        siso.makeClosedLoopSystem("cl_sys", kp=0.0001, ki=0.01,
-            noise_amp=0.1, noise_frq=20,
+        closed_loop_outputs=["sum_R_F.in2", "sum_R_F.out", 
+              "sum_U_D.out", "sum_Y_N.out"]
+        siso.makeClosedLoopSystem("cl_sys", kp=1000, ki=2, kf=None,
+            noise_amp=0, noise_frq=20,
             closed_loop_outputs=closed_loop_outputs)
-        ts = siso.makeStepResponse(time=1, step_size=10, end_time=400, points_per_time=10)
-        ts.columns = ["output", "e(t)", "system.in", "pDEPTOR"]
+        ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
+              points_per_time=2)
+        ts.columns = ["input", "e(t)", "system.in", "output"]
         if IS_PLOT:
-            ctl.plotOneTS(ts)
-            plt.ylim([-10, 20])
+            ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
+        self.assertGreater(len(ts), 0)
 
 
 if __name__ == '__main__':

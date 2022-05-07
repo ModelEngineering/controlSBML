@@ -18,7 +18,14 @@ class Logger(object):
         """
         self.logger_name = logger_name
         self.item_names = item_names
-        self.dct = {n: [] for n in item_names}
+        self.dct = None
+        self.initialize()
+
+    def initialize(self):
+        """
+        Initializes the log.
+        """
+        self.dct = {n: [] for n in self.item_names}
         self.dct[TIME] = []
 
     def __repr__(self):
@@ -36,6 +43,7 @@ class Logger(object):
         self.dct[TIME].append(time)
         [self.dct[n].append(v) for n, v in zip(self.item_names, item_values)]
 
+    # TODO: Handle duplicate times
     def report(self):
         """
         Generate a report of the log.
