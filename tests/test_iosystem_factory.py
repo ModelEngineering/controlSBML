@@ -68,14 +68,20 @@ class TestIOSystemFactory(unittest.TestCase):
         if IGNORE_TEST:
           return
         sys = self.factory.makeFilter("filter", -1)
-        U = range(len(TIMES)) + 0.1*np.random.rand(len(TIMES))
+        length = len(TIMES)
+        mean = 5
+        U = np.random.normal(mean, 1, length)
         result = control.input_output_response(sys, T=TIMES, U=U)
+        y_values = result.y.flatten()
+        times = result.t.flatten()
         self.assertTrue(len(result.y) > 0)
+        self.assertLess(np.abs(np.mean(y_values[-10:]) - mean), mean/10)
         lin_sys = sys.linearize(x0=0, u0=0)
         self.assertTrue(lin_sys.dcgain() == 1)
-        df = self.factory.report()
         if IS_PLOT:
-             plt.scatter(df["in"], df["out"])
+             plt.scatter(result.t.flatten(), result.y.flatten())
+             plt.xlabel("time")
+             plt.ylabel("filter output")
              plt.show()
 
     def testMakeConstant(self):

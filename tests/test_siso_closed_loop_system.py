@@ -133,6 +133,20 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         if IS_PLOT:
             ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
         self.assertGreater(len(ts), 0)
+        df = siso.factory.report()
+        if IS_PLOT:
+            plt.plot(df.index, df["sum_R_F.out"])
+            plt.xlabel("time")
+            plt.ylabel("e(t)")
+            plt.show()
+        # Do a second simulation to check the log
+        ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
+              points_per_time=2)
+        ts.columns = ["input", "e(t)", "system.in", "output"]
+        if IS_PLOT:
+            ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
+        df2 = siso.report()
+        self.assertTrue(df.equals(df2))
 
 
 if __name__ == '__main__':

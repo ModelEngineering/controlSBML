@@ -63,7 +63,13 @@ class IOSystemFactory(object):
         except:
             val = vec
         return val
-    
+
+    def initializeLoggers(self):
+        """
+        Initialize loggers.
+        """
+        for logger in self.loggers:
+            logger.initialize()
 
     def report(self):
         """

@@ -4,6 +4,8 @@ import numpy as np
 import pandas as pd
 
 TIME = "time"
+TIMEMS = "timems"  # Time in milliseconds
+SEC_TO_MS = 1000
 
 
 class Logger(object):
@@ -19,14 +21,15 @@ class Logger(object):
         self.logger_name = logger_name
         self.item_names = item_names
         self.dct = None
-        self.initialize()
+        self.dct = {n: [] for n in self.item_names}
+        self.dct[TIME] = []
 
     def initialize(self):
         """
         Initializes the log.
         """
-        self.dct = {n: [] for n in self.item_names}
-        self.dct[TIME] = []
+        for key in self.dct.keys():
+            self.dct[key] = []
 
     def __repr__(self):
         return self.logger_name
@@ -43,7 +46,6 @@ class Logger(object):
         self.dct[TIME].append(time)
         [self.dct[n].append(v) for n, v in zip(self.item_names, item_values)]
 
-    # TODO: Handle duplicate times
     def report(self):
         """
         Generate a report of the log.
@@ -55,8 +57,24 @@ class Logger(object):
             columns: item_names
         """
         df = pd.DataFrame(self.dct)
-        df = df.set_index(TIME)
-        return df
+        # Eliminate duplicate times by using millisecond granularity
+        df[TIMEMS] = df[TIME].apply(lambda v: int(SEC_TO_MS*v))
+        dfg = df.groupby([TIMEMS])
+        sers = []
+        for idx, indices in dfg.groups.items():
+            new_indices = list(indices)
+            index = new_indices[-1]  # pick last one
+            ser = df.loc[index, :]
+            if isinstance(ser, pd.DataFrame):
+                ser = ser.reset_index()
+                ser = ser.loc[0, :]
+            sers.append(ser)
+        new_df = pd.DataFrame(sers)
+        # Format the dataframe
+        new_df[TIME] = new_df[TIMEMS].apply(lambda v: v/SEC_TO_MS)
+        del new_df[TIMEMS]
+        new_df = new_df.set_index(TIME)
+        return new_df
 
     def merge(self, new_name, other_logs):
         """

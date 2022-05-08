@@ -48,6 +48,12 @@ class SISOClosedLoopSystem(object):
         self.sum_Y_N = None
         self.sum_R_F = None
         self.sum_U_D = None
+    
+    def report(self):
+        """
+        Report log from running the closed loop system.
+        """
+        return self.factory.report()
 
     def evaluateControllability(self, times, input_names=None,
            output_names=None):
@@ -143,8 +149,11 @@ class SISOClosedLoopSystem(object):
         -------
         control.IOSystem.InterconnectedSystem
         """
-        # FIXME: not using ref_val
-        # FIXME: converges to 0?
+        # Can only do one build per incovation
+        if self.closed_loop_system is not None:
+            msg = "A closed loop system exists. "
+            msg += "Create a new instance to build another one."
+            raise ValueError(msg)
         # Initializations
         if closed_loop_outputs is None:
             closed_loop_outputs = "sum_Y_N.out"
@@ -208,6 +217,7 @@ class SISOClosedLoopSystem(object):
         -------
         Timeseries
         """
+        self.factory.initializeLoggers()
         times = ctl.makeSimulationTimes(**sim_opts)
         X0 = makeStateVector(self.closed_loop_system, start_time=time)
         timeresponse = control.input_output_response(self.closed_loop_system,
