@@ -42,6 +42,8 @@ class SISOClosedLoopSystem(object):
         self.controller = None
         self.fltr = None
         ## External signals
+        self.entry = None
+        self.exit = None
         self.noise = None
         self.disturbance = None
         ## Summations
@@ -143,11 +145,15 @@ class SISOClosedLoopSystem(object):
             name of the output used in the SISO system
             the name must be present in the ControlSBML object
         closed_loop_ouputs: list-str
-            If None, use y(t) + n(t)
+            If None, entry.out, exit.out
         
         Returns
         -------
         control.IOSystem.InterconnectedSystem
+           entry.in: reference input to System
+           exit.out: output from the System
+           noise.out: noise input to system
+           disturbance.out: noise input to system
         """
         # Can only do one build per incovation
         if self.closed_loop_system is not None:
@@ -156,8 +162,10 @@ class SISOClosedLoopSystem(object):
             raise ValueError(msg)
         # Initializations
         if closed_loop_outputs is None:
-            closed_loop_outputs = "sum_Y_N.out"
+            closed_loop_outputs = ["entry.out", "exit.out"]
         # Create the elements of the feedback loop
+        self.entry = self.factory.makePassthru("entry")
+        self.exit = self.factory.makePassthru("exit")
         self.noise = self.factory.makeSinusoid("noise", noise_amp, noise_frq)
         self.disturbance = self.factory.makeSinusoid("disturbance", 
               disturbance_amp, disturbance_frq)
@@ -185,10 +193,12 @@ class SISOClosedLoopSystem(object):
         system_inp = "system.%s" % system_input
         system_out = "system.%s" % system_output
         sys_lst = [self.noise, self.disturbance,
+              self.entry, self.exit,
               self.sum_Y_N, self.sum_R_F, self.sum_U_D,
               self.system, self.fltr, self.controller]
         self.closed_loop_system = control.interconnect(sys_lst,
               connections=[
+                ["sum_R_F.in2", "entry.out"],        # r(t)
                 ['controller.in', 'sum_R_F.out'],    # e(t)
                 ['sum_U_D.in1', 'controller.out'],   # u(t)
                 ['sum_U_D.in2', 'disturbance.out'],  # d(t)
@@ -196,9 +206,10 @@ class SISOClosedLoopSystem(object):
                 ['sum_Y_N.in1', system_out],        # y(t)
                 ['sum_Y_N.in2', 'noise.out'],        # n(t)
                 ['fltr.in',     'sum_Y_N.out'],
+                ["exit.in", "sum_Y_N.out"],
                 ['sum_R_F.in1', filter_str],
               ],
-              inplist=["sum_R_F.in2"],
+              inplist=["entry.in"],
               outlist=closed_loop_outputs,
             )
 

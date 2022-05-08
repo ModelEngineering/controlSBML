@@ -109,7 +109,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         result = control.input_output_response(siso.closed_loop_system,
               times, U=1)
         if IS_PLOT:
-            plt.plot(result.t.flatten(), result.y.flatten())
+            plt.plot(result.t.flatten(), result.y[0].flatten())
+            plt.plot(result.t.flatten(), result.y[1].flatten())
             plt.show()
         outputs = result.y.flatten()
         self.assertGreater(outputs[-1], 0.7)
@@ -122,8 +123,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
-        closed_loop_outputs=["sum_R_F.in2", "sum_R_F.out", 
-              "sum_U_D.out", "sum_Y_N.out"]
+        closed_loop_outputs=["entry.out", "sum_R_F.out", 
+              "sum_U_D.out", "exit.out"]
         siso.makeClosedLoopSystem("cl_sys", kp=1000, ki=2, kf=None,
             noise_amp=0, noise_frq=20,
             closed_loop_outputs=closed_loop_outputs)
