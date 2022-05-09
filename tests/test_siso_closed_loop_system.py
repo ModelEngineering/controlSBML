@@ -118,8 +118,6 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
     def testMakeClosedLoopSystem2(self):
         if IGNORE_TEST:
           return
-        ctlsb = ctl.ControlSBML(BIOMD823)
-        state_names = ctlsb.state_names
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
