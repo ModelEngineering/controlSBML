@@ -81,7 +81,10 @@ def plotOneTS(ts, **kwargs):
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
-    plt.plot(ts.times, ts)
+    ax = mgr.plot_opts.get(cn.O_AX)
+    if ax is None:
+        _, ax = plt.subplots(1)
+    ax.plot(ts.times, ts)
     legend_spec = cn.LegendSpec(ts.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
