@@ -15,3 +15,31 @@ BIOMODELS_DCT = {
       823: "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
       206: "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml",
 }
+
+################FUNCTIONS#######################
+def IOSystemFactor_CALLBACK_REPORT(call_name, time, x_vec, u_vec, dct, outputs):
+    """
+    Callback function used by IOSystemFactory that prints the inputs.
+
+    Parameters
+    ----------
+    name: name of the component
+    time: float
+    x_vec: list-float
+    u_vec: list-float
+    dct; dict
+        additional constant parameters
+    outputs: list-float
+    is_output: bool
+
+    Returns
+    -------
+    str
+    """
+    line = call_name 
+    line += "  %2.6f" % time
+    line += "  %s" % str(x_vec)
+    line += "  %s" % str(u_vec)
+    line += "  %s" % str(outputs)
+    line += "  %s" % str(dct)
+    return line

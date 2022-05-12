@@ -30,10 +30,31 @@ STATE = "state"
 
 class IOSystemFactory(object):
 
-    def __init__(self, name="factory"):
+    def __init__(self, name="factory", callback_fcn=None):
+        """
+        Parameters
+        ----------
+        name: str
+            Name of the InterconnectedSystem
+        callback_fcn: Function called on every invocation of an element
+            Parameters
+            ----------
+                name: name of the component
+                time: float
+                x_vec: list-float
+                u_vec: list-float
+                dct; dict
+                    additional constant parameters
+                out_vec: list-float
+            Returns
+            -------
+               list-str (result from logging)
+        """
         self.name = name
+        self.callback_fcn = callback_fcn
         self.registered_names = []  # List of names logged
         self.loggers = []  # Loggers for created objects
+        self.callback_log = []
 
     def _registerLogger(self, logger_name, item_names):
         is_duplicate = any([logger_name == l.logger_name for l in self.loggers])
@@ -70,6 +91,7 @@ class IOSystemFactory(object):
         """
         for logger in self.loggers:
             logger.initialize()
+        self.callback_log = []
 
     def report(self):
         """
@@ -118,6 +140,7 @@ class IOSystemFactory(object):
         last_time = 0
         logger = self._registerLogger(name, [IN, "last_err",
               "acc_err", OUT])
+        dct = {"kp": kp, "ki": ki, "kd": kd}
         def updfcn(time, x_vec, u_vec, _):
             # Calculate the derivative of the state variables
             u_val = self._array2scalar(u_vec)
@@ -129,6 +152,11 @@ class IOSystemFactory(object):
             dtime = time - last_time
             dcumu = u_val/dtime
             derr = (u_val - last_err)/dtime
+            if self.callback_fcn is not None:
+                call_name = "%s.updfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [dcumu, derr, dtime]))
             return dcumu, derr, dtime
         #
         def outfcn(time, x_vec, u_vec, __):
@@ -140,6 +168,11 @@ class IOSystemFactory(object):
                           + ki*cumu_err \
                           + kd*(u_val - last_err)
             logger.add(time, [u_val, x_vec[1], x_vec[0], control_out])
+            if self.callback_fcn is not None:
+                call_name = "%s.outfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [control_out]))
             return control_out
         #
         return control.NonlinearIOSystem(
@@ -163,7 +196,7 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [OUT])
-        def outfcn(time, _, __, ___):
+        def outfcn(time, x_vec, u_vec, _):
             """
             Creates a sine wave at the frequency specified.
     
@@ -173,6 +206,12 @@ class IOSystemFactory(object):
             """
             output = amp*np.sin(time*frequency)
             logger.add(time, [output])
+            dct = {"amp": amp, "frequency": frequency}
+            if self.callback_fcn is not None:
+                call_name = "%s.outfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [output]))
             return output
         #
         return control.NonlinearIOSystem(
@@ -197,7 +236,8 @@ class IOSystemFactory(object):
         item_names = list(inputs)
         item_names.append(OUT)
         logger = self._registerLogger(name, item_names)
-        def outfcn(time, __, u_vec, ___):
+        dct = {}
+        def outfcn(time, x_vec, u_vec, _):
             """
             Creates a sine wave at the frequency specified.
     
@@ -209,6 +249,11 @@ class IOSystemFactory(object):
             item_values = list(u_vec)
             item_values.append(output)
             logger.add(time, item_values)   
+            if self.callback_fcn is not None:
+                call_name = "%s.outfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [output]))
             return output
         #
         return control.NonlinearIOSystem(
@@ -232,7 +277,8 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, STATE, OUT])
-        def updfcn(time, x_vec, u_vec, ___):
+        dct = {"constant": constant}
+        def updfcn(time, x_vec, u_vec, _):
             """
             Returns the derivative of the state.
     
@@ -245,6 +291,12 @@ class IOSystemFactory(object):
             x_val = self._array2scalar(x_vec)
             u_val = self._array2scalar(u_vec)
             dx_val = constant*x_val + u_val
+            dct = {}
+            if self.callback_fcn is not None:
+                call_name = "%s.updfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [dx_val]))
             return dx_val
         #
         def outfcn(time, x_vec, u_vec, _):
@@ -252,6 +304,11 @@ class IOSystemFactory(object):
             x_val = self._array2scalar(x_vec)
             output = -constant*x_val
             logger.add(time, [u_val, x_val, output])
+            if self.callback_fcn is not None:
+                call_name = "%s.outfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [output]))
             return output
         #
         return control.NonlinearIOSystem(
@@ -272,9 +329,15 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [OUT])
-        def outfcn(time, _, __, ___):
+        dct = {"constant": constant}
+        def outfcn(time, x_vec, u_vec, _):
             output = constant
             logger.add(time, [output])
+            if self.callback_fcn is not None:
+                call_name = "%s.outfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [output]))
             return output
         #
         return control.NonlinearIOSystem(
@@ -293,10 +356,16 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, OUT])
-        def outfcn(time, _, u_vec, ___):
+        dct = {}
+        def outfcn(time, x_vec, u_vec, ___):
             u_val = self._array2scalar(u_vec)
             output = u_val
             logger.add(time, [u_val, output])
+            if self.callback_fcn is not None:
+                call_name = "%s.outfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [output]))
             return output
         #
         return control.NonlinearIOSystem(
@@ -316,10 +385,16 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, OUT])
-        def outfcn(time, _, u_vec, __):
+        dct = {"factor": factor}
+        def outfcn(time, x_vec, u_vec, _):
             u_val = self._array2scalar(u_vec)
             output = factor*u_val
             logger.add(time, [u_val, output])
+            if self.callback_fcn is not None:
+                call_name = "%s.outfcn" % name
+                self.callback_log.append(
+                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
+                      [output]))
             return output
         
         #
