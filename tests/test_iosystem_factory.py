@@ -23,10 +23,10 @@ class TestIOSystemFactory(unittest.TestCase):
 
     def setUp(self):
         self.factory = IOSystemFactory(
-              callback_fcn=ctl.IOSystemFactor_CALLBACK_REPORT)
+              callback_fcn=ctl.IOSystemFactory_CALLBACK_REPORT)
 
     def runController(self, name="controller",
-          callback_fcn=ctl.IOSystemFactor_CALLBACK_REPORT, **kwargs):
+          callback_fcn=ctl.IOSystemFactory_CALLBACK_REPORT, **kwargs):
         factory = IOSystemFactory(callback_fcn=callback_fcn)
         controller = factory.makePIDController(name, **kwargs)
         times = list(range(20))

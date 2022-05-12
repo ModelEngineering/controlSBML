@@ -17,7 +17,7 @@ BIOMODELS_DCT = {
 }
 
 ################FUNCTIONS#######################
-def IOSystemFactor_CALLBACK_REPORT(call_name, time, x_vec, u_vec, dct, outputs):
+def IOSystemFactory_CALLBACK_REPORT(call_name, time, x_vec, u_vec, dct, outputs):
     """
     Callback function used by IOSystemFactory that prints the inputs.
 
