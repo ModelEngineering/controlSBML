@@ -108,8 +108,10 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.14
+* 0.2.14  5/11/2022
   * Provide callback for each manufactured IOsystemFactory
+  * Reverted semantics of control input to a NonlinearIOSystem to be
+setting the value rather than adding or subtracting a value.
 * 0.2.13 5/9/2022
   * SISOClosedLoopSystem provides a way to construct a closed loop system
     for an SBML model. The system has a PID controller and a filter.

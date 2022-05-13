@@ -117,7 +117,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                      for i, n in enumerate(self.input_names)}
         for input_name, input_value in input_dct.items():
             try:
-                self.ctlsb.add({input_name: input_value})
+                self.ctlsb.set({input_name: float(input_value)})
             except RuntimeError:
                 if input_name not in self._ignored_inputs:
                     self._ignored_inputs.append(input_name)
