@@ -108,6 +108,9 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 0.2.15
+  * Fix bug in reverting the semantics of control input to to be setting the species
+    as a static.
 * 0.2.14  5/11/2022
   * Provide callback for each manufactured IOsystemFactory
   * Reverted semantics of control input to a NonlinearIOSystem to be

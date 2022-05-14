@@ -380,7 +380,7 @@ class TestControlBase(unittest.TestCase):
         #
         ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_SPECIES_NAMES)
         B_df = ctlsb._makeBDF()
-        self.assertEqual(np.shape(B_df.values), (3, 2))
+        self.assertEqual(np.shape(B_df.values), (1, 2))
 
     def testMakeUserError(self):
         if IGNORE_TEST:
