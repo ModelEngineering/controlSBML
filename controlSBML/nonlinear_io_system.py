@@ -129,7 +129,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         dstate_ser = pd.Series(self.ctlsb.get(dstate_names))
         return dstate_ser.values
 
-    def _outfcn(self, _, x_vec, __, ___):
+    def _outfcn(self, time, x_vec, __, ___):
         """
         Calculates the values of outputs.
 

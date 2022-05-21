@@ -11,6 +11,7 @@ IOSystems created:
     makeAdder: creates an IOSystem that outputs the sum of the inputs
     makePassthur: creates an IOSystem that outputs the input
     makePIDController: creates a PID controller
+    makeFullStateController: creates a PID controller
     makeSinusoid: creates an IOSystem that outputs a sinusoid
 """
 
@@ -25,6 +26,7 @@ IN = "in"
 IN1 = "in1"
 IN2 = "in2"
 OUT = "out"
+REF = "ref"
 STATE = "state"
 
 
@@ -111,7 +113,7 @@ class IOSystemFactory(object):
         merged_logger = logger.merge(self.name, others)
         return merged_logger.report()
 
-    def makePIDController(self, name, kp=2, ki=0, kd=0):
+    def oldmakePIDController(self, name, kp=2, ki=0, kd=0):
         """
         Creates a PID controller.
         NonlinearIOSystem with input IN and output OUT.
@@ -141,7 +143,10 @@ class IOSystemFactory(object):
         logger = self._registerLogger(name, [IN, "last_err",
               "acc_err", OUT])
         dct = {"kp": kp, "ki": ki, "kd": kd}
+        global is_print
+        is_print = False
         def updfcn(time, x_vec, u_vec, _):
+            global is_print
             # Calculate the derivative of the state variables
             u_val = self._array2scalar(u_vec)
             last_time = x_vec[X_TIME]
@@ -157,6 +162,10 @@ class IOSystemFactory(object):
                 self.callback_log.append(
                       self.callback_fcn(call_name, time, x_vec, u_vec, dct,
                       [dcumu, derr, dtime]))
+            if is_print:
+                print(time, x_vec, u_vec)
+            if time > 1:
+                is_print = True
             return dcumu, derr, dtime
         #
         def outfcn(time, x_vec, u_vec, __):
@@ -178,6 +187,115 @@ class IOSystemFactory(object):
         return control.NonlinearIOSystem(
             updfcn, outfcn, inputs=[IN], outputs=[OUT],
             states=["cumulative_error", "last_error", "last_time"],
+            name=name)
+
+    def makePIDController(self, name, kp=2, ki=0, kd=0):
+        """
+        Creates a PID controller.
+        NonlinearIOSystem with input IN and output OUT.
+        States are:
+            culmulative_err: cumulative control error
+            last_err: last control error
+        
+        Parameters
+        ----------
+        name: str
+            Name of the system
+        kp: float
+           proportional control constant
+        ki: float
+           integral control constant
+        kd: float
+           differential control constant.
+        
+        Returns
+        -------
+        control.NonlinearIOSystem
+        """
+        global last_time, last_u_val, accumulated_u_val
+        last_time = 0
+        last_u_val = 0
+        accumulated_u_val = 0
+        #
+        logger = self._registerLogger(name, [IN, "last_err",
+              "acc_err", OUT])
+        def outfcn(time, _, u_vec, __):
+            # u: float (error signal)
+            global last_time, last_u_val, accumulated_u_val
+            u_val = self._array2scalar(u_vec)
+            control_out =  kp*u_val  \
+                          + ki*accumulated_u_val \
+                          + kd*(u_val - last_u_val)
+            x_vec = [last_u_val, accumulated_u_val]
+            last_time = time
+            last_u_val = u_val
+            accumulated_u_val += u_val
+            logger.add(time, [u_val, x_vec[0], x_vec[1], control_out])
+            #print(time, u_vec, control_out)
+            return control_out
+        #
+        return control.NonlinearIOSystem(
+            None, outfcn, inputs=[IN], outputs=[OUT],
+            name=name)
+
+    def makeFullStateController(self, name, ctlsb, factor=1.0, poles=-2, time=0):
+        """
+        Creates a full state feedback controller for an SBML model
+        where the system is linearized at the specified time.
+        
+        Parameters
+        ----------
+        name: str
+            Name of the system
+        ctlsb: ControlSBML
+            SISO system
+        factor: float
+            factor for adjusting the reference input to get a closed loop
+            transfer function of 1
+        poles: list-float/float
+            Desired poles
+        time: float
+            Time where system is lienarized
+        
+        Returns
+        -------
+        control.NonlinearIOSystem
+           inputs:
+               <state_variable> (excluding the input)
+               ref: reference input
+           outputs:
+               out
+        """
+        # Validity Checks
+        if len(ctlsb.input_names) != 1:
+            raise ValueError("SBML model must have a single input. Has: %s" % str(ctlsb.input_names))
+        # Initializations
+        state_space = ctlsb.makeStateSpace(time=time)
+        controller_input_names = [n for n in ctlsb.state_names if not n in ctlsb.input_names]
+        controller_input_names.insert(0, REF)  # first input
+        num_state_input = len(controller_input_names) - 1
+        is_distinct_poles = True
+        try:
+            _ = len(poles)
+            if len(set(poles)) < len(poles):
+                is_distinct_poles = False
+            poles = np.array(poles)
+        except:
+            # Insert that poles are distinct
+            poles = np.array([poles + 0.1*n for n in range(num_state_input)])
+        if not is_distinct_poles:
+            raise ValueError("Poles must be distinct. Not: %s" % str(poles))
+        # Calculate the gain matrix
+        kp_vec = control.place(state_space.A, state_space.B, poles)
+        def outfcn(time, _, u_vec, __):
+            # u_vec: list-float - reference, state variables
+            ref = factor*u_vec[0]
+            arr = np.array(u_vec[1:])
+            output = ref - kp_vec.dot(arr)
+            return output
+        #
+        return control.NonlinearIOSystem(
+            None, outfcn, inputs=controller_input_names, outputs=['out'],
             name=name)
 
     def makeSinusoid(self, name, amp, frequency):
@@ -218,22 +336,25 @@ class IOSystemFactory(object):
             None, outfcn, outputs=[OUT], inputs=[],
             name=name)
 
-    def makeAdder(self, name, num_input=2):
+    def makeAdder(self, name, num_input=2, input_names=None):
         """
         Inputs two or more elements. Outputs their sum. Name is "sum".
-        The inputs are IN1, IN2, ...
+        The inputs are IN1, IN2, ... or the names in input_names.
         The output is OUT.
         
         Parameters
         ----------
         name: str
+        num_input: int
+        num_names: list-str
         
         Returns
         -------
         NonlinearIOSystem
         """
-        inputs = ["%s%d" % (IN, n) for n in range(1, num_input+1)]
-        item_names = list(inputs)
+        if input_names is None:
+            input_names = ["%s%d" % (IN, n) for n in range(1, num_input+1)]
+        item_names = list(input_names)
         item_names.append(OUT)
         logger = self._registerLogger(name, item_names)
         dct = {}
@@ -257,7 +378,7 @@ class IOSystemFactory(object):
             return output
         #
         return control.NonlinearIOSystem(
-            None, outfcn, inputs=inputs, outputs=[OUT], name=name)
+            None, outfcn, inputs=input_names, outputs=[OUT], name=name)
 
     def makeFilter(self, name, constant):
         """

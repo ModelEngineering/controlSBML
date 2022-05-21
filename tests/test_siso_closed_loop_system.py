@@ -15,6 +15,23 @@ IGNORE_TEST = False
 IS_PLOT = False
 SIZE = 10
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL3 = """
+-> S0; k0
+S0 -> S1; k1*S0
+S1 -> S2; k2*S1
+S2 -> S1; k3*S2
+S2 -> ; k4*S2
+
+S0 = 0
+S1 = 0
+S2 = 0
+S3 = 0
+k0 = 0.5
+k1 = 1
+k2 = 2
+k3 = 3
+k4 = 4
+"""
 BIOMD823 = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
 if IS_PLOT:
     import matplotlib
@@ -64,8 +81,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
 
     def testConstructor(self):
         if IGNORE_TEST:
-            return
-        self.assertTrue("controller" in self.siso.component_names)
+          return
+        self.assertTrue("Factory" in str(type(self.siso.factory)))
 
     def testEvaluateControllability1(self):
         if IGNORE_TEST:
@@ -104,7 +121,7 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML(MODEL2, input_names=["S2"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
-        siso.makeClosedLoopSystem("cl_sys", kp=20)
+        siso.makePIDClosedLoopSystem("cl_sys", kp=0.2)
         times = ctl.makeSimulationTimes(end_time=100)
         result = control.input_output_response(siso.closed_loop_system,
               times, U=1)
@@ -115,15 +132,15 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         outputs = result.y.flatten()
         self.assertGreater(outputs[-1], 0.7)
 
-    def testMakeClosedLoopSystem2(self):
+    def testMakePIDClosedLoopSystem2(self):
         if IGNORE_TEST:
           return
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
-        closed_loop_outputs=["entry.out", "sum_R_F.out", 
-              "sum_U_D.out", "exit.out"]
-        siso.makeClosedLoopSystem("cl_sys", kp=1000, ki=2, kf=None,
+        closed_loop_outputs=["cl_input.out", "sum_R_F.out", 
+              "sum_U_D.out", "cl_output.out"]
+        siso.makePIDClosedLoopSystem("cl_sys", kp=10, ki=0, kf=None,
             noise_amp=0, noise_frq=20,
             closed_loop_outputs=closed_loop_outputs)
         ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
@@ -133,19 +150,39 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
         self.assertGreater(len(ts), 0)
         df = siso.factory.report()
+        self.assertGreater(len(df), 0)
         if IS_PLOT:
             plt.plot(df.index, df["sum_R_F.out"])
             plt.xlabel("time")
             plt.ylabel("e(t)")
             plt.show()
-        # Do a second simulation to check the log
-        ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
-              points_per_time=2)
-        ts.columns = ["input", "e(t)", "system.in", "output"]
+
+    def testMakeClosedLoopCommon(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
+              output_names=["S3"])
+        siso = SISOClosedLoopSystem(ctlsb)
+        assembly = siso._makeClosedLoopCommon("test")
+        self.assertGreater(len(assembly.sys), 0)
+        self.assertEqual(len(assembly.inp), 1)
+        self.assertGreaterEqual(len(assembly.out), 1)
+
+    def testMakePIDClosedLoopSystem1(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
+              output_names=["S3"])
+        siso = SISOClosedLoopSystem(ctlsb)
+        siso.makePIDClosedLoopSystem("cl_sys", kp=2)
+        ts = siso.makeStepResponse(time=1, step_size=1, end_time=10,
+              points_per_time=10)
+        ts.columns = ["S0", "S3"]
         if IS_PLOT:
-            ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
-        df2 = siso.report()
-        self.assertTrue(df.equals(df2))
+            ctl.plotOneTS(ts)
+            plt.show()
+        outputs = ts["S3"].values
+        self.assertGreater(outputs[-1], 0.7)
 
 
 if __name__ == '__main__':

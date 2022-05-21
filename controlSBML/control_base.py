@@ -185,9 +185,9 @@ class ControlBase(object):
                 C_T_dct[name] = values
             elif name in self.species_names:
                 if L0_df is None:
-                    raise RuntimeError("Species missing from L0")
+                    raise RuntimeError("Species missing from L0: %s" % name)
                 if not name in L0.rownames:
-                    raise RuntimeError("Species missing from L0")
+                    raise RuntimeError("Species missing from L0: %s" % name)
                 C_T_dct[name] = L0_df.loc[name, :]
             elif name in self.reaction_names:
                 C_T_dct[name] = flux_jacobian_df.loc[name, :]

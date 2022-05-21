@@ -14,6 +14,21 @@ if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
 TIMES = ctl.makeSimulationTimes(0, 5, 50)
+MODEL = """
+-> S0; 5
+S0 -> S1; k0*S0
+S1 -> S2; k1*S1
+S2 -> S1; k2*S2
+S2 -> ; k3*S2
+
+k0 = 0.5
+k1 = 1
+k2 = 2
+k3 = 3
+S0 = 5
+S1 = 0
+S2 = 0
+"""
 
 
 #############################
@@ -43,10 +58,7 @@ class TestIOSystemFactory(unittest.TestCase):
         #
         _, result_ki = self.runController(ki=kp)
         _, result_kd = self.runController(kd=kp)
-        trues = [v1 <= v2 for v1, v2 in 
-              zip(result_kd.y.flatten(), result_ki.y.flatten())]
-        self.assertTrue(all(trues))
-        self.assertGreater(len(factory.callback_log), 0)
+        self.assertGreater(result_ki.y[0][-1], result_kd.y[0][-1])
 
     def testMakeSinusoid(self):
         if IGNORE_TEST:
@@ -57,7 +69,7 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertTrue(np.var(result.y) > 0)
         self.assertGreater(len(self.factory.callback_log), 0)
 
-    def testMakeAdder(self):
+    def testMakeAdder1(self):
         if IGNORE_TEST:
           return
         adder = self.factory.makeAdder("adder", num_input=3)
@@ -66,6 +78,21 @@ class TestIOSystemFactory(unittest.TestCase):
         u_arr = u_arr.transpose()
         result = control.input_output_response(adder, T=times, U=u_arr)
         trues = [r == 3*t for t, r in zip(times, result.outputs.flatten())]
+        self.assertTrue(all(trues))
+        self.assertGreater(len(self.factory.callback_log), 0)
+
+    def testMakeAdder2(self):
+        if IGNORE_TEST:
+          return
+        input_names = ["a", "b", "c", "d"]
+        num_input = len(input_names)
+        adder = self.factory.makeAdder("adder", input_names=input_names)
+        self.assertEquals(adder.ninputs, num_input)
+        times = [0, 1, 2, 3, 4]
+        u_arr = np.array([np.repeat(t, len(input_names)) for t in times])
+        u_arr = u_arr.transpose()
+        result = control.input_output_response(adder, T=times, U=u_arr)
+        trues = [r == num_input*t for t, r in zip(times, result.outputs.flatten())]
         self.assertTrue(all(trues))
         self.assertGreater(len(self.factory.callback_log), 0)
 
@@ -130,22 +157,19 @@ class TestIOSystemFactory(unittest.TestCase):
         #
         test()
 
-    def testCallout(self):
+    def testMakeFullStateController(self):
         if IGNORE_TEST:
           return
-        global updfcn_cnt, outfcn_cnt
-        updfcn_cnt = 0
-        outfcn_cnt = 0
-        def callback_fcn(name, time, x_vec, u_vec, dct, out_vec):
-            global updfcn_cnt, outfcn_cnt
-            if "upd" in name:
-                updfcn_cnt += 1
-            if "out" in name:
-                outfcn_cnt += 1
-            return "controller"
-        #
-        factory, _ = self.runController(callback_fcn=callback_fcn)
-        self.assertGreater(updfcn_cnt, outfcn_cnt)
+        ctlsb = ctl.ControlSBML(MODEL, input_names=["S0"], output_names=["S2"])
+        controller = self.factory.makeFullStateController("controller",
+              ctlsb, factor=1.0, poles=-10, time=1)
+        times = [0, 1, 2, 3, 4]
+        U = np.array([(1, 1, 1,) for _ in range(len(times))])
+        U = U.transpose()
+        result = control.input_output_response(controller, T=times, U=U)
+        outputs = result.outputs[0]
+        self.assertEquals(len(times), len(outputs))
+        self.assertEquals(len(set(outputs)), 1)
 
 
 if __name__ == '__main__':

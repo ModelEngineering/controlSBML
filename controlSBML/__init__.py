@@ -4,7 +4,7 @@ from controlSBML.control_sbml import ControlSBML
 from controlSBML.constants import LegendSpec
 from controlSBML.nonlinear_io_system import NonlinearIOSystem
 from controlSBML.util import plotOneTS, plotManyTS, ppMat, mat2DF, plotMat,  \
-      makeSimulationTimes
+      makeSimulationTimes, timeresponse2Timeseries
 from controlSBML.sequential_model import SequentialModel
 from controlSBML.simulate_system import simulateSystem, makeStateVector
 from controlSBML.timeseries import Timeseries, TimeseriesSer
