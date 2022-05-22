@@ -52,6 +52,15 @@ S3 = 0
 """
 MODEL2 = """
 S0 -> S1; S0
+S1 -> S3; S1
+
+S0 = 0
+S1 = 0
+S2 = 0
+S3 = 0
+"""
+MODEL2A = """
+S0 -> S1; S0
 S2 -> S3; S2
 
 S0 = 10
@@ -87,7 +96,7 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
     def testEvaluateControllability1(self):
         if IGNORE_TEST:
           return
-        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0", "S2"],
+        ctlsb = ctl.ControlSBML(MODEL2A, input_names=["S0", "S2"],
               output_names=["S1", "S3"])
         siso = SISOClosedLoopSystem(ctlsb)
         times = [0, 1]
@@ -118,10 +127,10 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
     def testMakeClosedLoopSystem1(self):
         if IGNORE_TEST:
           return
-        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S2"],
+        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
-        siso.makePIDClosedLoopSystem("cl_sys", kp=0.2)
+        siso.makePIDClosedLoopSystem(kp=0.2)
         times = ctl.makeSimulationTimes(end_time=100)
         result = control.input_output_response(siso.closed_loop_system,
               times, U=1)
@@ -138,9 +147,9 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
-        closed_loop_outputs=["cl_input.out", "sum_R_F.out", 
-              "sum_U_D.out", "cl_output.out"]
-        siso.makePIDClosedLoopSystem("cl_sys", kp=10, ki=0, kf=None,
+        closed_loop_outputs=["cl_input.out", "sum_F_R.out", 
+              "sum_D_U.out", "cl_output.out"]
+        siso.makePIDClosedLoopSystem(kp=10, ki=0, kf=None,
             noise_amp=0, noise_frq=20,
             closed_loop_outputs=closed_loop_outputs)
         ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
@@ -152,18 +161,18 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         df = siso.factory.report()
         self.assertGreater(len(df), 0)
         if IS_PLOT:
-            plt.plot(df.index, df["sum_R_F.out"])
+            plt.plot(df.index, df["sum_F_R.out"])
             plt.xlabel("time")
             plt.ylabel("e(t)")
             plt.show()
 
-    def testMakeClosedLoopCommon(self):
+    def testMakeDisturbanceNoiseCLinputoutput(self):
         if IGNORE_TEST:
           return
         ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
-        assembly = siso._makeClosedLoopCommon("test")
+        assembly = siso._makeDisturbanceNoiseCLinputoutput()
         self.assertGreater(len(assembly.sys), 0)
         self.assertEqual(len(assembly.inp), 1)
         self.assertGreaterEqual(len(assembly.out), 1)
@@ -174,8 +183,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
-        siso.makePIDClosedLoopSystem("cl_sys", kp=2)
-        ts = siso.makeStepResponse(time=1, step_size=1, end_time=10,
+        siso.makePIDClosedLoopSystem(kp=1)
+        ts = siso.makeStepResponse(time=1, step_size=20, end_time=10,
               points_per_time=10)
         ts.columns = ["S0", "S3"]
         if IS_PLOT:

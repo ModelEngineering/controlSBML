@@ -87,7 +87,7 @@ class TestIOSystemFactory(unittest.TestCase):
         input_names = ["a", "b", "c", "d"]
         num_input = len(input_names)
         adder = self.factory.makeAdder("adder", input_names=input_names)
-        self.assertEquals(adder.ninputs, num_input)
+        self.assertEqual(adder.ninputs, num_input)
         times = [0, 1, 2, 3, 4]
         u_arr = np.array([np.repeat(t, len(input_names)) for t in times])
         u_arr = u_arr.transpose()
@@ -168,8 +168,8 @@ class TestIOSystemFactory(unittest.TestCase):
         U = U.transpose()
         result = control.input_output_response(controller, T=times, U=U)
         outputs = result.outputs[0]
-        self.assertEquals(len(times), len(outputs))
-        self.assertEquals(len(set(outputs)), 1)
+        self.assertEqual(len(times), len(outputs))
+        self.assertEqual(len(set(outputs)), 1)
 
 
 if __name__ == '__main__':

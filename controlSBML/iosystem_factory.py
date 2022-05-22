@@ -113,82 +113,6 @@ class IOSystemFactory(object):
         merged_logger = logger.merge(self.name, others)
         return merged_logger.report()
 
-    def oldmakePIDController(self, name, kp=2, ki=0, kd=0):
-        """
-        Creates a PID controller.
-        NonlinearIOSystem with input IN and output OUT.
-        States are:
-            culmulative_err: cumulative control error
-            last_err: last control error
-        
-        Parameters
-        ----------
-        name: str
-            Name of the system
-        kp: float
-           proportional control constant
-        ki: float
-           integral control constant
-        kd: float
-           differential control constant.
-        
-        Returns
-        -------
-        control.NonlinearIOSystem
-        """
-        X_CUMU = 0  # cumulative control error
-        X_LAST = 1 # last control error
-        X_TIME = 2
-        last_time = 0
-        logger = self._registerLogger(name, [IN, "last_err",
-              "acc_err", OUT])
-        dct = {"kp": kp, "ki": ki, "kd": kd}
-        global is_print
-        is_print = False
-        def updfcn(time, x_vec, u_vec, _):
-            global is_print
-            # Calculate the derivative of the state variables
-            u_val = self._array2scalar(u_vec)
-            last_time = x_vec[X_TIME]
-            last_err = x_vec[X_LAST]
-            last_cumu = x_vec[X_CUMU]
-            time = max(time, 1e-8)
-            # Calculate derivatives
-            dtime = time - last_time
-            dcumu = u_val/dtime
-            derr = (u_val - last_err)/dtime
-            if self.callback_fcn is not None:
-                call_name = "%s.updfcn" % name
-                self.callback_log.append(
-                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
-                      [dcumu, derr, dtime]))
-            if is_print:
-                print(time, x_vec, u_vec)
-            if time > 1:
-                is_print = True
-            return dcumu, derr, dtime
-        #
-        def outfcn(time, x_vec, u_vec, __):
-            # u: float (error signal)
-            u_val = self._array2scalar(u_vec)
-            cumu_err = x_vec[X_CUMU]
-            last_err = x_vec[X_LAST]
-            control_out =  kp*u_val  \
-                          + ki*cumu_err \
-                          + kd*(u_val - last_err)
-            logger.add(time, [u_val, x_vec[1], x_vec[0], control_out])
-            if self.callback_fcn is not None:
-                call_name = "%s.outfcn" % name
-                self.callback_log.append(
-                      self.callback_fcn(call_name, time, x_vec, u_vec, dct,
-                      [control_out]))
-            return control_out
-        #
-        return control.NonlinearIOSystem(
-            updfcn, outfcn, inputs=[IN], outputs=[OUT],
-            states=["cumulative_error", "last_error", "last_time"],
-            name=name)
-
     def makePIDController(self, name, kp=2, ki=0, kd=0):
         """
         Creates a PID controller.
@@ -253,7 +177,7 @@ class IOSystemFactory(object):
             factor for adjusting the reference input to get a closed loop
             transfer function of 1
         poles: list-float/float
-            Desired poles
+            Desired poles; single float is the dominant pole
         time: float
             Time where system is lienarized
         
@@ -464,13 +388,15 @@ class IOSystemFactory(object):
         return control.NonlinearIOSystem(
             None, outfcn, outputs=[OUT], inputs=[], name=name)
 
-    def makePassthru(self, name):
+    def makePassthru(self, name, input_name=None, output_name=None):
         """
         Makes a pass through system that outputs its input.
         
         Parameters
         ----------
         name: str
+        input_name: str
+        output_name: str
         
         Returns
         -------
@@ -478,6 +404,10 @@ class IOSystemFactory(object):
         """
         logger = self._registerLogger(name, [IN, OUT])
         dct = {}
+        if input_name is None:
+            input_name = IN
+        if output_name is None:
+            output_name = OUT
         def outfcn(time, x_vec, u_vec, ___):
             u_val = self._array2scalar(u_vec)
             output = u_val
@@ -490,7 +420,7 @@ class IOSystemFactory(object):
             return output
         #
         return control.NonlinearIOSystem(
-            None, outfcn, outputs=[OUT], inputs=[IN], name=name)
+            None, outfcn, outputs=[output_name], inputs=[input_name], name=name)
 
     def makeMultiplier(self, name, factor):
         """

@@ -39,7 +39,7 @@ made between attachment points.
     * ref (in): input to the node (the reference signal)
     * out (out): output from the node
   2 SYSTEM: system under control. Inputs and outputs are species names.
-  3 SUM_R_F: adds the reference signal to the filter output
+  3 SUM_F_R: adds the reference signal to the filter output
     * ref (in): reference signal
     * fltr (in): filter signal
     * sum (out): output from the node
@@ -52,16 +52,20 @@ made between attachment points.
     * out (out): output of filter
   6 DISTURBANCE
     * out (out): disturbance generated
-  7 SUM_U_D: Summation of controller output and disturbance
+  7 SUM_D_U: Summation of controller output and disturbance
     * u (in): controller output 
     * d (in): disturbance
     * sum (out): summation
   8 NOISE
     * out (out): noise generated
-  9 SUM_Y_N: Summation of system output and noise
+  9 SUM_N_Y: Summation of system output and noise
     * n (in): noise
     * y (in): system output
     * sum (out): closed loop output
+  3 SUM_D_U: adds the reference signal to the filter output
+    * U (in): controller signal
+    * D (in): disturbance
+    * sum (out): output from the node
  10 CL_OUTPUT: output from closed loop system
     * in (in): measured output plus noise (if present)
     * out (out)
@@ -87,10 +91,8 @@ CL_OUTPUT = "cl_output"
 CL_OUTPUT_IN = "cl_output.in"
 CL_OUTPUT_OUT = "cl_output.out"
 CONTROLLER = "controller"
-CONTROLLER_ERR = "controller.err"
 CONTROLLER_IN = "controller.in"
 CONTROLLER_OUT = "controller.out"
-CONTROLLER_U = "controller.u"
 DISTURBANCE = "disturbance"
 DISTURBANCE_OUT = "disturbance.out"
 FLTR = "fltr"
@@ -98,22 +100,22 @@ FLTR_IN = "fltr.in"
 FLTR_OUT = "fltr.out"
 NOISE = "noise"
 NOISE_OUT = "noise.out"
-SUM_R_F = "sum_R_F"
-SUM_R_F_REF = "sum_R_F.ref"
-SUM_R_F_FLTR = "sum_R_F.fltr"
-SUM_R_F_OUT = "sum_R_F.out"
-SUM_U_D = "sum_U_D"
-SUM_U_D_U = "sum_U_D.u"
-SUM_U_D_D = "sum_U_D.d"
-SUM_U_D_OUT = "sum_U_D.out"
-SUM_Y_N = "sum_Y_N"
-SUM_Y_N_Y = "sum_Y_N.y"
-SUM_Y_N_N = "sum_Y_N.n"
-SUM_Y_N_OUT = "sum_Y_N.out"
+SUM_D_U = "sum_D_U"
+SUM_D_U_U = "sum_D_U.u"
+SUM_D_U_D = "sum_D_U.d"
+SUM_D_U_OUT = "sum_D_U.out"
+SUM_F_R = "sum_F_R"
+SUM_F_R_REF = "sum_F_R.ref"
+SUM_F_R_FLTR = "sum_F_R.fltr"
+SUM_F_R_OUT = "sum_F_R.out"
+SUM_N_Y = "sum_N_Y"
+SUM_N_Y_Y = "sum_N_Y.y"
+SUM_N_Y_N = "sum_N_Y.n"
+SUM_N_Y_OUT = "sum_N_Y.out"
 SYSTEM = "system"
 
 
-# sys: dict with values sys_list  -list-NonlinearIOSystem
+# sys: list-NonlinearIOSystem
 # con: connections - list-str
 # inp:inplist - list-str
 # out:  outlist - list-str
@@ -139,9 +141,9 @@ class SISOClosedLoopSystem(object):
         self.noise = None
         self.disturbance = None
         ## Summations
-        self.sum_Y_N = None
-        self.sum_R_F = None
-        self.sum_U_D = None
+        self.sum_N_Y = None
+        self.sum_F_R = None
+        self.sum_D_U = None
     
     def report(self):
         """
@@ -195,12 +197,11 @@ class SISOClosedLoopSystem(object):
         #
         return result_dct
 
-    def makePIDClosedLoopSystem(self, name,
+    def makePIDClosedLoopSystem(self,
           kp=1, ki=0, kd=0,                       # Controller parameters
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
           kf=None,                                # Filter
-          is_neg_feedback=True,                   # Negative feedback?
           system_input=None, system_name=None,    # SISO input, output
           system_output=None,
           closed_loop_outputs=None):              # list of outputs from closed loop system
@@ -210,8 +211,6 @@ class SISOClosedLoopSystem(object):
 
         Parameters
         ----------
-        name: str
-            Name of the resulting system.
         kp: float
             Proportional constant for controller
         ki: float
@@ -228,8 +227,6 @@ class SISOClosedLoopSystem(object):
             frequency of the sine wave for noise
         kf: float
             Constant for filter. If None, no filter.
-        is_neg_feedback: bool
-            subtract filter output from reference
         system_input: str
             name of the input used in the SISO system
             the name must be present in the ControlSBML object
@@ -247,127 +244,19 @@ class SISOClosedLoopSystem(object):
            noise.out: noise input to system
            disturbance.out: noise input to system
         """
-        # Can only do one build per incovation
-        if self.closed_loop_system is not None:
-            msg = "A closed loop system exists. "
-            msg += "Create a new instance to build another one."
-            raise ValueError(msg)
-        # Initializations
-        if closed_loop_outputs is None:
-            closed_loop_outputs = [CL_INPUT_OUT, CL_OUTPUT_OUT]
-        # Create the elements of the feedback loop
-        self.cl_input = self.factory.makePassthru(CL_INPUT)
-        self.cl_output = self.factory.makePassthru(CL_OUTPUT)
-        self.noise = self.factory.makeSinusoid("noise", noise_amp, noise_frq)
-        self.disturbance = self.factory.makeSinusoid("disturbance", 
-              disturbance_amp, disturbance_frq)
-        if system_input is None:
-            system_input = self.ctlsb.input_names[0]
-        if system_output is None:
-            system_output = self.ctlsb.output_names[-1]
-        ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
-              input_names=[system_input], output_names=[system_output])
-        self.system = ctlsb.makeNonlinearIOSystem(SYSTEM)
-        self.controller = self.factory.makePIDController(CONTROLLER,
-              kp=kp, ki=ki, kd=kd)
-        if kf is None:
-            self.fltr = self.factory.makePassthru(FLTR)
-        else:
-            self.fltr = self.factory.makeFilter(FLTR, kf)
-        self.sum_Y_N = self.factory.makeAdder(SUM_Y_N, input_names=["y", "n"])
-        self.sum_U_D = self.factory.makeAdder(SUM_U_D, input_names=["u", "d"])
-        self.sum_R_F = self.factory.makeAdder(SUM_R_F, input_names=["ref", "fltr"])
-        # Construct the interconnected system
-        pfx = ""
-        if is_neg_feedback:
-            pfx = "-"
-        filter_str = "%s%s" % (pfx, FLTR_OUT)
-        system_inp = "%s.%s" % (SYSTEM, system_input)
-        system_out = "%s.%s" % (SYSTEM, system_output)
-        sys_lst = [self.noise, self.disturbance,
-              self.cl_input, self.cl_output,
-              self.sum_Y_N, self.sum_R_F, self.sum_U_D,
-              self.system, self.fltr, self.controller]
-        connections=[
-          [SUM_R_F_REF, CL_INPUT_OUT],        # r(t)
-          [SUM_R_F_FLTR, filter_str],
-          [CONTROLLER_IN, SUM_R_F_OUT],    # e(t)
-          [SUM_U_D_U, CONTROLLER_OUT],        # u(t)
-          [SUM_U_D_D, DISTURBANCE_OUT],  # d(t)
-          [system_inp,   SUM_U_D_OUT],
-          [SUM_Y_N_Y, system_out],        # y(t)
-          [SUM_Y_N_N, NOISE_OUT],        # n(t)
-          [FLTR_IN,     SUM_Y_N_OUT],
-          [CL_OUTPUT_IN, SUM_Y_N_OUT],
-        ]
-        self.closed_loop_system = control.interconnect(sys_lst,
-              connections=connections,
-              inplist=[CL_INPUT_IN],
-              outlist=closed_loop_outputs,
-            )
-
-    def newmakePIDClosedLoopSystem(self, name,
-          kp=1, ki=0, kd=0,                       # Controller parameters
-          disturbance_amp=0, disturbance_frq=0,   # Disturbance
-          noise_amp=0, noise_frq=0,               # Noise
-          kf=None,                                # Filter
-          is_neg_feedback=True,                   # Negative feedback?
-          system_input=None, system_name=None,    # SISO input, output
-          system_output=None,
-          closed_loop_outputs=None):              # list of outputs from closed loop system
-        """
-        Creates a closed loop system for a ControlSBML object. The closed loop system
-        includes a PID controller and a filter.
-
-        Parameters
-        ----------
-        name: str
-            Name of the resulting system.
-        kp: float
-            Proportional constant for controller
-        ki: float
-            Integral constant for controller
-        kd: float
-            Differential constant for controller
-        noise_amp: float
-            amplitude of the sine wave for noise
-        noise_frq: float
-            frequency of the sine wave for noise
-        noise_amp: float
-            amplitude of the sine wave for noise
-        noise_frq: float
-            frequency of the sine wave for noise
-        kf: float
-            Constant for filter. If None, no filter.
-        is_neg_feedback: bool
-            subtract filter output from reference
-        system_input: str
-            name of the input used in the SISO system
-            the name must be present in the ControlSBML object
-        system_output: str
-            name of the output used in the SISO system
-            the name must be present in the ControlSBML object
-        closed_loop_ouputs: list-str
-            If None, cl_input.in, cl_output.out
-        
-        Returns
-        -------
-        control.IOSystem.InterconnectedSystem
-           cl_input.in: reference input to System
-           exit.out: output from the System
-           noise.out: noise input to system
-           disturbance.out: noise input to system
-        """
-        assembly = self._makeClosedLoopCommon(name,
+        assembly = self._makeDisturbanceNoiseCLinputoutput(
               disturbance_amp=disturbance_amp,
               disturbance_frq=disturbance_frq,
               noise_amp=noise_amp,
               noise_frq=noise_frq,
-              closed_loop_outputs=closed_loop_outputs,
               )
+        sys_lst = list(assembly.sys)
+        connections = list(assembly.con)
+        if closed_loop_outputs is None:
+            closed_loop_outputs = assembly.out
         # Make controller, system, filter
-        self.sum_R_F = self.factory.makeAdder(SUM_R_F, input_names=["ref", "fltr"])
-        #
+        self.sum_F_R = self.factory.makeAdder(SUM_F_R, input_names=["ref", "fltr"])
+        # Choose first system input and last system output as defaults
         if system_input is None:
             system_input = self.ctlsb.input_names[0]
         if system_output is None:
@@ -375,6 +264,8 @@ class SISOClosedLoopSystem(object):
         ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
               input_names=[system_input], output_names=[system_output])
         self.system = ctlsb.makeNonlinearIOSystem(SYSTEM)
+        system_in = "%s.%s" % (SYSTEM, system_input)
+        system_out = "%s.%s" % (SYSTEM, system_output)
         #
         self.controller = self.factory.makePIDController(CONTROLLER,
               kp=kp, ki=ki, kd=kd)
@@ -383,117 +274,42 @@ class SISOClosedLoopSystem(object):
             self.fltr = self.factory.makePassthru(FLTR)
         else:
             self.fltr = self.factory.makeFilter(FLTR, kf)
-        # Connect the pieces
-        sys_lst = list(assembly.sys.values())
-        sys_lst.extend([self.system, self.controller, self.fltr, self.sum_R_F])
+        #
+        sys_lst.extend([self.system, self.controller, self.fltr, self.sum_F_R])
         # Additional names
-        pfx = ""
-        if is_neg_feedback:
-            pfx = "-"
-        filter_str = "%s%s" % (pfx, FLTR_OUT)
+        filter_str = "-%s" % FLTR_OUT
         system_inp = "%s.%s" % (SYSTEM, system_input)
         system_out = "%s.%s" % (SYSTEM, system_output)
-        # Add missing connections
-        connections = list(assembly.con)
-        connections.append([SUM_R_F_FLTR, CL_INPUT_OUT])
-        connections.append([CONTROLLER_ERR, SUM_R_F_OUT])
+        connections.append([SUM_F_R_REF, CL_INPUT_OUT])
+        connections.append([CONTROLLER_IN, SUM_F_R_OUT])
+        connections.append([SUM_D_U_U, CONTROLLER_OUT])
+        connections.append([system_in, SUM_D_U_OUT])
+        connections.append([SUM_N_Y_Y, system_out])
         connections.append([FLTR_IN, CL_OUTPUT_OUT])
-        connections.append([SUM_R_F_REF, filter_str])
+        connections.append([SUM_F_R_FLTR, filter_str])
         # Construct the interconnected system
         self.closed_loop_system = control.interconnect(sys_lst,
               connections=connections,
               inplist=[CL_INPUT_REF],
-              outlist=assembly.out,
+              outlist=closed_loop_outputs
             )
 
-    # TODO: _makeNoiseAndDisturbance
-    def _makeClosedLoopCommon(self, name,
-          disturbance_amp=0, disturbance_frq=0,   # Disturbance
-          noise_amp=0, noise_frq=0,               # Noise
-          system_input=None, system_name=None,    # SISO input, output
-          system_output=None,
-          closed_loop_outputs=None):              # list of outputs from closed loop system
-        """
-        Creates parts of the SISO closed loop system.
-        Makes the following components and their internal connections:
-            cl_input: closed loop input
-            disturbance
-            noise
-            SUM_Y_N
-            SUM_U_D
-            cl_output: closed loop output
-        The missing connections are (a) cl_input to system, (b) system to filter/controller.
-
-        Parameters
-        ----------
-        name: str
-            Name of the resulting system.
-        noise_amp: float
-            amplitude of the sine wave for noise
-        noise_frq: float
-            frequency of the sine wave for noise
-        noise_amp: float
-            amplitude of the sine wave for noise
-        noise_frq: float
-            frequency of the sine wave for noise
-        closed_loop_ouputs: list-str
-            If None, cl_output.out, exit.out
-        
-        Returns
-        -------
-        ConnectionAssembly
-        """
-        # Initializations
-        if closed_loop_outputs is None:
-            closed_loop_outputs = [CL_INPUT_OUT, CL_OUTPUT_OUT]
-        # Create the elements of the feedback loop
-        self.cl_input = self.factory.makePassthru(CL_INPUT)
-        self.cl_output = self.factory.makePassthru(CL_OUTPUT)
-        self.noise = self.factory.makeSinusoid(NOISE, noise_amp, noise_frq)
-        self.disturbance = self.factory.makeSinusoid(DISTURBANCE,
-              disturbance_amp, disturbance_frq)
-        self.sum_Y_N = self.factory.makeAdder(SUM_Y_N, input_names=["y", "d"])
-        self.sum_U_D = self.factory.makeAdder(SUM_U_D, input_names=["u", "d"])
-        # Construct the interconnected system
-        sys_dct = {NOISE: self.noise, 
-              DISTURBANCE: self.disturbance,
-              CL_INPUT: self.cl_input,
-              CL_OUTPUT:  self.cl_output,
-              SUM_Y_N: self.sum_Y_N,
-              SUM_U_D: self.sum_U_D,
-              }
-        # Define system inputs and outputs
-        if system_input is None:
-            system_input = self.ctlsb.input_names[0]
-        if system_output is None:
-            system_output = self.ctlsb.output_names[-1]
-        system_inp = "%s.%s" % (SYSTEM, system_input)
-        system_out = "%s.%s" % (SYSTEM, system_output)
-        # Construct connections
-        connections=[
-                [SUM_U_D_U, CONTROLLER_U],
-                [SUM_U_D_D, DISTURBANCE_OUT],
-                [system_inp, SUM_U_D_OUT],
-                [SUM_Y_N_Y, system_out],
-                [SUM_Y_N_N, NOISE_OUT],
-                [CL_OUTPUT_IN, SUM_Y_N_OUT],
-              ]
-        return ConnectionAssembly(
-              con=connections,
-              sys=sys_dct,
-              inp=[CL_INPUT_REF],
-              out=closed_loop_outputs
-              )
-
-    def _makeDisturbanceNoise(self,
+    def _makeDisturbanceNoiseCLinputoutput(self,
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0):              # Noise
         """
-        Creates the noise and disturbance elements.
+        Creates the noise and disturbance and related elements.
+        Constructs all internal connections.
+            cl_input
             disturbance
             noise
-            SUM_Y_N
-            SUM_U_D
+            SUM_N_Y
+            SUM_D_U
+            cl_output
+        connections
+            DISTURBANCE_OUT -> SUM_D_U_D
+            NOISE_OUT -> SUM_N_Y_N
+            SUM_N_Y_OUT -> CL_OUTPUT_IN
 
         Parameters
         ----------
@@ -511,30 +327,29 @@ class SISOClosedLoopSystem(object):
         ConnectionAssembly
         """
         # Create the elements of the feedback loop
+        self.cl_input = self.factory.makePassthru(CL_INPUT, input_name="ref")
         self.noise = self.factory.makeSinusoid(NOISE, noise_amp, noise_frq)
         self.disturbance = self.factory.makeSinusoid(DISTURBANCE,
               disturbance_amp, disturbance_frq)
-        self.sum_Y_N = self.factory.makeAdder(SUM_Y_N, input_names=["y", "d"])
-        self.sum_U_D = self.factory.makeAdder(SUM_U_D, input_names=["u", "d"])
-        # Construct the interconnected system
-        sys_dct = {NOISE: self.noise, 
-              DISTURBANCE: self.disturbance,
-              SUM_Y_N: self.sum_Y_N,
-              SUM_U_D: self.sum_U_D,
-              }
+        self.sum_N_Y = self.factory.makeAdder(SUM_N_Y, input_names=["y", "n"])
+        self.sum_D_U = self.factory.makeAdder(SUM_D_U, input_names=["u", "d"])
+        self.cl_output = self.factory.makePassthru(CL_OUTPUT)
+        sys_lst = [self.noise, self.disturbance, self.cl_input,
+             self.cl_output, self.sum_N_Y, self.sum_D_U]
         # Construct connections
         connections=[
-                [SUM_U_D_D, DISTURBANCE_OUT],
-                [SUM_Y_N_N, NOISE_OUT],
+                [SUM_D_U_D, DISTURBANCE_OUT],
+                [SUM_N_Y_N, NOISE_OUT],
+                [CL_OUTPUT_IN, SUM_N_Y_OUT],
               ]
         return ConnectionAssembly(
               con=connections,
-              sys=sys_dct,
-              inp=None,
-              out=None
+              sys=sys_lst,
+              inp=[CL_INPUT_REF],
+              out=[CL_INPUT_REF, CL_OUTPUT_OUT],
               )
 
-    def makeStepResponse(self, time=0, step_size=1, **sim_opts):
+    def makeStepResponse(self, time=0, step_size=1, **time_opts):
         """
         Simulates the step response.
 
@@ -542,7 +357,7 @@ class SISOClosedLoopSystem(object):
         ----------
         time: float
             time used for state in the ControlSBML system
-        sim_opts: Options
+        time_opts: Options
             start_time, end_time, points_per_time
         
         Returns
@@ -550,7 +365,7 @@ class SISOClosedLoopSystem(object):
         Timeseries
         """
         self.factory.initializeLoggers()
-        times = ctl.makeSimulationTimes(**sim_opts)
+        times = ctl.makeSimulationTimes(**time_opts)
         X0 = makeStateVector(self.closed_loop_system, start_time=time)
         timeresponse = control.input_output_response(self.closed_loop_system,
               times, U=step_size, X0=X0)

@@ -108,7 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.15
+* 0.2.16
+* 0.2.15 5/21/2022
   * Fix bug in reverting the semantics of control input to be setting the species
     as a static.
 * 0.2.14  5/11/2022
