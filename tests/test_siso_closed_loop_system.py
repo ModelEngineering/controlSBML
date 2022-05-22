@@ -166,32 +166,46 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.ylabel("e(t)")
             plt.show()
 
+    def testMakeFullStatelosedLoopSystem2(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
+              output_names=["pDEPTOR"])
+        siso = SISOClosedLoopSystem(ctlsb)
+        closed_loop_outputs=["cl_input.out", "sum_F_R.out", 
+              "sum_D_U.out", "cl_output.out"]
+        siso.makePIDClosedLoopSystem(kp=10, ki=0, kf=None,
+            noise_amp=0, noise_frq=20,
+            closed_loop_outputs=closed_loop_outputs)
+        ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
+              points_per_time=2)
+        ts.columns = ["input", "e(t)", "system.in", "output"]
+        if IS_PLOT:
+            ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
+        self.assertGreater(len(ts), 0)
+        df = siso.factory.report()
+        self.assertGreater(len(df), 0)
+        if IS_PLOT:
+            plt.plot(df.index, df["sum_F_R.out"])
+            plt.xlabel("time")
+            plt.ylabel("e(t)")
+            plt.show()
+
     def testMakeDisturbanceNoiseCLinputoutput(self):
         if IGNORE_TEST:
           return
         ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
-        assembly = siso._makeDisturbanceNoiseCLinputoutput()
-        self.assertGreater(len(assembly.sys), 0)
-        self.assertEqual(len(assembly.inp), 1)
-        self.assertGreaterEqual(len(assembly.out), 1)
-
-    def testMakePIDClosedLoopSystem1(self):
-        if IGNORE_TEST:
-          return
-        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
-              output_names=["S3"])
-        siso = SISOClosedLoopSystem(ctlsb)
-        siso.makePIDClosedLoopSystem(kp=1)
-        ts = siso.makeStepResponse(time=1, step_size=20, end_time=10,
-              points_per_time=10)
-        ts.columns = ["S0", "S3"]
+        siso.makeFullStateClosedLoopSystem(poles=-2)
+        times = ctl.makeSimulationTimes(end_time=100)
+        result = control.input_output_response(siso.closed_loop_system,
+              times, U=1)
+        ts = ctl.timeresponse2Timeseries(result, column_names=["ref", "S3"])
         if IS_PLOT:
-            ctl.plotOneTS(ts)
+            ctl.plotOneTS(ts, figsize=(5,5))
             plt.show()
-        outputs = ts["S3"].values
-        self.assertGreater(outputs[-1], 0.7)
+        self.assertGreater(ts["S3"].values[-1], 0)
 
 
 if __name__ == '__main__':

@@ -195,7 +195,8 @@ class IOSystemFactory(object):
             raise ValueError("SBML model must have a single input. Has: %s" % str(ctlsb.input_names))
         # Initializations
         state_space = ctlsb.makeStateSpace(time=time)
-        controller_input_names = [n for n in ctlsb.state_names if not n in ctlsb.input_names]
+        controller_input_names = [n for n in ctlsb.state_names
+              if not n in ctlsb.input_names]
         controller_input_names.insert(0, REF)  # first input
         num_state_input = len(controller_input_names) - 1
         is_distinct_poles = True

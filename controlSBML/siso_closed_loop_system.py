@@ -85,13 +85,13 @@ import pandas as pd
 
 CL_INPUT = "cl_input"
 CL_INPUT_REF = "cl_input.ref"
-CL_INPUT_IN = "cl_input.in"
 CL_INPUT_OUT = "cl_input.out"
 CL_OUTPUT = "cl_output"
 CL_OUTPUT_IN = "cl_output.in"
 CL_OUTPUT_OUT = "cl_output.out"
 CONTROLLER = "controller"
 CONTROLLER_IN = "controller.in"
+CONTROLLER_REF = "controller.ref"
 CONTROLLER_OUT = "controller.out"
 DISTURBANCE = "disturbance"
 DISTURBANCE_OUT = "disturbance.out"
@@ -234,13 +234,13 @@ class SISOClosedLoopSystem(object):
             name of the output used in the SISO system
             the name must be present in the ControlSBML object
         closed_loop_ouputs: list-str
-            If None, cl_input.in, cl_output.out
+            If None, CL_INPUT_REF, CL_OUTPUT_OUT
         
         Returns
         -------
-        control.IOSystem.InterconnectedSystem
-           cl_input.in: reference input to System
-           exit.out: output from the System
+        Timeseries
+           CL_INPUT_REF: reference input to System
+           CL_OUTPUT_OUT: output from the System
            noise.out: noise input to system
            disturbance.out: noise input to system
         """
@@ -287,6 +287,95 @@ class SISOClosedLoopSystem(object):
         connections.append([SUM_N_Y_Y, system_out])
         connections.append([FLTR_IN, CL_OUTPUT_OUT])
         connections.append([SUM_F_R_FLTR, filter_str])
+        # Construct the interconnected system
+        self.closed_loop_system = control.interconnect(sys_lst,
+              connections=connections,
+              inplist=[CL_INPUT_REF],
+              outlist=closed_loop_outputs
+            )
+
+    def makeFullStateClosedLoopSystem(self,
+          time=0,                                 # Time of linearization
+          poles=-1,                               # Desired poles or dominant pole
+          disturbance_amp=0, disturbance_frq=0,   # Disturbance
+          noise_amp=0, noise_frq=0,               # Noise
+          system_input=None, system_name=None,    # SISO input, output
+          system_output=None,
+          closed_loop_outputs=None):              # list of outputs from closed loop system
+        """
+        Creates a closed loop system for a ControlSBML object. The closed loop system
+        includes a PID controller and a filter.
+
+        Parameters
+        ----------
+        poles: float/list-flaot
+            Desired poles (or just dominant pole)
+        noise_amp: float
+            amplitude of the sine wave for noise
+        noise_frq: float
+            frequency of the sine wave for noise
+        noise_amp: float
+            amplitude of the sine wave for noise
+        noise_frq: float
+            frequency of the sine wave for noise
+        kf: float
+            Constant for filter. If None, no filter.
+        system_input: str
+            name of the input used in the SISO system
+            the name must be present in the ControlSBML object
+        system_output: str
+            name of the output used in the SISO system
+            the name must be present in the ControlSBML object
+        closed_loop_ouputs: list-str
+            If None, CL_INPUT_REF, CL_OUTPUT_OUT
+        
+        Returns
+        -------
+        control.IOSystem.InterconnectedSystem
+           CL_INPUT_IN: reference input to System
+           CL_OUTPUT_OUT: output from the System
+           noise.out: noise input to system
+           disturbance.out: noise input to system
+        """
+        assembly = self._makeDisturbanceNoiseCLinputoutput(
+              disturbance_amp=disturbance_amp,
+              disturbance_frq=disturbance_frq,
+              noise_amp=noise_amp,
+              noise_frq=noise_frq,
+              )
+        sys_lst = list(assembly.sys)
+        connections = list(assembly.con)
+        if closed_loop_outputs is None:
+            closed_loop_outputs = list(assembly.out)
+        # Choose first system input and last system output as defaults
+        if system_input is None:
+            system_input = self.ctlsb.input_names[0]
+        if system_output is None:
+            system_output = self.ctlsb.output_names[-1]
+        initial_ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
+              input_names=[system_input], output_names=[system_output])
+        output_names = list(initial_ctlsb.state_names)
+        output_names.remove(system_input)
+        ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
+              input_names=[system_input], output_names=output_names)
+        self.system = ctlsb.makeNonlinearIOSystem(SYSTEM)
+        system_in = "%s.%s" % (SYSTEM, system_input)
+        system_out = "%s.%s" % (SYSTEM, system_output)
+        #
+        self.controller = self.factory.makeFullStateController(CONTROLLER,
+              ctlsb, poles=poles, time=time)
+        #
+        sys_lst.extend([self.system, self.controller])
+        # Connections between system and controller
+        for name in output_names:
+            controller_input = "%s.%s" % (CONTROLLER, name)
+            system_output = "%s.%s" % (SYSTEM, name)
+            connections.append([controller_input, system_output])
+        # Additional names
+        connections.append([SUM_D_U_U, CONTROLLER_OUT])
+        connections.append([system_in, SUM_D_U_OUT])
+        connections.append([SUM_N_Y_Y, system_out])
+        connections.append([CONTROLLER_REF, CL_INPUT_OUT])
         # Construct the interconnected system
         self.closed_loop_system = control.interconnect(sys_lst,
               connections=connections,

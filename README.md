@@ -109,6 +109,8 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.2.16
+  * Refactored SISOClosedLoopSystem
+  * Implemented SISOClosedLoopSystem.makeFullStateController
 * 0.2.15 5/21/2022
   * Fix bug in reverting the semantics of control input to be setting the species
     as a static.
