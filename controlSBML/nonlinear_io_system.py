@@ -41,8 +41,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.ctlsb = ctlsb
         self.do_simulate_on_update = do_simulate_on_update
         # Useful properties
-        self.state_names = ctlsb.species_names
         self.input_names = ctlsb.input_names
+        self.state_names = [s for s in ctlsb.species_names
+              if not s in self.input_names]
         self.output_names = ctlsb.output_names
         self.num_state = len(self.state_names)
         self.num_input = len(self.input_names)
@@ -129,13 +130,14 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         dstate_ser = pd.Series(self.ctlsb.get(dstate_names))
         return dstate_ser.values
 
-    def _outfcn(self, time, x_vec, __, ___):
+    def _outfcn(self, time, x_vec, _, __):
         """
         Calculates the values of outputs.
 
         Parameters
         ----------
         x_vec: np.array(float): state vector
+        u_vec: np.array(float): input vector (in log10 units)
 
         Returns
         -------

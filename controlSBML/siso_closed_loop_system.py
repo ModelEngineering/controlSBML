@@ -73,6 +73,7 @@ made between attachment points.
 """
 
 import controlSBML as ctl
+from controlSBML import constants as cn
 from controlSBML.simulate_system import makeStateVector
 from controlSBML import msgs
 from controlSBML import util
@@ -206,7 +207,8 @@ class SISOClosedLoopSystem(object):
           system_output=None,
           closed_loop_outputs=None):              # list of outputs from closed loop system
         """
-        Creates a closed loop system for a ControlSBML object. The closed loop system
+        Creates a closed loop system for a ControlSBML object.
+        The closed loop system
         includes a PID controller and a filter.
 
         Parameters
@@ -453,6 +455,7 @@ class SISOClosedLoopSystem(object):
         -------
         Timeseries
         """
+        self.factory.dt = time_opts.get("dt", 1.0/cn.POINTS_PER_TIME)
         self.factory.initializeLoggers()
         times = ctl.makeSimulationTimes(**time_opts)
         X0 = makeStateVector(self.closed_loop_system, start_time=time)

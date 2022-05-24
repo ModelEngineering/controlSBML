@@ -1,5 +1,6 @@
 from controlSBML.iosystem_factory import IOSystemFactory
 import controlSBML as ctl
+import controlSBML.constants as cn
 
 import control
 import matplotlib.pyplot as plt
@@ -13,7 +14,22 @@ IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
-TIMES = ctl.makeSimulationTimes(0, 5, 50)
+TIMES = ctl.makeSimulationTimes(end_time=50)
+MODEL_BUG = """
+S1 -> S2; k1*S1
+J1: S2 -> S3; k2*S2
+J2: S3 -> S2; k3*S3
+J3: S2 -> ; k4*S2
+
+k1 = 1
+k2 = 2
+k3 = 3
+k4 = 4
+S1 = 10
+S2 = 0
+S3 = 0
+S4 = 0
+"""
 MODEL = """
 -> S0; 5
 S0 -> S1; k0*S0
@@ -170,6 +186,61 @@ class TestIOSystemFactory(unittest.TestCase):
         outputs = result.outputs[0]
         self.assertEqual(len(times), len(outputs))
         self.assertEqual(len(set(outputs)), 1)
+
+    def testBug1(self):
+        if IGNORE_TEST:
+          return
+        # Elements of the system
+        
+        kp = 1
+        ki = 2
+        kd = 3
+        dt = 1/cn.POINTS_PER_TIME
+        factory = ctl.IOSystemFactory(dt=dt)
+        # Create the elements of the feedback loop
+        noise = factory.makeSinusoid("noise", 0, 20)
+        disturbance = factory.makeSinusoid("disturbance", 0, 2)
+        
+        ctlsb = ctl.ControlSBML(MODEL_BUG, input_names=["S1"], output_names=["S3"])
+        system = ctlsb.makeNonlinearIOSystem("system")
+        controller = factory.makePIDController("controller", kp=kp, ki=ki, kd=kd)
+        fltr = factory.makePassthru("fltr")
+        
+        sum_N_Y = factory.makeAdder("sum_N_Y")
+        sum_D_U = factory.makeAdder("sum_D_U")
+        sum_F_R = factory.makeAdder("sum_F_R")
+        
+        # Create the closed loop system
+        closed_loop = control.interconnect(
+          [noise, disturbance, sum_N_Y, sum_F_R, sum_D_U, system, fltr, controller ], 
+          connections=[
+            ['controller.in', 'sum_F_R.out'],    # e(t)
+            ['sum_D_U.in1', 'controller.out'],   # u(t)
+            ['sum_D_U.in2', 'disturbance.out'],  # d(t)
+            ['system.S1',   'sum_D_U.out'],
+            ['sum_N_Y.in1', 'system.S3'],        # y(t)
+            ['sum_N_Y.in2', 'noise.out'],        # n(t)
+            ['fltr.in',     'sum_N_Y.out'],
+            ['sum_F_R.in1', '-fltr.out'],
+          ],
+          inplist=["sum_F_R.in2"],
+          #outlist=["sum_F_R.in2", "sum_N_Y.out", 'system.S2', 'system.S3'],
+          outlist=['system.S3'],
+        )
+        
+        times = ctl.makeSimulationTimes(0, 50, 1/dt)
+        X0 = ctl.makeStateVector(closed_loop)
+        U = 1
+        result = control.input_output_response(closed_loop, T=times, U=U, X0=X0)
+        plt.plot([result.t[0], result.t[-1]], [U, U])
+        plt.plot(result.t, result.outputs.flatten())
+        #plt.plot(result.t, result.outputs[2].flatten())
+        #plt.plot(result.t, result.outputs[3].flatten())
+        plt.ylim([0, 2])
+        legends = ["reference", "output"]
+        plt.legend(legends)
+        if IS_PLOT:
+            plt.show()
 
 
 if __name__ == '__main__':

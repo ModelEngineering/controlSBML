@@ -15,6 +15,7 @@ IOSystems created:
     makeSinusoid: creates an IOSystem that outputs a sinusoid
 """
 
+from controlSBML import constants as cn
 from controlSBML import logger as lg
 from controlSBML import msgs
 
@@ -32,7 +33,7 @@ STATE = "state"
 
 class IOSystemFactory(object):
 
-    def __init__(self, name="factory", callback_fcn=None):
+    def __init__(self, name="factory", callback_fcn=None, dt=1/cn.POINTS_PER_TIME):
         """
         Parameters
         ----------
@@ -54,6 +55,7 @@ class IOSystemFactory(object):
         """
         self.name = name
         self.callback_fcn = callback_fcn
+        self.dt = dt
         self.registered_names = []  # List of names logged
         self.loggers = []  # Loggers for created objects
         self.callback_log = []
@@ -136,30 +138,33 @@ class IOSystemFactory(object):
         -------
         control.NonlinearIOSystem
         """
-        global last_time, last_u_val, accumulated_u_val
-        last_time = 0
-        last_u_val = 0
-        accumulated_u_val = 0
         #
         logger = self._registerLogger(name, [IN, "last_err",
               "acc_err", OUT])
-        def outfcn(time, _, u_vec, __):
+        # FIXME: A non-zero ki causes an algebraic loop error
+        def updfcn(time, x_vec, u_vec, __):
             # u: float (error signal)
-            global last_time, last_u_val, accumulated_u_val
+            # x_vec[0] - last_u
+            # x_vec[1] - accumulated_u
             u_val = self._array2scalar(u_vec)
+            daccumulated_u = u_val
+            dlast_u_val = (u_val - x_vec[0])/self.dt
+            return dlast_u_val, daccumulated_u
+        #
+        def outfcn(time, x_vec, u_vec, __):
+            # u: float (error signal)
+            u_val = self._array2scalar(u_vec)
+            last_u_val = x_vec[0]
+            accumulated_u_val = x_vec[1]
             control_out =  kp*u_val  \
                           + ki*accumulated_u_val \
-                          + kd*(u_val - last_u_val)
-            x_vec = [last_u_val, accumulated_u_val]
-            last_time = time
-            last_u_val = u_val
-            accumulated_u_val += u_val
+                          + kd*(u_val - last_u_val)/self.dt
             logger.add(time, [u_val, x_vec[0], x_vec[1], control_out])
-            #print(time, u_vec, control_out)
             return control_out
         #
         return control.NonlinearIOSystem(
-            None, outfcn, inputs=[IN], outputs=[OUT],
+            updfcn, outfcn, inputs=[IN], outputs=[OUT],
+            states=["last_err", "accumulated_err"],
             name=name)
 
     def makeFullStateController(self, name, ctlsb, factor=1.0, poles=-2, time=0):
@@ -192,11 +197,13 @@ class IOSystemFactory(object):
         """
         # Validity Checks
         if len(ctlsb.input_names) != 1:
-            raise ValueError("SBML model must have a single input. Has: %s" % str(ctlsb.input_names))
+            msg = "SBML model must have a single input. Has: %s"  \
+                  % str(ctlsb.input_names)
+            raise ValueError(msg)
         # Initializations
         state_space = ctlsb.makeStateSpace(time=time)
         controller_input_names = [n for n in ctlsb.state_names
-              if not n in ctlsb.input_names]
+             if not n in ctlsb.input_names]
         controller_input_names.insert(0, REF)  # first input
         num_state_input = len(controller_input_names) - 1
         is_distinct_poles = True
