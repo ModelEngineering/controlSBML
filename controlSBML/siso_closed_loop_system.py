@@ -449,7 +449,7 @@ class SISOClosedLoopSystem(object):
         time: float
             time used for state in the ControlSBML system
         time_opts: Options
-            start_time, end_time, points_per_time
+            start_time, end_time
         
         Returns
         -------

@@ -108,7 +108,9 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.16
+* 0.2.17
+  * Deleted the callback_log implemented in 0.2.14.
+* 0.2.16 5/24/2022
   * Refactored SISOClosedLoopSystem
   * Implemented SISOClosedLoopSystem.makeFullStateController
   * Fixed bug with makePIDController where ki, kd are ineffective.

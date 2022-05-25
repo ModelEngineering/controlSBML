@@ -53,12 +53,10 @@ S2 = 0
 class TestIOSystemFactory(unittest.TestCase):
 
     def setUp(self):
-        self.factory = IOSystemFactory(
-              callback_fcn=ctl.IOSystemFactory_CALLBACK_REPORT)
+        self.factory = IOSystemFactory()
 
-    def runController(self, name="controller",
-          callback_fcn=ctl.IOSystemFactory_CALLBACK_REPORT, **kwargs):
-        factory = IOSystemFactory(callback_fcn=callback_fcn)
+    def runController(self, name="controller", **kwargs):
+        factory = IOSystemFactory()
         controller = factory.makePIDController(name, **kwargs)
         times = list(range(20))
         return factory, control.input_output_response(controller, T=times, U=times)
@@ -83,7 +81,6 @@ class TestIOSystemFactory(unittest.TestCase):
         result = control.input_output_response(sys, T=TIMES)
         self.assertTrue(len(result.y) > 0)
         self.assertTrue(np.var(result.y) > 0)
-        self.assertGreater(len(self.factory.callback_log), 0)
 
     def testMakeAdder1(self):
         if IGNORE_TEST:
@@ -95,7 +92,6 @@ class TestIOSystemFactory(unittest.TestCase):
         result = control.input_output_response(adder, T=times, U=u_arr)
         trues = [r == 3*t for t, r in zip(times, result.outputs.flatten())]
         self.assertTrue(all(trues))
-        self.assertGreater(len(self.factory.callback_log), 0)
 
     def testMakeAdder2(self):
         if IGNORE_TEST:
@@ -110,7 +106,6 @@ class TestIOSystemFactory(unittest.TestCase):
         result = control.input_output_response(adder, T=times, U=u_arr)
         trues = [r == num_input*t for t, r in zip(times, result.outputs.flatten())]
         self.assertTrue(all(trues))
-        self.assertGreater(len(self.factory.callback_log), 0)
 
     def testMakeFilter(self):
         if IGNORE_TEST:
@@ -126,7 +121,6 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertLess(np.abs(np.mean(y_values[-10:]) - mean), mean/10)
         lin_sys = sys.linearize(x0=0, u0=0)
         self.assertTrue(lin_sys.dcgain() == 1)
-        self.assertGreater(len(self.factory.callback_log), 0)
         if IS_PLOT:
              plt.scatter(result.t.flatten(), result.y.flatten())
              plt.xlabel("time")
@@ -141,7 +135,6 @@ class TestIOSystemFactory(unittest.TestCase):
         result = control.input_output_response(sys, T=TIMES)
         self.assertTrue(np.var(result.y) == 0)
         self.assertTrue(result.y.flatten()[0] == constant)
-        self.assertGreater(len(self.factory.callback_log), 0)
 
     def testMakeMultiplier(self):
         if IGNORE_TEST:
@@ -152,7 +145,6 @@ class TestIOSystemFactory(unittest.TestCase):
         result = control.input_output_response(sys, T=TIMES.flatten(), U=U)
         self.assertTrue(np.var(result.y) == 0)
         self.assertTrue(result.y.flatten()[0] == factor)
-        self.assertGreater(len(self.factory.callback_log), 0)
 
     def testPassthru(self):
         if IGNORE_TEST:
@@ -191,10 +183,9 @@ class TestIOSystemFactory(unittest.TestCase):
         if IGNORE_TEST:
           return
         # Elements of the system
-        
         kp = 1
-        ki = 2
-        kd = 3
+        ki = 1
+        kd = 0
         dt = 1/cn.POINTS_PER_TIME
         factory = ctl.IOSystemFactory(dt=dt)
         # Create the elements of the feedback loop
