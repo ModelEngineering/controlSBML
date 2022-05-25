@@ -1,0 +1,12 @@
+Bugs
+  1. Resolve how to handle reduced order models. Keep? Delete?
+Conserved moieties
+  - Need right side null space of stoichiometry matrix
+  - Construct the dependent matrix for C
+    - A = Reduced_Stoichiometry * Flux_Jacobian
+    - C = Right_Nullspace_Stoichiometry * Flux_Jacobian, where
+      Right_Nullspace_Stoichimentry = getKMatrix()
+  2. Inputs are always species, never fluxes. However, outputs can be fluxes.
+  3. readthedocs
+  4. Document IOSystemFactor, SISOClosedLoopSystem
+  5. Resolve "FIXME"

@@ -127,7 +127,6 @@ class IOSystemFactory(object):
         #
         logger = self._registerLogger(name, [IN, "last_err",
               "acc_err", OUT])
-        # FIXME: A non-zero ki causes an algebraic loop error
         def updfcn(time, x_vec, u_vec, __):
             # u: float (error signal)
             # x_vec[0] - last_u
