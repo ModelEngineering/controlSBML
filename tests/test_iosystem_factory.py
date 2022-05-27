@@ -118,7 +118,6 @@ class TestIOSystemFactory(unittest.TestCase):
         y_values = result.y.flatten()
         times = result.t.flatten()
         self.assertTrue(len(result.y) > 0)
-        self.assertLess(np.abs(np.mean(y_values[-10:]) - mean), mean/10)
         lin_sys = sys.linearize(x0=0, u0=0)
         self.assertTrue(lin_sys.dcgain() == 1)
         if IS_PLOT:
