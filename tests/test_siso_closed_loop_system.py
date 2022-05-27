@@ -32,6 +32,7 @@ k2 = 2
 k3 = 3
 k4 = 4
 """
+BIOMD1015 = os.path.join(TEST_DIR, "Jarrah2014.xml")
 BIOMD823 = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
 if IS_PLOT:
     import matplotlib
@@ -123,6 +124,15 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         times = [0, 1, 2, 3]
         dct = siso.evaluateControllability(times)
         self.assertEqual(len(times), len(dct))
+
+    def testEvaluateControllability4(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ctl.ControlSBML(BIOMD1015, input_names=["C"],
+              output_names=["D"])
+        siso = SISOClosedLoopSystem(ctlsb)
+        times = [0, 1]
+        dct = siso.evaluateControllability(times)
 
     def testMakeClosedLoopSystem1(self):
         if IGNORE_TEST:

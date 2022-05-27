@@ -108,6 +108,9 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 0.2.19 5/27/2022
+  * Fix bug in SISOClosedLoopSystem.evaluateControllability because scipy didn't
+    handle nan values.
 * 0.2.18 5/26/2022
   * Fix small bug
 * 0.2.17 5/26/2022

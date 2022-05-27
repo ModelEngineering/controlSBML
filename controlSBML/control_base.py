@@ -630,7 +630,12 @@ class ControlBase(object):
             raise ValueError("Must have exactly one output.")
         # Get initial transfer function
         state_space = self.makeStateSpace(time=time)
-        tf = control.ss2tf(state_space)
+        total = np.sum(state_space.A.flatten())
+        if np.isnan(total):
+            tf = control.TransferFunction([0], [1])
+        else:
+            tf = control.ss2tf(state_space)
+        return tf
         #
         return self.reduceTransferFunction(tf, atol=atol)
 
