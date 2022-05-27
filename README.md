@@ -108,7 +108,9 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.17
+* 0.2.18 5/26/2022
+  * Fix small bug
+* 0.2.17 5/26/2022
   * Deleted the callback_log implemented in 0.2.14.
 * 0.2.16 5/24/2022
   * Refactored SISOClosedLoopSystem

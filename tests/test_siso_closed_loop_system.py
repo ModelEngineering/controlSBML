@@ -154,7 +154,6 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             closed_loop_outputs=closed_loop_outputs)
         ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
               points_per_time=2)
-        ts.columns = ["input", "e(t)", "system.in", "output"]
         if IS_PLOT:
             ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
         self.assertGreater(len(ts), 0)
@@ -172,7 +171,7 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
-        closed_loop_outputs=["cl_input.out", "sum_F_R.out", 
+        closed_loop_outputs=["sum_F_R.out", 
               "sum_D_U.out", "cl_output.out"]
         siso.makePIDClosedLoopSystem(kp=10, ki=0, kf=None,
             noise_amp=0, noise_frq=20,
@@ -191,17 +190,15 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.ylabel("e(t)")
             plt.show()
 
-    def testMakeDisturbanceNoiseCLinputoutput(self):
+    def testMakeFullState(self):
         if IGNORE_TEST:
           return
         ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
         siso.makeFullStateClosedLoopSystem(poles=-2)
-        times = ctl.makeSimulationTimes(end_time=100)
-        result = control.input_output_response(siso.closed_loop_system,
-              times, U=1)
-        ts = ctl.timeresponse2Timeseries(result, column_names=["ref", "S3"])
+        times = ctl.makeSimulationTimes(end_time=10)
+        ts = siso.makeStepResponse(step_size=2, end_time=10)
         if IS_PLOT:
             ctl.plotOneTS(ts, figsize=(5,5))
             plt.show()

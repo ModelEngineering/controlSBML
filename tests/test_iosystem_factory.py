@@ -170,7 +170,7 @@ class TestIOSystemFactory(unittest.TestCase):
           return
         ctlsb = ctl.ControlSBML(MODEL, input_names=["S0"], output_names=["S2"])
         controller = self.factory.makeFullStateController("controller",
-              ctlsb, factor=1.0, poles=-10, time=1)
+              ctlsb, dcgain=1.0, poles=-10, time=1)
         times = [0, 1, 2, 3, 4]
         U = np.array([(1, 1, 1,) for _ in range(len(times))])
         U = U.transpose()

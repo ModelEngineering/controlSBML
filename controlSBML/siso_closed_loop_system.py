@@ -115,6 +115,9 @@ SUM_N_Y_N = "sum_N_Y.n"
 SUM_N_Y_OUT = "sum_N_Y.out"
 SYSTEM = "system"
 
+# Columns in dataframes
+COL_STEP = "step"
+
 
 # sys: list-NonlinearIOSystem
 # con: connections - list-str
@@ -145,6 +148,8 @@ class SISOClosedLoopSystem(object):
         self.sum_N_Y = None
         self.sum_F_R = None
         self.sum_D_U = None
+        # Names of signals
+        self.closed_loop_outputs = None  # output signals
     
     def report(self):
         """
@@ -236,16 +241,17 @@ class SISOClosedLoopSystem(object):
             name of the output used in the SISO system
             the name must be present in the ControlSBML object
         closed_loop_ouputs: list-str
-            If None, CL_INPUT_REF, CL_OUTPUT_OUT
+            If None, "ref", last output in ctlsb
         
         Returns
         -------
         Timeseries
            CL_INPUT_REF: reference input to System
            CL_OUTPUT_OUT: output from the System
-           noise.out: noise input to system
-           disturbance.out: noise input to system
         """
+        if self.closed_loop_system is not None:
+            raise ValueError("Closed loop system exists already.")
+        #
         assembly = self._makeDisturbanceNoiseCLinputoutput(
               disturbance_amp=disturbance_amp,
               disturbance_frq=disturbance_frq,
@@ -254,8 +260,9 @@ class SISOClosedLoopSystem(object):
               )
         sys_lst = list(assembly.sys)
         connections = list(assembly.con)
-        if closed_loop_outputs is None:
-            closed_loop_outputs = assembly.out
+        new_system_output = self._set(system_output, assembly.out)
+        self.closed_loop_outputs = self._set(closed_loop_outputs,
+              [CL_OUTPUT_OUT])
         # Make controller, system, filter
         self.sum_F_R = self.factory.makeAdder(SUM_F_R, input_names=["ref", "fltr"])
         # Choose first system input and last system output as defaults
@@ -293,8 +300,14 @@ class SISOClosedLoopSystem(object):
         self.closed_loop_system = control.interconnect(sys_lst,
               connections=connections,
               inplist=[CL_INPUT_REF],
-              outlist=closed_loop_outputs
+              outlist=self.closed_loop_outputs
             )
+
+    @staticmethod
+    def _set(value, default):
+        if value is None:
+            return default
+        return value
 
     def makeFullStateClosedLoopSystem(self,
           time=0,                                 # Time of linearization
@@ -303,6 +316,7 @@ class SISOClosedLoopSystem(object):
           noise_amp=0, noise_frq=0,               # Noise
           system_input=None, system_name=None,    # SISO input, output
           system_output=None,
+          is_adjust_dcgain=True,                # Make dcgain(Y(s)/R(s)) = 1
           closed_loop_outputs=None):              # list of outputs from closed loop system
         """
         Creates a closed loop system for a ControlSBML object. The closed loop system
@@ -329,7 +343,7 @@ class SISOClosedLoopSystem(object):
             name of the output used in the SISO system
             the name must be present in the ControlSBML object
         closed_loop_ouputs: list-str
-            If None, CL_INPUT_REF, CL_OUTPUT_OUT
+            If None, CL_OUTPUT_OUT
         
         Returns
         -------
@@ -339,51 +353,81 @@ class SISOClosedLoopSystem(object):
            noise.out: noise input to system
            disturbance.out: noise input to system
         """
-        assembly = self._makeDisturbanceNoiseCLinputoutput(
-              disturbance_amp=disturbance_amp,
-              disturbance_frq=disturbance_frq,
-              noise_amp=noise_amp,
-              noise_frq=noise_frq,
-              )
-        sys_lst = list(assembly.sys)
-        connections = list(assembly.con)
-        if closed_loop_outputs is None:
-            closed_loop_outputs = list(assembly.out)
-        # Choose first system input and last system output as defaults
-        if system_input is None:
-            system_input = self.ctlsb.input_names[0]
-        if system_output is None:
-            system_output = self.ctlsb.output_names[-1]
-        initial_ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
-              input_names=[system_input], output_names=[system_output])
-        output_names = list(initial_ctlsb.state_names)
-        output_names.remove(system_input)
-        ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
-              input_names=[system_input], output_names=output_names)
-        self.system = ctlsb.makeNonlinearIOSystem(SYSTEM)
-        system_in = "%s.%s" % (SYSTEM, system_input)
-        system_out = "%s.%s" % (SYSTEM, system_output)
+        if self.closed_loop_system is not None:
+            raise ValueError("Closed loop system exists already.")
         #
-        self.controller = self.factory.makeFullStateController(CONTROLLER,
-              ctlsb, poles=poles, time=time)
-        #
-        sys_lst.extend([self.system, self.controller])
-        # Connections between system and controller
-        for name in output_names:
-            controller_input = "%s.%s" % (CONTROLLER, name)
-            system_output = "%s.%s" % (SYSTEM, name)
-            connections.append([controller_input, system_output])
-        # Additional names
-        connections.append([SUM_D_U_U, CONTROLLER_OUT])
-        connections.append([system_in, SUM_D_U_OUT])
-        connections.append([SUM_N_Y_Y, system_out])
-        connections.append([CONTROLLER_REF, CL_INPUT_OUT])
-        # Construct the interconnected system
-        self.closed_loop_system = control.interconnect(sys_lst,
-              connections=connections,
-              inplist=[CL_INPUT_REF],
-              outlist=closed_loop_outputs
-            )
+        self.closed_loop_outputs = self._set(closed_loop_outputs,
+              [CL_OUTPUT_OUT])
+        def make(siso=self, dcgain=1, closed_loop_outputs=closed_loop_outputs):
+            """
+            Creates a SISO system.
+   
+            Parameters
+            ----------
+            siso: SISOClosedLoopSystem
+            dcgain: float
+            closed_loop_outputs: list-str
+            """
+            assembly = siso._makeDisturbanceNoiseCLinputoutput(
+                  disturbance_amp=disturbance_amp,
+                  disturbance_frq=disturbance_frq,
+                  noise_amp=noise_amp,
+                  noise_frq=noise_frq,
+                  )
+            sys_lst = list(assembly.sys)
+            connections = list(assembly.con)
+            # Choose first system input and last system output as defaults
+            new_system_input = self._set(system_input, siso.ctlsb.input_names[0])
+            new_system_output = self._set(system_output,
+                  siso.ctlsb.output_names[-1])
+            initial_ctlsb = ctl.ControlSBML(siso.ctlsb.model_reference,
+                  input_names=[new_system_input],
+                  output_names=[new_system_output])
+            output_names = list(initial_ctlsb.state_names)
+            output_names.remove(new_system_input)
+            ctlsb = ctl.ControlSBML(siso.ctlsb.model_reference,
+                  input_names=[new_system_input], output_names=output_names)
+            siso.system = ctlsb.makeNonlinearIOSystem(SYSTEM)
+            system_in = "%s.%s" % (SYSTEM, new_system_input)
+            system_out = "%s.%s" % (SYSTEM, new_system_output)
+            #
+            siso.controller = siso.factory.makeFullStateController(CONTROLLER,
+                  ctlsb, poles=poles, time=time, dcgain=dcgain)
+            #
+            sys_lst.extend([siso.system, siso.controller])
+            # Connections between system and controller
+            for name in output_names:
+                controller_input = "%s.%s" % (CONTROLLER, name)
+                new_system_output = "%s.%s" % (SYSTEM, name)
+                connections.append([controller_input, new_system_output])
+            # Additional names
+            connections.append([SUM_D_U_U, CONTROLLER_OUT])
+            connections.append([system_in, SUM_D_U_OUT])
+            connections.append([SUM_N_Y_Y, system_out])
+            connections.append([CONTROLLER_REF, CL_INPUT_OUT])
+            # Construct the interconnected system
+            siso.closed_loop_system = control.interconnect(sys_lst,
+                  connections=connections,
+                  inplist=[CL_INPUT_REF],
+                  outlist=self.closed_loop_outputs
+                )
+        # Calculate DC Gain if rquested
+        if is_adjust_dcgain:
+            # Create a closed loop system with a no DC gain adjustment
+            siso = SISOClosedLoopSystem(self.ctlsb)
+            make(siso=siso, closed_loop_outputs=[CL_OUTPUT_OUT])
+            # Linearize this system
+            X0 = makeStateVector(siso.closed_loop_system, start_time=time)
+            state_space = siso.closed_loop_system.linearize(X0, 1)
+            tf = control.ss2tf(state_space)
+            # Adjust transfer function if no constant terms
+            reduced_tf = siso.ctlsb.reduceTransferFunction(tf)
+            dcgain = reduced_tf.dcgain()
+        else:
+            dcgain = 1
+        # Create a system with the dcgain adjustment
+        make(dcgain=dcgain)
+        
 
     def _makeDisturbanceNoiseCLinputoutput(self,
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
@@ -453,7 +497,9 @@ class SISOClosedLoopSystem(object):
         
         Returns
         -------
-        Timeseries
+        Timeseries: Columns
+            COL_STEP
+            closed loop outputs
         """
         self.factory.dt = time_opts.get("dt", 1.0/cn.POINTS_PER_TIME)
         self.factory.initializeLoggers()
@@ -461,5 +507,10 @@ class SISOClosedLoopSystem(object):
         X0 = makeStateVector(self.closed_loop_system, start_time=time)
         timeresponse = control.input_output_response(self.closed_loop_system,
               times, U=step_size, X0=X0)
-        return util.timeresponse2Timeseries(timeresponse)
+        ts = util.timeresponse2Timeseries(timeresponse,
+              column_names=self.closed_loop_outputs)
+        df = ts.rename({CL_OUTPUT_OUT: self.ctlsb.output_names[-1]}, axis="columns")
+        ts = ctl.Timeseries(df)
+        ts[COL_STEP] = np.repeat(step_size, len(times))
+        return ts
   

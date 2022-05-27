@@ -3,7 +3,7 @@
 """
 Creates IOsystems to be used in constructing closed loop systems.
 Inputs have the form in, in1, in2, ...
-Outpus have the form out, out1, out2, ... 
+Outpus have the form out, out1, out2, ...
 
 IOSystems created:
     makeFilter: creates an exponential filter
@@ -17,11 +17,9 @@ IOSystems created:
 
 from controlSBML import constants as cn
 from controlSBML import logger as lg
-from controlSBML import msgs
 
 import control
 import numpy as np
-import pandas as pd
 
 IN = "in"
 IN1 = "in1"
@@ -63,7 +61,7 @@ class IOSystemFactory(object):
         Parameters
         ----------
         vec: float/array-like
-        
+
         Returns
         -------
         float
@@ -86,7 +84,7 @@ class IOSystemFactory(object):
     def report(self):
         """
         Creates of report from the logs of objects produced by this factory.
-        
+
         Returns
         -------
         pd.DataFrame
@@ -108,7 +106,7 @@ class IOSystemFactory(object):
         States are:
             culmulative_err: cumulative control error
             last_err: last control error
-        
+
         Parameters
         ----------
         name: str
@@ -119,7 +117,7 @@ class IOSystemFactory(object):
            integral control constant
         kd: float
            differential control constant.
-        
+
         Returns
         -------
         control.NonlinearIOSystem
@@ -127,7 +125,7 @@ class IOSystemFactory(object):
         #
         logger = self._registerLogger(name, [IN, "last_err",
               "acc_err", OUT])
-        def updfcn(time, x_vec, u_vec, __):
+        def updfcn(_, x_vec, u_vec, __):
             # u: float (error signal)
             # x_vec[0] - last_u
             # x_vec[1] - accumulated_u
@@ -152,25 +150,26 @@ class IOSystemFactory(object):
             states=["last_err", "accumulated_err"],
             name=name)
 
-    def makeFullStateController(self, name, ctlsb, factor=1.0, poles=-2, time=0):
+    def makeFullStateController(self, name, ctlsb, poles=-2, time=0,
+          dcgain=1.0):
         """
         Creates a full state feedback controller for an SBML model
         where the system is linearized at the specified time.
-        
+
         Parameters
         ----------
         name: str
             Name of the system
         ctlsb: ControlSBML
             SISO system
-        factor: float
+        dcgain: float
             factor for adjusting the reference input to get a closed loop
             transfer function of 1
         poles: list-float/float
             Desired poles; single float is the dominant pole
         time: float
             Time where system is lienarized
-        
+
         Returns
         -------
         control.NonlinearIOSystem
@@ -204,9 +203,9 @@ class IOSystemFactory(object):
             raise ValueError("Poles must be distinct. Not: %s" % str(poles))
         # Calculate the gain matrix
         kp_vec = control.place(state_space.A, state_space.B, poles)
-        def outfcn(time, _, u_vec, __):
+        def outfcn(_, __, u_vec, ___):
             # u_vec: list-float - reference, state variables
-            ref = factor*u_vec[0]
+            ref = u_vec[0]/dcgain
             arr = np.array(u_vec[1:])
             output = ref - kp_vec.dot(arr)
             return output
@@ -219,29 +218,28 @@ class IOSystemFactory(object):
         """
         Construct a NonlinearIOSystem that outputs a sinusoid.
         The system has output OUT.
-        
+
         Parameters
         ----------
         name: str
         amp: float
         frequency: float
-        
+
         Returns
         -------
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [OUT])
-        def outfcn(time, x_vec, u_vec, _):
+        def outfcn(time, _, __, ___):
             """
             Creates a sine wave at the frequency specified.
-    
+
             Parameters
             ----------
             time: float
             """
             output = amp*np.sin(time*frequency)
             logger.add(time, [output])
-            dct = {"amp": amp, "frequency": frequency}
             return output
         #
         return control.NonlinearIOSystem(
@@ -253,13 +251,13 @@ class IOSystemFactory(object):
         Inputs two or more elements. Outputs their sum. Name is "sum".
         The inputs are IN1, IN2, ... or the names in input_names.
         The output is OUT.
-        
+
         Parameters
         ----------
         name: str
         num_input: int
         num_names: list-str
-        
+
         Returns
         -------
         NonlinearIOSystem
@@ -269,11 +267,10 @@ class IOSystemFactory(object):
         item_names = list(input_names)
         item_names.append(OUT)
         logger = self._registerLogger(name, item_names)
-        dct = {}
-        def outfcn(time, x_vec, u_vec, _):
+        def outfcn(time, _, u_vec, __):
             """
             Creates a sine wave at the frequency specified.
-    
+
             Parameters
             ----------
             u: float, float
@@ -281,7 +278,7 @@ class IOSystemFactory(object):
             output = np.sum(u_vec)
             item_values = list(u_vec)
             item_values.append(output)
-            logger.add(time, item_values)   
+            logger.add(time, item_values)
             return output
         #
         return control.NonlinearIOSystem(
@@ -291,25 +288,24 @@ class IOSystemFactory(object):
         """
         Construct a NonlinearIOSystem for x' = a*x + u, where u is the
         filter input.
-        The system has input IN and output OUT. 
+        The system has input IN and output OUT.
         The output is normalized so that the DC gain of the filter is 1.
-        
+
         Parameters
         ----------
         name: str
         constant: float
             e**expo_constant*time
-        
+
         Returns
         -------
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, STATE, OUT])
-        dct = {"constant": constant}
         def updfcn(time, x_vec, u_vec, _):
             """
             Returns the derivative of the state.
-    
+
             Parameters
             ----------
             time: float
@@ -319,7 +315,6 @@ class IOSystemFactory(object):
             x_val = self._array2scalar(x_vec)
             u_val = self._array2scalar(u_vec)
             dx_val = constant*x_val + u_val
-            dct = {}
             return dx_val
         #
         def outfcn(time, x_vec, u_vec, _):
@@ -336,18 +331,17 @@ class IOSystemFactory(object):
     def makeConstant(self, name, constant):
         """
         Outputs a constant value.
-        
+
         Parameters
         ----------
         name: str
         constant: float
-        
+
         Returns
         -------
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [OUT])
-        dct = {"constant": constant}
         def outfcn(time, x_vec, u_vec, _):
             output = constant
             logger.add(time, [output])
@@ -359,19 +353,18 @@ class IOSystemFactory(object):
     def makePassthru(self, name, input_name=None, output_name=None):
         """
         Makes a pass through system that outputs its input.
-        
+
         Parameters
         ----------
         name: str
         input_name: str
         output_name: str
-        
+
         Returns
         -------
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, OUT])
-        dct = {}
         if input_name is None:
             input_name = IN
         if output_name is None:
@@ -388,24 +381,23 @@ class IOSystemFactory(object):
     def makeMultiplier(self, name, factor):
         """
         Outputs a multiple of the input signal.
-        
+
         Parameters
         ----------
         name: str
         factor: float
-        
+
         Returns
         -------
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, OUT])
-        dct = {"factor": factor}
         def outfcn(time, x_vec, u_vec, _):
             u_val = self._array2scalar(u_vec)
             output = factor*u_val
             logger.add(time, [u_val, output])
             return output
-        
+
         #
         return control.NonlinearIOSystem(
             None, outfcn, outputs=[OUT], inputs=[IN], name=name)
