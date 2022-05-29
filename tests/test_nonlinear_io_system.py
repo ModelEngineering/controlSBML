@@ -170,7 +170,16 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb)
         df = self.runInputOutputResponse(0)
-        
+
+    def testLogging(self):
+        if IGNORE_TEST:
+          return
+        self.init()
+        _ = self.runInputOutputResponse(0)
+        df = self.sys.logger.report()
+        diff = set(self.ctlsb.state_names).symmetric_difference(df.columns)
+        self.assertEqual(len(diff), 0)
+        self.assertGreater(len(df), 0)
 
 
 if __name__ == '__main__':

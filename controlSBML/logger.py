@@ -56,6 +56,15 @@ class Logger(object):
             index: time
             columns: item_names
         """
+        # Check the logging lencths
+        len_dct = {n: len(self.dct[n]) for n in self.dct.keys()}
+        lst = list(len_dct.values())
+        var = np.var(lst)
+        if var > 0:
+            stgs = ["%s=%d" % (k, v) for k, v in len_dct.items()]
+            stg = "\n  ".join(stgs)
+            text = "Unequal logging lencths. Details follow:\n  %s" % stg
+            raise ValueError(text)
         df = pd.DataFrame(self.dct)
         # Eliminate duplicate times by using millisecond granularity
         df[TIMEMS] = df[TIME].apply(lambda v: int(SEC_TO_MS*v))

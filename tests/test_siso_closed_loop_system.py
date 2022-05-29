@@ -214,6 +214,25 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.show()
         self.assertGreater(ts["S3"].values[-1], 0)
 
+    # TODO: More tests of fullstate filters
+    # FIXME: report doesn't line up with output values for system , filter
+    def testMakeFullStateFilters(self):
+        if IGNORE_TEST:
+          return
+        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
+              output_names=["S3"])
+        siso = SISOClosedLoopSystem(ctlsb)
+        siso.makeFullStateClosedLoopSystem(poles=-2, kf=-1)
+        times = ctl.makeSimulationTimes(end_time=10)
+        ts = siso.makeStepResponse(step_size=2, end_time=10)
+        if IS_PLOT:
+            ctl.plotOneTS(ts, figsize=(5,5))
+            plt.show()
+        self.assertGreater(ts["S3"].values[-1], 0)
+        df = siso.factory.report()
+        trues = ["fltr_%s.in" % n in df.columns for n in ["S1", "S3"]]
+        self.assertTrue(all(trues))
+
 
 if __name__ == '__main__':
   unittest.main()

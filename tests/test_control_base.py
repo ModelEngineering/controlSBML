@@ -9,9 +9,10 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+BIOMD1015 = os.path.join(TEST_DIR, "Jarrah2014.xml")
 MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 REACTION_NAMES = ["J1"]
@@ -226,6 +227,12 @@ class TestControlBase(unittest.TestCase):
         _, y_vals = control.forced_response(sys, T=times, X0=X0)
         self.assertEqual(len(y_vals), 2)  # S1, S2 are outputs
         self.assertEqual(len(y_vals[0]), len(times))
+
+    def testMakeStateSpace3(self):
+        # TESTING
+        ctlsb = ControlBase(BIOMD1015)
+        sys = ctlsb.makeStateSpace()
+        import pdb; pdb.set_trace()
 
     def testMakeStateSpaceSpeciesInput(self):
         if IGNORE_TEST:

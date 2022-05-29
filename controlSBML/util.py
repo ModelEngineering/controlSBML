@@ -290,3 +290,6 @@ def timeresponse2Timeseries(timeresponse, column_names=None):
         df.columns = column_names
     df.index = timeresponse.t
     return ctl.Timeseries(df)
+
+def isNumber(item):
+    return isinstance(item, float) or isinstance(item, int)

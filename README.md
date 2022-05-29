@@ -108,7 +108,12 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 0.2.20
+* 0.2.21
+  * NonlinearIOSystem creates a logger.
+  * SISOClosedLoopSystem.makeFullStateSystem has option for filters
+* 0.2.20 5/27/2022
+  * Fix bug in SISOClosedLoopSystem.evaluateControllability because scipy didn't
+    handle nan values.
 * 0.2.19 5/27/2022
   * Fix bug in SISOClosedLoopSystem.evaluateControllability because scipy didn't
     handle nan values.

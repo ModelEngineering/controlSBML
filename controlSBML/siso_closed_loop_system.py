@@ -53,7 +53,7 @@ made between attachment points.
   6 DISTURBANCE
     * out (out): disturbance generated
   7 SUM_D_U: Summation of controller output and disturbance
-    * u (in): controller output 
+    * u (in): controller output
     * d (in): disturbance
     * sum (out): summation
   8 NOISE
@@ -75,7 +75,6 @@ made between attachment points.
 import controlSBML as ctl
 from controlSBML import constants as cn
 from controlSBML.simulate_system import makeStateVector
-from controlSBML import msgs
 from controlSBML import util
 
 import collections
@@ -99,8 +98,10 @@ DISTURBANCE_OUT = "disturbance.out"
 FLTR = "fltr"
 FLTR_IN = "fltr.in"
 FLTR_OUT = "fltr.out"
+IN = "in"
 NOISE = "noise"
 NOISE_OUT = "noise.out"
+OUT = "out"
 SUM_D_U = "sum_D_U"
 SUM_D_U_U = "sum_D_U.u"
 SUM_D_U_D = "sum_D_U.d"
@@ -134,7 +135,7 @@ class SISOClosedLoopSystem(object):
         self.ctlsb = ctlsb
         self.factory = ctl.IOSystemFactory()
         self.closed_loop_system = None
-        # Elements in the closed loop system 
+        # Elements in the closed loop system
         ## Subsysems
         self.system = None
         self.controller = None
@@ -150,7 +151,7 @@ class SISOClosedLoopSystem(object):
         self.sum_D_U = None
         # Names of signals
         self.closed_loop_outputs = None  # output signals
-    
+
     def report(self):
         """
         Report log from running the closed loop system.
@@ -170,7 +171,7 @@ class SISOClosedLoopSystem(object):
              times at which dc gain is evaluated
         input_names: list-str
         output_names: list-str
-        
+
         Returns
         -------
         dict
@@ -208,7 +209,7 @@ class SISOClosedLoopSystem(object):
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
           kf=None,                                # Filter
-          system_input=None, system_name=None,    # SISO input, output
+          system_input=None,                      # SISO input, output
           system_output=None,
           closed_loop_outputs=None):              # list of outputs from closed loop system
         """
@@ -242,7 +243,7 @@ class SISOClosedLoopSystem(object):
             the name must be present in the ControlSBML object
         closed_loop_ouputs: list-str
             If None, "ref", last output in ctlsb
-        
+
         Returns
         -------
         Timeseries
@@ -260,7 +261,6 @@ class SISOClosedLoopSystem(object):
               )
         sys_lst = list(assembly.sys)
         connections = list(assembly.con)
-        new_system_output = self._set(system_output, assembly.out)
         self.closed_loop_outputs = self._set(closed_loop_outputs,
               [CL_OUTPUT_OUT])
         # Make controller, system, filter
@@ -272,7 +272,7 @@ class SISOClosedLoopSystem(object):
             system_output = self.ctlsb.output_names[-1]
         ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
               input_names=[system_input], output_names=[system_output])
-        self.system = ctlsb.makeNonlinearIOSystem(SYSTEM)
+        self.system = self.factory.makeNonlinearIOSystem(SYSTEM, ctlsb)
         system_in = "%s.%s" % (SYSTEM, system_input)
         system_out = "%s.%s" % (SYSTEM, system_output)
         #
@@ -287,7 +287,6 @@ class SISOClosedLoopSystem(object):
         sys_lst.extend([self.system, self.controller, self.fltr, self.sum_F_R])
         # Additional names
         filter_str = "-%s" % FLTR_OUT
-        system_inp = "%s.%s" % (SYSTEM, system_input)
         system_out = "%s.%s" % (SYSTEM, system_output)
         connections.append([SUM_F_R_REF, CL_INPUT_OUT])
         connections.append([CONTROLLER_IN, SUM_F_R_OUT])
@@ -312,20 +311,27 @@ class SISOClosedLoopSystem(object):
     def makeFullStateClosedLoopSystem(self,
           time=0,                                 # Time of linearization
           poles=-1,                               # Desired poles or dominant pole
+          kf=None,                                # Filter constant
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
-          system_input=None, system_name=None,    # SISO input, output
+          system_input=None,                      # SISO input, output
           system_output=None,
-          is_adjust_dcgain=True,                # Make dcgain(Y(s)/R(s)) = 1
+          is_adjust_dcgain=True,                  # Make dcgain(Y(s)/R(s)) = 1
           closed_loop_outputs=None):              # list of outputs from closed loop system
         """
-        Creates a closed loop system for a ControlSBML object. The closed loop system
-        includes a PID controller and a filter.
+        Creates a full state closed loop system for a ControlSBML object.
+        The closed loop system includes a full state controller and, optionally,
+        a filter for each state variable.  Options are available to inject noise
+        and disturbances as sine waves.
 
         Parameters
         ----------
         poles: float/list-flaot
             Desired poles (or just dominant pole)
+        kp: float/list-float
+            Constants used in the filters for state variables.
+            If kp is a list, it must have the same length as the
+            number of state variables.
         noise_amp: float
             amplitude of the sine wave for noise
         noise_frq: float
@@ -344,7 +350,7 @@ class SISOClosedLoopSystem(object):
             the name must be present in the ControlSBML object
         closed_loop_ouputs: list-str
             If None, CL_OUTPUT_OUT
-        
+
         Returns
         -------
         control.IOSystem.InterconnectedSystem
@@ -358,16 +364,19 @@ class SISOClosedLoopSystem(object):
         #
         self.closed_loop_outputs = self._set(closed_loop_outputs,
               [CL_OUTPUT_OUT])
-        def make(siso=self, dcgain=1, closed_loop_outputs=closed_loop_outputs):
+        def make(siso=self, dcgain=1, closed_loop_outputs=self.closed_loop_outputs):
             """
             Creates a SISO system.
-   
+
             Parameters
             ----------
             siso: SISOClosedLoopSystem
             dcgain: float
             closed_loop_outputs: list-str
             """
+            def makeFilterName(name):
+                return "%s_%s" % (FLTR, name)
+            #
             assembly = siso._makeDisturbanceNoiseCLinputoutput(
                   disturbance_amp=disturbance_amp,
                   disturbance_frq=disturbance_frq,
@@ -377,8 +386,8 @@ class SISOClosedLoopSystem(object):
             sys_lst = list(assembly.sys)
             connections = list(assembly.con)
             # Choose first system input and last system output as defaults
-            new_system_input = self._set(system_input, siso.ctlsb.input_names[0])
-            new_system_output = self._set(system_output,
+            new_system_input = siso._set(system_input, siso.ctlsb.input_names[0])
+            new_system_output = siso._set(system_output,
                   siso.ctlsb.output_names[-1])
             initial_ctlsb = ctl.ControlSBML(siso.ctlsb.model_reference,
                   input_names=[new_system_input],
@@ -387,19 +396,37 @@ class SISOClosedLoopSystem(object):
             output_names.remove(new_system_input)
             ctlsb = ctl.ControlSBML(siso.ctlsb.model_reference,
                   input_names=[new_system_input], output_names=output_names)
-            siso.system = ctlsb.makeNonlinearIOSystem(SYSTEM)
+            siso.system = siso.factory.makeNonlinearIOSystem(SYSTEM, ctlsb)
             system_in = "%s.%s" % (SYSTEM, new_system_input)
             system_out = "%s.%s" % (SYSTEM, new_system_output)
+            # Filters
+            if kf is None:
+                fltrs = [siso.factory.makePassthru(makeFilterName(n))
+                      for n in output_names]
+            else:
+                if util.isNumber(kf):
+                    kfs = np.repeat(kf, len(output_names))
+                else:
+                    kfs = kf
+                fltrs = [siso.factory.makeFilter(makeFilterName(n), kfs[i])
+                      for i, n in enumerate(output_names)]
             #
             siso.controller = siso.factory.makeFullStateController(CONTROLLER,
                   ctlsb, poles=poles, time=time, dcgain=dcgain)
             #
             sys_lst.extend([siso.system, siso.controller])
-            # Connections between system and controller
+            sys_lst.extend(fltrs)
+            # Add connections for the filter
             for name in output_names:
-                controller_input = "%s.%s" % (CONTROLLER, name)
+                # Input to filter
+                filter_name = makeFilterName(name)
+                filter_input = "%s.%s" % (filter_name, IN)
                 new_system_output = "%s.%s" % (SYSTEM, name)
-                connections.append([controller_input, new_system_output])
+                connections.append([filter_input, new_system_output])
+                # Filter output
+                filter_output = "%s.%s" % (filter_name, OUT)
+                controller_input = "%s.%s" % (CONTROLLER, name)
+                connections.append([controller_input, filter_output])
             # Additional names
             connections.append([SUM_D_U_U, CONTROLLER_OUT])
             connections.append([system_in, SUM_D_U_OUT])
@@ -409,7 +436,7 @@ class SISOClosedLoopSystem(object):
             siso.closed_loop_system = control.interconnect(sys_lst,
                   connections=connections,
                   inplist=[CL_INPUT_REF],
-                  outlist=self.closed_loop_outputs
+                  outlist=closed_loop_outputs
                 )
         # Calculate DC Gain if rquested
         if is_adjust_dcgain:
@@ -427,7 +454,7 @@ class SISOClosedLoopSystem(object):
             dcgain = 1
         # Create a system with the dcgain adjustment
         make(dcgain=dcgain)
-        
+
 
     def _makeDisturbanceNoiseCLinputoutput(self,
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
@@ -456,7 +483,7 @@ class SISOClosedLoopSystem(object):
             amplitude of the sine wave for noise
         noise_frq: float
             frequency of the sine wave for noise
-        
+
         Returns
         -------
         ConnectionAssembly
@@ -494,7 +521,7 @@ class SISOClosedLoopSystem(object):
             time used for state in the ControlSBML system
         time_opts: Options
             start_time, end_time
-        
+
         Returns
         -------
         Timeseries: Columns
@@ -513,4 +540,4 @@ class SISOClosedLoopSystem(object):
         ts = ctl.Timeseries(df)
         ts[COL_STEP] = np.repeat(step_size, len(times))
         return ts
-  
+

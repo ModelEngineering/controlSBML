@@ -45,11 +45,12 @@ class IOSystemFactory(object):
         self.registered_names = []  # List of names logged
         self.loggers = []  # Loggers for created objects
 
-    def _registerLogger(self, logger_name, item_names):
+    def _registerLogger(self, logger_name, item_names, logger=None):
         is_duplicate = any([logger_name == l.logger_name for l in self.loggers])
         if is_duplicate:
             raise ValueError("Duplicate logger name: %s" % logger_name)
-        logger = lg.Logger(logger_name, item_names)
+        if logger is None:
+            logger = lg.Logger(logger_name, item_names)
         self.loggers.append(logger)
         return logger
 
@@ -98,6 +99,20 @@ class IOSystemFactory(object):
         others = self.loggers[1:]
         merged_logger = logger.merge(self.name, others)
         return merged_logger.report()
+
+    def makeNonlinearIOSystem(self, name, ctlsb):
+        """
+        Creates a "system" object.
+
+        Parameters
+        ----------
+
+        Returns
+        -------
+        """
+        system = ctlsb.makeNonlinearIOSystem(name)
+        self._registerLogger(name, None, logger=system.logger)
+        return system
 
     def makePIDController(self, name, kp=2, ki=0, kd=0):
         """
@@ -302,7 +317,7 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, STATE, OUT])
-        def updfcn(time, x_vec, u_vec, _):
+        def updfcn(_, x_vec, u_vec, __):
             """
             Returns the derivative of the state.
 
@@ -342,7 +357,7 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [OUT])
-        def outfcn(time, x_vec, u_vec, _):
+        def outfcn(time, _,  __, ___):
             output = constant
             logger.add(time, [output])
             return output
@@ -369,7 +384,7 @@ class IOSystemFactory(object):
             input_name = IN
         if output_name is None:
             output_name = OUT
-        def outfcn(time, x_vec, u_vec, ___):
+        def outfcn(time, _, u_vec, __):
             u_val = self._array2scalar(u_vec)
             output = u_val
             logger.add(time, [u_val, output])
@@ -392,7 +407,7 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, OUT])
-        def outfcn(time, x_vec, u_vec, _):
+        def outfcn(time, _, u_vec, __):
             u_val = self._array2scalar(u_vec)
             output = factor*u_val
             logger.add(time, [u_val, output])

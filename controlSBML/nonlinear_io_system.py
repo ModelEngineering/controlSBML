@@ -1,6 +1,7 @@
 """Extends control.NonlinearIOSystem for ControlSBML objects."""
 
 import controlSBML.constants as cn
+from controlSBML import logger as lg
 from controlSBML import msgs
 from controlSBML import util
 
@@ -38,6 +39,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             times, y_val2s = control.input_output_response(sys, input_times,
                   input2s, initial_state)
         """
+        self.name = name
         self.ctlsb = ctlsb
         self.do_simulate_on_update = do_simulate_on_update
         # Useful properties
@@ -57,10 +59,11 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                 # Make it its own effector
                 self.effector_dct[input_name] = input_name
         self._ignored_inputs = []  # Note setable inputs
+        self.logger = lg.Logger(self.name, self.state_names)
         # Initialize the controlNonlinearIOSystem object
         super().__init__(self._updfcn, self._outfcn,
               inputs=self.input_names, outputs=self.output_names,
-              states=self.state_names, name=name)
+              states=self.state_names, name=self.name)
 
     @property
     def outlist(self):
@@ -68,7 +71,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
 
     @property
     def inplist(self):
-        return ["%s.%s" % (self.name, self.effector_dct[n]) for n in self.input_names]
+        return ["%s.%s" % (self.name, self.effector_dct[n])
+              for n in self.input_names]
 
     def setTime(self, time):
         self.ctlsb.setTime(time)
@@ -150,4 +154,5 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                 out_vec[out_idx] = x_vec[state_idx]
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
+        self.logger.add(time, self.ctlsb.get(self.state_names).values())
         return out_vec
