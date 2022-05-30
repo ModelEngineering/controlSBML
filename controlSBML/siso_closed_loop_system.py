@@ -117,7 +117,7 @@ SUM_N_Y_OUT = "sum_N_Y.out"
 SYSTEM = "system"
 
 # Columns in dataframes
-COL_STEP = "step"
+COL_REF = "reference"
 
 
 # sys: list-NonlinearIOSystem
@@ -525,7 +525,7 @@ class SISOClosedLoopSystem(object):
         Returns
         -------
         Timeseries: Columns
-            COL_STEP
+            COL_REF
             closed loop outputs
         """
         self.factory.dt = time_opts.get("dt", 1.0/cn.POINTS_PER_TIME)
@@ -538,6 +538,6 @@ class SISOClosedLoopSystem(object):
               column_names=self.closed_loop_outputs)
         df = ts.rename({CL_OUTPUT_OUT: self.ctlsb.output_names[-1]}, axis="columns")
         ts = ctl.Timeseries(df)
-        ts[COL_STEP] = np.repeat(step_size, len(times))
+        ts[COL_REF] = np.repeat(step_size, len(times))
         return ts
 

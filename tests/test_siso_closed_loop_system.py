@@ -222,9 +222,9 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
         siso.makeFullStateClosedLoopSystem(poles=-1, 
-              kf=-5, noise_amp=0.1, noise_frq=20)
+              kf=-0.01, noise_amp=0.1, noise_frq=20)
         times = ctl.makeSimulationTimes(end_time=10)
-        ts = siso.makeStepResponse(step_size=2, end_time=10)
+        ts = siso.makeStepResponse(step_size=2, end_time=2000)
         if IS_PLOT:
             ctl.plotOneTS(ts, figsize=(5,5))
             plt.show()
