@@ -9,8 +9,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 BIOMD1015 = os.path.join(TEST_DIR, "Jarrah2014.xml")
 MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
@@ -229,10 +229,11 @@ class TestControlBase(unittest.TestCase):
         self.assertEqual(len(y_vals[0]), len(times))
 
     def testMakeStateSpace3(self):
-        # TESTING
+        if IGNORE_TEST:
+          return
         ctlsb = ControlBase(BIOMD1015)
         sys = ctlsb.makeStateSpace()
-        import pdb; pdb.set_trace()
+        self.assertTrue("StateSpace" in str(type(sys)))
 
     def testMakeStateSpaceSpeciesInput(self):
         if IGNORE_TEST:

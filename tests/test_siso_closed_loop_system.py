@@ -215,7 +215,6 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         self.assertGreater(ts["S3"].values[-1], 0)
 
     # TODO: More tests of fullstate filters
-    # FIXME: report doesn't line up with output values for system , filter
     def testMakeFullStateFilters(self):
         if IGNORE_TEST:
           return
@@ -230,6 +229,7 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.show()
         self.assertGreater(ts["S3"].values[-1], 0)
         df = siso.factory.report()
+        df.to_csv("siso.csv")
         trues = ["fltr_%s.in" % n in df.columns for n in ["S1", "S3"]]
         self.assertTrue(all(trues))
 

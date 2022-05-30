@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 
 TIME = "time"
-TIMEMS = "timems"  # Time in milliseconds
-SEC_TO_MS = 1000
+TIMEUS = "timeus"  # Time in microseconds
+SEC_TO_US = 1e6
 
 
 class Logger(object):
@@ -67,8 +67,8 @@ class Logger(object):
             raise ValueError(text)
         df = pd.DataFrame(self.dct)
         # Eliminate duplicate times by using millisecond granularity
-        df[TIMEMS] = df[TIME].apply(lambda v: int(SEC_TO_MS*v))
-        dfg = df.groupby([TIMEMS])
+        df[TIMEUS] = df[TIME].apply(lambda v: int(SEC_TO_US*v))
+        dfg = df.groupby([TIMEUS])
         sers = []
         for idx, indices in dfg.groups.items():
             new_indices = list(indices)
@@ -80,8 +80,8 @@ class Logger(object):
             sers.append(ser)
         new_df = pd.DataFrame(sers)
         # Format the dataframe
-        new_df[TIME] = new_df[TIMEMS].apply(lambda v: v/SEC_TO_MS)
-        del new_df[TIMEMS]
+        new_df[TIME] = new_df[TIMEUS].apply(lambda v: v/SEC_TO_US)
+        del new_df[TIMEUS]
         new_df = new_df.set_index(TIME)
         return new_df
 
