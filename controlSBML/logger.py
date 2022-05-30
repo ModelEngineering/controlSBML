@@ -46,9 +46,14 @@ class Logger(object):
         self.dct[TIME].append(time)
         [self.dct[n].append(v) for n, v in zip(self.item_names, item_values)]
 
-    def report(self):
+    def report(self, is_filter=True):
         """
         Generate a report of the log.
+
+        Parameters
+        ----------
+        is_filter: bool
+            Filter times to eliminate repetitions
 
         Returns
         -------
@@ -67,21 +72,24 @@ class Logger(object):
             raise ValueError(text)
         df = pd.DataFrame(self.dct)
         # Eliminate duplicate times by using millisecond granularity
-        df[TIMEUS] = df[TIME].apply(lambda v: int(SEC_TO_US*v))
-        dfg = df.groupby([TIMEUS])
-        sers = []
-        for idx, indices in dfg.groups.items():
-            new_indices = list(indices)
-            index = new_indices[-1]  # pick last one
-            ser = df.loc[index, :]
-            if isinstance(ser, pd.DataFrame):
-                ser = ser.reset_index()
-                ser = ser.loc[0, :]
-            sers.append(ser)
-        new_df = pd.DataFrame(sers)
+        if is_filter:
+            df[TIMEUS] = df[TIME].apply(lambda v: int(SEC_TO_US*v))
+            dfg = df.groupby([TIMEUS])
+            sers = []
+            for idx, indices in dfg.groups.items():
+                new_indices = list(indices)
+                index = new_indices[-1]  # pick last one
+                ser = df.loc[index, :]
+                if isinstance(ser, pd.DataFrame):
+                    ser = ser.reset_index()
+                    ser = ser.loc[0, :]
+                sers.append(ser)
+            new_df = pd.DataFrame(sers)
+            new_df[TIME] = new_df[TIMEUS].apply(lambda v: v/SEC_TO_US)
+            del new_df[TIMEUS]
+        else:
+            new_df = df
         # Format the dataframe
-        new_df[TIME] = new_df[TIMEUS].apply(lambda v: v/SEC_TO_US)
-        del new_df[TIMEUS]
         new_df = new_df.set_index(TIME)
         return new_df
 

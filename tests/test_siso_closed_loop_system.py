@@ -221,7 +221,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
-        siso.makeFullStateClosedLoopSystem(poles=-2, kf=-1)
+        siso.makeFullStateClosedLoopSystem(poles=-1, 
+              kf=-5, noise_amp=0.1, noise_frq=20)
         times = ctl.makeSimulationTimes(end_time=10)
         ts = siso.makeStepResponse(step_size=2, end_time=10)
         if IS_PLOT:
@@ -229,7 +230,6 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.show()
         self.assertGreater(ts["S3"].values[-1], 0)
         df = siso.factory.report()
-        df.to_csv("siso.csv")
         trues = ["fltr_%s.in" % n in df.columns for n in ["S1", "S3"]]
         self.assertTrue(all(trues))
 
