@@ -7,6 +7,7 @@ Outpus have the form out, out1, out2, ...
 
 IOSystems created:
     makeFilter: creates an exponential filter
+    makeStateFilter: creates an exponential filter for state variables
     makeConstant: outputs a constant value
     makeAdder: creates an IOSystem that outputs the sum of the inputs
     makePassthur: creates an IOSystem that outputs the input
@@ -17,6 +18,7 @@ IOSystems created:
 
 from controlSBML import constants as cn
 from controlSBML import logger as lg
+from controlSBML import util
 
 import control
 import numpy as np
@@ -299,7 +301,7 @@ class IOSystemFactory(object):
         return control.NonlinearIOSystem(
             None, outfcn, inputs=input_names, outputs=[OUT], name=name)
 
-    def makeFilter(self, name, constant):
+    def makeFilter(self, filter_name, constant):
         """
         Construct a NonlinearIOSystem for x' = a*x + u, where u is the
         filter input.
@@ -308,7 +310,7 @@ class IOSystemFactory(object):
 
         Parameters
         ----------
-        name: str
+        filter_name: str
         constant: float
             e**expo_constant*time
 
@@ -316,7 +318,7 @@ class IOSystemFactory(object):
         -------
         NonlinearIOSystem
         """
-        logger = self._registerLogger(name, [IN, STATE, OUT])
+        logger = self._registerLogger(filter_name, [IN, STATE, OUT])
         def updfcn(_, x_vec, u_vec, __):
             """
             Returns the derivative of the state.
@@ -341,7 +343,115 @@ class IOSystemFactory(object):
         #
         return control.NonlinearIOSystem(
             updfcn, outfcn, outputs=[OUT], inputs=[IN], states=[STATE],
-            name=name)
+            name=filter_name)
+
+    def makeStateFilter(self, filter_name, kf, input_system_name,
+          output_system_name, state_names):
+        """
+        Construct a NonlinearIOSystem for a collection of exponential
+        filters for named states. Provides the connections between the
+        filter and its input and output. The constant is the exponent
+        of an exponential.
+
+        Parameters
+        ----------
+        filter_name: str
+        kf: float/list-float
+            list must have same length as state_names
+        input_system_name: str
+        output_system_name: str
+        state_names: list-str
+
+        Returns
+        -------
+        NonlinearIOSystem
+        list-tuple-str (connections)
+            input_system and output_system must have
+              inputs with the same names as the states
+        """
+        def makeFilterSignalName(system_name, state_name, sfx):
+            return "%s_%s.%s" % (system_name, state_name, sfx)
+        def makeSystemSignalName(system_name, state_name):
+            return "%s.%s" % (system_name, state_name)
+        # Initializtions
+        if util.isNumber(kf):
+            kfs = np.repeat(kf, len(state_names))
+        else:
+            kfs = np.array(kf)
+        input_dct = {}  # Name of the input to the filter
+        output_dct = {}
+        internal_dct = {}
+        for state_name in state_names:
+            input_dct[state_name] = makeFilterSignalName(filter_name, state_name, IN)
+            output_dct[state_name] = makeFilterSignalName(filter_name, state_name, OUT)
+            internal_dct[state_name] = makeFilterSignalName(filter_name,
+                  state_name, STATE)
+        # Logger registration
+        logging_names = list(input_dct.values())
+        logging_names.extend(list(output_dct.values()))
+        logging_names.extend(list(internal_dct.values()))
+        logger = self._registerLogger(filter_name, logging_names)
+        def updfcn(_, x_vec, u_vec, __):
+            """
+            Returns the derivative of the state.
+
+            Parameters
+            ----------
+            time: float
+            x_vec: float
+                internal signal for all states
+            u_vec: float
+                input for all states
+
+            Returns
+            -------
+            list-float
+                change in state
+            """
+            dx_vals = [c*x + u for c, x, u in zip(kfs, x_vec, u_vec)]
+            return dx_vals
+        #
+        def outfcn(time, x_vec, u_vec, _):
+            """
+            Parameters
+            ----------
+            time: float
+            x_vec: float
+                internal signal for all states
+            u_vec: float
+                input for all states
+
+            Returns
+            -------
+            list-float
+                outputs
+            """
+            outputs = [-k*x for k, x in zip(kfs, x_vec)]
+            log_vals = list(u_vec)
+            log_vals.append(list(u_vec))
+            log_vals.append(outputs)
+            logger.add(time, log_vals)
+            return outputs
+        #
+        sys = control.NonlinearIOSystem(
+            updfcn, outfcn, outputs=list(output_dct.values()),
+            inputs=list(input_dct.values()), states=list(internal_dct.values()),
+            name=filter_name)
+        # Constrution connetions
+        connections = []
+        for state_name in state_names:
+            # input system
+            out_signal = makeSystemSignalName(input_system_name, state_name)
+            in_signal = makeFilterSignalName(filter_name, state_name, IN)
+            connections.append([in_signal, out_signal])
+            # Output system
+            in_signal = makeSystemSignalName(output_system_name, state_name)
+            out_signal = makeFilterSignalName(filter_name, state_name, OUT)
+            connections.append([in_signal, out_signal])
+        #
+        return sys, connections
+            
+            
 
     def makeConstant(self, name, constant):
         """

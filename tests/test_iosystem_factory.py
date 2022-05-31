@@ -232,6 +232,34 @@ class TestIOSystemFactory(unittest.TestCase):
         if IS_PLOT:
             plt.show()
 
+    def testMakeStateFilter(self):
+        if IGNORE_TEST:
+          return
+        filter_name = "state_filter"
+        state_names = ["a", "b", "c"]
+        KF = -1
+        sys, connections = self.factory.makeStateFilter(
+              filter_name, KF, "in_sys", "ot_sys", state_names)
+        times = ctl.makeSimulationTimes()
+        results = control.input_output_response(sys, T=times, U=1)
+        self.assertEqual(np.shape(results.outputs)[0], len(state_names))
+        #
+        kfs = np.repeat(KF, len(state_names))
+        sys, connections = self.factory.makeStateFilter(
+              filter_name+"1", kfs, "in_sys", "ot_sys", state_names)
+        result2s = control.input_output_response(sys, T=times, U=1)
+        total = np.sum((results.outputs - result2s.outputs)**2)
+        self.assertTrue(np.isclose(total, 0))
+        #
+        kfs = [-1 - n for n in range(len(state_names))]
+        sys, connections = self.factory.makeStateFilter(
+              filter_name+"2", kfs, "in_sys", "ot_sys", state_names)
+        result3s = control.input_output_response(sys, T=times, U=1)
+        self.assertEqual(np.shape(result3s.outputs)[0], len(state_names))
+        if IS_PLOT:
+            ts = ctl.timeresponse2Timeseries(result3s)
+            ctl.plotOneTS(ts)
+
 
 if __name__ == '__main__':
   unittest.main()
