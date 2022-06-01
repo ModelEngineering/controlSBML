@@ -126,6 +126,16 @@ class TestIOSystemFactory(unittest.TestCase):
              plt.ylabel("filter output")
              plt.show()
 
+    def testMakeFilterZeroInput(self):
+        if IGNORE_TEST:
+          return
+        sys = self.factory.makeFilter("filter", 0)
+        length = len(TIMES)
+        results = control.input_output_response(sys, T=TIMES, U=1)
+        outputs = results.outputs.flatten()
+        self.assertEqual(np.mean(outputs), 1)
+        self.assertEqual(np.var(outputs), 0)
+
     def testMakeConstant(self):
         if IGNORE_TEST:
           return
@@ -240,25 +250,38 @@ class TestIOSystemFactory(unittest.TestCase):
         KF = -1
         sys, connections = self.factory.makeStateFilter(
               filter_name, KF, "in_sys", "ot_sys", state_names)
-        times = ctl.makeSimulationTimes()
-        results = control.input_output_response(sys, T=times, U=1)
+        results = control.input_output_response(sys, T=TIMES, U=1)
         self.assertEqual(np.shape(results.outputs)[0], len(state_names))
         #
         kfs = np.repeat(KF, len(state_names))
         sys, connections = self.factory.makeStateFilter(
               filter_name+"1", kfs, "in_sys", "ot_sys", state_names)
-        result2s = control.input_output_response(sys, T=times, U=1)
+        result2s = control.input_output_response(sys, T=TIMES, U=1)
         total = np.sum((results.outputs - result2s.outputs)**2)
         self.assertTrue(np.isclose(total, 0))
         #
         kfs = [-1 - n for n in range(len(state_names))]
         sys, connections = self.factory.makeStateFilter(
               filter_name+"2", kfs, "in_sys", "ot_sys", state_names)
-        result3s = control.input_output_response(sys, T=times, U=1)
+        result3s = control.input_output_response(sys, T=TIMES, U=1)
         self.assertEqual(np.shape(result3s.outputs)[0], len(state_names))
         if IS_PLOT:
             ts = ctl.timeresponse2Timeseries(result3s)
             ctl.plotOneTS(ts)
+
+    def testMakeStateFilterZeroFilter(self):
+        if IGNORE_TEST:
+          return
+        filter_name = "state_filter"
+        state_names = ["a", "b", "c"]
+        kf = 0
+        sys, connections = self.factory.makeStateFilter(
+              filter_name, kf, "in_sys", "ot_sys", state_names)
+        results = control.input_output_response(sys, T=TIMES, U=1)
+        self.assertEqual(np.shape(results.outputs)[0], len(state_names))
+        outputs = results.outputs.flatten()
+        self.assertEqual(np.mean(outputs), 1)
+        self.assertEqual(np.var(outputs), 0)
 
 
 if __name__ == '__main__':

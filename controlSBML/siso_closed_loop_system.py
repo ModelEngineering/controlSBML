@@ -2,13 +2,8 @@
 
 """
 TODO
-1. makeNoiseAndDisturbance
-2. addConnections
-3. makeSISOFullStateClosedLoop
-4. Consider a class hierarchy
-   SISOCLosedLoop [common codes]
-   SISOPIDClosedLoop, SISOFullStateClosedLoop
-       make method constructs the system
+1. Test refactoring with makePerturbation
+2. makeFullStateClosedLoopSystem uses makeStateFilter
 """
 
 """
@@ -118,6 +113,7 @@ SYSTEM = "system"
 
 # Columns in dataframes
 COL_REF = "reference"
+CONNECTIONS = "connections"
 
 
 # sys: list-NonlinearIOSystem
@@ -211,7 +207,7 @@ class SISOClosedLoopSystem(object):
           kf=None,                                # Filter
           system_input=None,                      # SISO input, output
           system_output=None,
-          closed_loop_outputs=None):              # list of outputs from closed loop system
+          closed_loop_outputs=None):              # list of outputs
         """
         Creates a closed loop system for a ControlSBML object.
         The closed loop system
@@ -311,7 +307,7 @@ class SISOClosedLoopSystem(object):
     def makeFullStateClosedLoopSystem(self,
           time=0,                                 # Time of linearization
           poles=-1,                               # Desired poles or dominant pole
-          kf=None,                                # Filter constant
+          kf=0,                                   # Filter constant
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
           system_input=None,                      # SISO input, output
@@ -330,6 +326,7 @@ class SISOClosedLoopSystem(object):
             Desired poles (or just dominant pole)
         kp: float/list-float
             Constants used in the filters for state variables.
+            A value of 0 results in a passthru.
             If kp is a list, it must have the same length as the
             number of state variables.
         noise_amp: float
@@ -359,6 +356,8 @@ class SISOClosedLoopSystem(object):
            noise.out: noise input to system
            disturbance.out: noise input to system
         """
+        if kf is None:
+            kf = 0  # Passthru
         if self.closed_loop_system is not None:
             raise ValueError("Closed loop system exists already.")
         #
@@ -400,33 +399,31 @@ class SISOClosedLoopSystem(object):
             system_in = "%s.%s" % (SYSTEM, new_system_input)
             system_out = "%s.%s" % (SYSTEM, new_system_output)
             # Filters
-            if kf is None:
-                fltrs = [siso.factory.makePassthru(makeFilterName(n))
-                      for n in output_names]
+            if util.isNumber(kf):
+                kfs = np.repeat(kf, len(output_names))
             else:
-                if util.isNumber(kf):
-                    kfs = np.repeat(kf, len(output_names))
-                else:
-                    kfs = kf
-                fltrs = [siso.factory.makeFilter(makeFilterName(n), kfs[i])
-                      for i, n in enumerate(output_names)]
+                kfs = kf
+            #fltrs = [siso.factory.makeFilter(makeFilterName(n), kfs[i])
+            #      for i, n in enumerate(output_names)]
+            fltr, fltr_connections = siso.factory.makeStateFilter(
+                  FLTR, kfs, SYSTEM, CONTROLLER, output_names)
+            connections.extend(fltr_connections)
             #
             siso.controller = siso.factory.makeFullStateController(CONTROLLER,
                   ctlsb, poles=poles, time=time, dcgain=dcgain)
             #
-            sys_lst.extend([siso.system, siso.controller])
-            sys_lst.extend(fltrs)
+            sys_lst.extend([siso.system, siso.controller, fltr])
             # Add connections for the filter
-            for name in output_names:
-                # Input to filter
-                filter_name = makeFilterName(name)
-                filter_input = "%s.%s" % (filter_name, IN)
-                new_system_output = "%s.%s" % (SYSTEM, name)
-                connections.append([filter_input, new_system_output])
-                # Filter output
-                filter_output = "%s.%s" % (filter_name, OUT)
-                controller_input = "%s.%s" % (CONTROLLER, name)
-                connections.append([controller_input, filter_output])
+#            for name in output_names:
+#                # Input to filter
+#                filter_name = makeFilterName(name)
+#                filter_input = "%s.%s" % (filter_name, IN)
+#                new_system_output = "%s.%s" % (SYSTEM, name)
+#                connections.append([filter_input, new_system_output])
+#                # Filter output
+#                filter_output = "%s.%s" % (filter_name, OUT)
+#                controller_input = "%s.%s" % (CONTROLLER, name)
+#                connections.append([controller_input, filter_output])
             # Additional names
             connections.append([SUM_D_U_U, CONTROLLER_OUT])
             connections.append([system_in, SUM_D_U_OUT])
@@ -454,7 +451,6 @@ class SISOClosedLoopSystem(object):
             dcgain = 1
         # Create a system with the dcgain adjustment
         make(dcgain=dcgain)
-
 
     def _makeDisturbanceNoiseCLinputoutput(self,
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
@@ -490,26 +486,74 @@ class SISOClosedLoopSystem(object):
         """
         # Create the elements of the feedback loop
         self.cl_input = self.factory.makePassthru(CL_INPUT, input_name="ref")
-        self.noise = self.factory.makeSinusoid(NOISE, noise_amp, noise_frq)
-        self.disturbance = self.factory.makeSinusoid(DISTURBANCE,
-              disturbance_amp, disturbance_frq)
-        self.sum_N_Y = self.factory.makeAdder(SUM_N_Y, input_names=["y", "n"])
-        self.sum_D_U = self.factory.makeAdder(SUM_D_U, input_names=["u", "d"])
+        connections = []
+        sys_lst = []
+        # Noise
+        dct = self._makePerturbation(NOISE, SUM_N_Y, ["n", "y"],
+              amp=noise_amp, frq=noise_amp)
+        self.noise = dct[NOISE]
+        self.sum_N_Y = dct[SUM_N_Y]
+        sys_lst.extend([self.noise, self.sum_N_Y])
+        connections.extend(dct[CONNECTIONS])
+        # Noise
+        dct = self._makePerturbation(DISTURBANCE, SUM_D_U, ["d", "u"],
+              amp=noise_amp, frq=noise_amp)
+        self.noise = dct[DISTURBANCE]
+        self.sum_D_U = dct[SUM_D_U]
+        sys_lst.extend([self.noise, self.sum_D_U])
+        connections.extend(dct[CONNECTIONS])
+        #
         self.cl_output = self.factory.makePassthru(CL_OUTPUT)
-        sys_lst = [self.noise, self.disturbance, self.cl_input,
-             self.cl_output, self.sum_N_Y, self.sum_D_U]
+        sys_lst.extend([self.cl_input, self.cl_output])
         # Construct connections
-        connections=[
-                [SUM_D_U_D, DISTURBANCE_OUT],
-                [SUM_N_Y_N, NOISE_OUT],
-                [CL_OUTPUT_IN, SUM_N_Y_OUT],
-              ]
+        connections.append([CL_OUTPUT_IN, SUM_N_Y_OUT])
         return ConnectionAssembly(
               con=connections,
               sys=sys_lst,
               inp=[CL_INPUT_REF],
               out=[CL_INPUT_REF, CL_OUTPUT_OUT],
               )
+
+    def _makePerturbation(self, perturbation_name, sum_name, sum_input_names,
+          amp=0, frq=0):
+        """
+        Creates a sine wave perturbation signal and summation.
+        Note:
+            1. perturbation_name is connected to the first input in sum_name
+
+        connections
+            <perturbation_name>.out -> <sum_name>.in
+
+        Parameters
+        ----------
+        perturbation_name: name of the signal generating system
+        sum_name: name of the summation element
+        sum_input_names: list-str
+        amp: float
+            amplitude of the sine wave
+        frq: float
+            frequency of the sine wave
+
+        Returns
+        -------
+        dict:
+            perturbation_name: system
+            sum_name: system
+            CONNECTIONS: connections
+        """
+        # Create the elements of the feedback loop
+        perturbation_sys = self.factory.makeSinusoid(perturbation_name, amp, frq)
+        sum_sys = self.factory.makeAdder(sum_name, input_names=sum_input_names)
+        sys_lst = [perturbation_sys, sum_sys]
+        # Construct connections
+        perturbation_sys_out = "%s.%s" % (perturbation_name, OUT)
+        sum_sys_in = "%s.%s" % (sum_name, sum_input_names[0])
+        connections=[[sum_sys_in, perturbation_sys_out]]
+        dct = {}
+        dct[perturbation_name] = perturbation_sys
+        dct[sum_name] = sum_sys
+        dct[CONNECTIONS] = connections
+        return dct
 
     def makeStepResponse(self, time=0, step_size=1, **time_opts):
         """

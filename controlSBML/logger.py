@@ -23,6 +23,10 @@ class Logger(object):
         self.dct = None
         self.dct = {n: [] for n in self.item_names}
         self.dct[TIME] = []
+        false = any(["fltr.fltr" in n for n in item_names])
+        if false:
+            import pdb; pdb.set_trace()
+            pass
 
     def initialize(self):
         """
@@ -32,7 +36,7 @@ class Logger(object):
             self.dct[key] = []
 
     def __repr__(self):
-        return self.logger_name
+        return self.logger_name + " logger"
 
     def add(self, time, item_values):
         """

@@ -109,6 +109,8 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 0.2.22
+  * IOSystemFactor.makeStateFilter creates a vector of filters between 2 systems
+  * SISOClosedLoopSystem.makeFullStateController creates multiple filters if kf != 0
 * 0.2.21 5/30/2022
   * NonlinearIOSystem creates a logger.
   * SISOClosedLoopSystem.makeFullStateSystem has option for filters

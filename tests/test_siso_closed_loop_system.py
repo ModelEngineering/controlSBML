@@ -1,5 +1,6 @@
 import controlSBML.constants as cn
 import controlSBML as ctl
+from controlSBML import siso_closed_loop_system
 from controlSBML.siso_closed_loop_system import SISOClosedLoopSystem
 
 import control
@@ -215,23 +216,60 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         self.assertGreater(ts["S3"].values[-1], 0)
 
     # TODO: More tests of fullstate filters
-    def testMakeFullStateFilters(self):
+    def testMakeFullStateControllerWithFilters(self):
         if IGNORE_TEST:
           return
         ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
               output_names=["S3"])
         siso = SISOClosedLoopSystem(ctlsb)
-        siso.makeFullStateClosedLoopSystem(poles=-1, 
-              kf=-0.01, noise_amp=0.1, noise_frq=20)
-        times = ctl.makeSimulationTimes(end_time=10)
-        ts = siso.makeStepResponse(step_size=2, end_time=2000)
+        siso.makeFullStateClosedLoopSystem(poles=-2, 
+              kf=-1, noise_amp=0.1, noise_frq=20)
+        ts = siso.makeStepResponse(step_size=2, end_time=200)
+        siso1 = SISOClosedLoopSystem(ctlsb)
+        siso1.makeFullStateClosedLoopSystem(poles=-2, 
+              kf=0, noise_amp=0.1, noise_frq=20)
+        ts1 = siso1.makeStepResponse(step_size=2, end_time=200)
+        diff = np.sum((ts1.values.flatten() - ts.values.flatten())**2)
+        self.assertGreater(diff, 0)
         if IS_PLOT:
-            ctl.plotOneTS(ts, figsize=(5,5))
+            ctl.plotOneTS(ts, figsize=(5,5), ylim=[0, 10])
             plt.show()
-        self.assertGreater(ts["S3"].values[-1], 0)
+            ctl.plotOneTS(ts1, figsize=(5,5), ylim=[0, 10])
+            plt.show()
+        self.assertGreater(np.abs(ts["S3"].values[-1]), 0)
         df = siso.factory.report()
-        trues = ["fltr_%s.in" % n in df.columns for n in ["S1", "S3"]]
+        trues = ["fltr.%s_in" % n in df.columns for n in ["S1", "S3"]]
         self.assertTrue(all(trues))
+
+    def testMakePerturbation(self):
+        if IGNORE_TEST:
+          return
+        PERTURB = "perturb"
+        SUM = "sum"
+        SUM_INPUT_NAMES = ["left", "right"]
+        AMP = 1
+        FRQ = 5
+        dct = self.siso._makePerturbation(PERTURB, SUM, SUM_INPUT_NAMES,
+              amp=AMP, frq=FRQ)
+        trues = [k in [PERTURB, SUM, siso_closed_loop_system.CONNECTIONS]
+              for k in dct.keys()]
+        self.assertTrue(all(trues))
+
+    def testMakeDisturbanceNoiseCLinputoutput(self):
+        if IGNORE_TEST:
+          return
+        assembly = self.siso._makeDisturbanceNoiseCLinputoutput()
+        def test(attribute, data_type, sub_data_type=None):
+            value = assembly.__getattribute__(attribute)
+            self.assertTrue(isinstance(value, data_type))
+            if sub_data_type is not None:
+                sub_value = value[0]
+                self.assertTrue(isinstance(sub_value, sub_data_type))
+        #
+        test("con", list, sub_data_type=list)
+        test("sys", list, sub_data_type=control.iosys.NonlinearIOSystem)
+        test("inp", list, sub_data_type=str)
+        test("out", list, sub_data_type=str)
 
 
 if __name__ == '__main__':

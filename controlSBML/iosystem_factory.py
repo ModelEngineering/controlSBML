@@ -307,6 +307,7 @@ class IOSystemFactory(object):
         filter input.
         The system has input IN and output OUT.
         The output is normalized so that the DC gain of the filter is 1.
+        A constant of 0 is a passthru.
 
         Parameters
         ----------
@@ -337,7 +338,10 @@ class IOSystemFactory(object):
         def outfcn(time, x_vec, u_vec, _):
             u_val = self._array2scalar(u_vec)
             x_val = self._array2scalar(x_vec)
-            output = -constant*x_val
+            if np.isclose(constant, 0):
+                output = u_val
+            else:
+                output = -constant*x_val
             logger.add(time, [u_val, x_val, output])
             return output
         #
@@ -351,13 +355,14 @@ class IOSystemFactory(object):
         Construct a NonlinearIOSystem for a collection of exponential
         filters for named states. Provides the connections between the
         filter and its input and output. The constant is the exponent
-        of an exponential.
+        of an exponential. Note that if kf == 0, this is a passthru.
 
         Parameters
         ----------
         filter_name: str
         kf: float/list-float
             list must have same length as state_names
+            if kf == 0, then this is a pass thru
         input_system_name: str
         output_system_name: str
         state_names: list-str
@@ -365,12 +370,16 @@ class IOSystemFactory(object):
         Returns
         -------
         NonlinearIOSystem
+            <filter_name>.<state_name>_in
+            <filter_name>.<state_name>_out
         list-tuple-str (connections)
             input_system and output_system must have
               inputs with the same names as the states
         """
-        def makeFilterSignalName(system_name, state_name, sfx):
-            return "%s_%s.%s" % (system_name, state_name, sfx)
+        def makePortName(state_name, sfx):
+            return "%s_%s" % (state_name, sfx)
+        def makeSignalName(state_name, sfx):
+            return "%s.%s_%s" % (filter_name, state_name, sfx)
         def makeSystemSignalName(system_name, state_name):
             return "%s.%s" % (system_name, state_name)
         # Initializtions
@@ -382,10 +391,9 @@ class IOSystemFactory(object):
         output_dct = {}
         internal_dct = {}
         for state_name in state_names:
-            input_dct[state_name] = makeFilterSignalName(filter_name, state_name, IN)
-            output_dct[state_name] = makeFilterSignalName(filter_name, state_name, OUT)
-            internal_dct[state_name] = makeFilterSignalName(filter_name,
-                  state_name, STATE)
+            input_dct[state_name] = makePortName(state_name, IN)
+            output_dct[state_name] = makePortName(state_name, OUT)
+            internal_dct[state_name] = makePortName(state_name, STATE)
         # Logger registration
         logging_names = list(input_dct.values())
         logging_names.extend(list(output_dct.values()))
@@ -426,27 +434,30 @@ class IOSystemFactory(object):
             list-float
                 outputs
             """
-            outputs = [-k*x for k, x in zip(kfs, x_vec)]
+            outputs = [u if np.isclose(k, 0) else -k*x
+                  for k, x, u in zip(kfs, x_vec, u_vec)]
             log_vals = list(u_vec)
-            log_vals.append(list(u_vec))
-            log_vals.append(outputs)
+            log_vals.extend(list(u_vec))
+            log_vals.extend(outputs)
+            log_vals.extend(list(x_vec))
             logger.add(time, log_vals)
             return outputs
         #
-        sys = control.NonlinearIOSystem(
-            updfcn, outfcn, outputs=list(output_dct.values()),
-            inputs=list(input_dct.values()), states=list(internal_dct.values()),
-            name=filter_name)
+        inputs = list(input_dct.values())
+        outputs = list(output_dct.values())
+        internals = list(internal_dct.values())
+        sys = control.NonlinearIOSystem(updfcn, outfcn, outputs=outputs,
+            inputs=inputs, states=internals, name=filter_name)
         # Constrution connetions
         connections = []
         for state_name in state_names:
             # input system
             out_signal = makeSystemSignalName(input_system_name, state_name)
-            in_signal = makeFilterSignalName(filter_name, state_name, IN)
+            in_signal = makeSignalName(state_name, IN)
             connections.append([in_signal, out_signal])
             # Output system
             in_signal = makeSystemSignalName(output_system_name, state_name)
-            out_signal = makeFilterSignalName(filter_name, state_name, OUT)
+            out_signal = makeSignalName(state_name, OUT)
             connections.append([in_signal, out_signal])
         #
         return sys, connections
