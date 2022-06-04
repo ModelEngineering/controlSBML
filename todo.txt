@@ -5,6 +5,7 @@ Bugs
      makeTransferFunction
      makeFullStateClosedLoopSystem(is_dcgain_adjusted)
   1. Resolve how to handle reduced order models. Keep? Delete?
+  2. Remove effector_dct. Inputs must be species.
 Conserved moieties
   - Need right side null space of stoichiometry matrix
   - Construct the dependent matrix for C
