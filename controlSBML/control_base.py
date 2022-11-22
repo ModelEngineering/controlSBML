@@ -390,7 +390,7 @@ class ControlBase(object):
     def get(self, names=None):
         """
         Provides the roadrunner values for a name. If no name,
-        then all values are given.
+        then all values of symbols are given.
 
         Parameters
         ----------
@@ -401,8 +401,8 @@ class ControlBase(object):
         object/dict
         """
         if names is None:
-            names = self.roadrunner.keys()
-        return util.getRoadrunnerValue(self.roadrunner, names)
+            names = [k for k in self.roadrunner.keys() if not ")" in k] 
+        return {n: self.roadrunner[n] for n in names}
 
     def set(self, name_dct):
         """

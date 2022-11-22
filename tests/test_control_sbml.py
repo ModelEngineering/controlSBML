@@ -9,8 +9,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
@@ -31,8 +31,7 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
 
     def testConstructWithRoadrunner(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
         model = te.loada(helpers.TEST_PATH_1)
         ctlsb1 = ControlSBML(model)
         ctlsb2 = ControlSBML(helpers.TEST_PATH_1)
