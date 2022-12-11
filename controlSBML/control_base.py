@@ -402,6 +402,8 @@ class ControlBase(object):
         """
         if names is None:
             names = [k for k in self.roadrunner.keys() if not ")" in k] 
+        if isinstance(names, str):
+            return self.roadrunner[names]
         return {n: self.roadrunner[n] for n in names}
 
     def set(self, name_dct):
