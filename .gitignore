@@ -4,6 +4,7 @@ data/*.xml
 dist/
 sym
 .ipynb_*
+local.txt
 ~$*
 data/*.xml
 ctl/

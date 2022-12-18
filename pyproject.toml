@@ -1,0 +1,37 @@
+[project]
+name = "controlSBML"
+version = "0.0.8"
+description = "Control analysis of SBML models"
+authors = [{ name = "Joseph Hellerstein", email = "joseph.hellerstein@gmail.com" }]
+license = { file = "LICENSE" }
+readme = "README.md"
+requires-python = ">=3.6"
+
+dependencies = [
+    "coverage",
+    "control",
+    "docstring-expander",
+    "jupyterlab",
+    "matplotlib",
+    "numpy",
+    "pandas",
+    "pip",
+    "pylint",
+    "python-libsbml",
+    "seaborn",
+    "symmathSBML",
+    "sympy",
+    "tellurium",
+    "twine",
+    "urllib3",
+]
+
+[project.urls]
+Homepage = 'https://github.com/ModelEngineering/controlSBML'
+
+[options.package_data]
+data = "*.txt, *.csv, *.ant"
+
+[build-system]
+requires = ["setuptools>=61.0.0", "wheel"]
+build-backend = "setuptools.build_meta"
