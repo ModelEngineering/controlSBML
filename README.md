@@ -108,6 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 0.2.23 12/18/2022
+    * Updates for using toml files
 * 0.2.22
   * IOSystemFactor.makeStateFilter creates a vector of filters between 2 systems
   * SISOClosedLoopSystem.makeFullStateController creates multiple filters if kf != 0

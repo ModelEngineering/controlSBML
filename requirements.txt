@@ -15,5 +15,6 @@ symmathSBML
 #slycot
 sympy
 tellurium
+tomli
 twine
 urllib3

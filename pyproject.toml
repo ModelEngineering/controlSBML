@@ -1,6 +1,6 @@
 [project]
 name = "controlSBML"
-version = "0.0.8"
+version = "0.2.23"
 description = "Control analysis of SBML models"
 authors = [{ name = "Joseph Hellerstein", email = "joseph.hellerstein@gmail.com" }]
 license = { file = "LICENSE" }

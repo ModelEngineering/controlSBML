@@ -1,4 +1,13 @@
+"""Finds the version in pyproject.toml"""
 
-# Edit the version number here and only here
+import tomli
+import os
 
-__version__ = "0.2.22"
+DIR = os.path.dirname(os.path.abspath(__file__))
+DIR = os.path.dirname(DIR)
+PATH = os.path.join(DIR, "pyproject.toml")
+
+with open(PATH, "rb") as f:
+    data = tomli.load(f)
+
+__version__ = data["project"]["version"]
