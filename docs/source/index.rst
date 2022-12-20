@@ -3,8 +3,8 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-``controlSBML``: A package for control analysis and design for SBML models
-==========================================================================
+``controlSBML``: control engineering using SBML models
+======================================================
 
 ``controlSBML`` provides a bridge between the CalTech
 control systems library
@@ -23,6 +23,7 @@ The approach is:
    b. ``StateSpace`` object that is a linear approximation to the SBML model
 
 3. Do control analysis and design using the CalTech package.
+
 
 .. toctree::
    :maxdepth: 2
