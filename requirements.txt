@@ -5,7 +5,7 @@ docstring-expander
 jupyterlab
 matplotlib
 nose
-numpy
+numpy==1.23.1
 pandas
 pip>20
 pylint
