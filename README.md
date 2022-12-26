@@ -108,6 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 1.0.3
+    * Fix bug with file path in _version
 * 1.0.1
     * src directory contains all pcakages
 * 1.0.0
