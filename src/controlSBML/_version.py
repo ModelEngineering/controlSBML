@@ -8,7 +8,10 @@ DIR = os.path.dirname(DIR)
 DIR = os.path.dirname(DIR)
 PATH = os.path.join(DIR, "pyproject.toml")
 
-with open(PATH, "rb") as f:
-    data = tomli.load(f)
+try:
+    with open(PATH, "rb") as f:
+        data = tomli.load(f)
+    __version__ = data["project"]["version"]
+except FileNotFoundError:
+    __version__ = None
 
-__version__ = data["project"]["version"]
