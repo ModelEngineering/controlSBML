@@ -108,6 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 1.0.1
+    * src directory contains all pcakages
 * 1.0.0
     * Redefined inputs as species adjustment (positive or negative)
     * ControlSBML.equals has an option to do a "quick check"
