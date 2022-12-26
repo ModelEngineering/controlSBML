@@ -69,7 +69,7 @@ class TestControlPlot(unittest.TestCase):
         if IGNORE_TEST:
           return
         step_val = 2
-        ctlsb = ControlPlot(LINEAR_MDL, input_names=["J0"])
+        ctlsb = ControlPlot(LINEAR_MDL, input_names=["S1"])
         ctlsb.setTime(2)
         ctlsb.set({"S0": step_val})
         A_df = ctlsb.jacobian_df
@@ -104,7 +104,7 @@ class TestControlPlot(unittest.TestCase):
     def testPlotBode(self):
         if IGNORE_TEST:
           return
-        ctlsb = ControlPlot(NONLINEAR_MDL, input_names=["_J0", "_J2", "_J1"],
+        ctlsb = ControlPlot(NONLINEAR_MDL, input_names=["S1"],
               output_names=["S0", "S2"])
         ctlsb.plotBode(is_plot=IS_PLOT)
 

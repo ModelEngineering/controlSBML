@@ -16,16 +16,13 @@ MIN_ELAPSED_TIME = 1e-2
 
 class NonlinearIOSystem(control.NonlinearIOSystem):
 
-    def __init__(self, name, ctlsb, effector_dct=None,
+    def __init__(self, name, ctlsb,
          do_simulate_on_update=False,  **kwargs):
         """
         Parameters
         ----------
         name: Name of the non-linear system created
         ctlsb: ControlSBML
-        effector_dct: dict
-            key: input defined in ControlSBML object
-            value: roadrunner muteable (e.g., floating species, parameter)
         do_simulate_on_update: bool
             simulate to the current time before each state update
         kwargs: dict (additional keyword arguments provided by caller)
@@ -46,18 +43,12 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.input_names = ctlsb.input_names
         self.state_names = [s for s in ctlsb.species_names
               if not s in self.input_names]
+        self.dstate_names = ["%s'" % n for n in self.state_names]
         self.output_names = ctlsb.output_names
         self.num_state = len(self.state_names)
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         #
-        self.effector_dct = effector_dct
-        if self.effector_dct is None:
-            self.effector_dct = {}
-        for input_name in self.input_names:
-            if not input_name in self.effector_dct.keys():
-                # Make it its own effector
-                self.effector_dct[input_name] = input_name
         self._ignored_inputs = []  # Note setable inputs
         self.logger = lg.Logger(self.name, self.state_names)
         # Initialize the controlNonlinearIOSystem object
@@ -68,11 +59,6 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     @property
     def outlist(self):
         return ["%s.%s" % (self.name, n) for n in self.output_names]
-
-    @property
-    def inplist(self):
-        return ["%s.%s" % (self.name, self.effector_dct[n])
-              for n in self.input_names]
 
     def setTime(self, time):
         self.ctlsb.setTime(time)
@@ -94,7 +80,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
 
     def _updfcn(self, time, x_vec, u_vec, _):
         """
-        Computes the change in state. This is done by having roadrunner
+        Computes the change in state by adding the input to its current value.
+        This is done by having roadrunner
         calculate fluxes. No simulation is run, and so this technique
         may not always work.
         Inputs that change floating species are viewed as additions to the species,
@@ -117,12 +104,13 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         # Adust the state
         state_dct = {n: x_vec[i] for i, n in enumerate(self.state_names)}
         self.ctlsb.set(state_dct)
-        # Set values for input effector and check for errors
-        input_dct = {self.effector_dct[n]: u_vec[i]
-                     for i, n in enumerate(self.input_names)}
+        # Set values for inputs
+        input_dct = {n: u_vec[i] for i, n in enumerate(self.input_names)}
         for input_name, input_value in input_dct.items():
             try:
-                self.ctlsb.set({input_name: float(input_value)})
+                cur_val = self.ctlsb.get(input_name)
+                new_val = cur_val + float(input_value)
+                self.ctlsb.set({input_name: float(new_val)})
             except RuntimeError:
                 if input_name not in self._ignored_inputs:
                     self._ignored_inputs.append(input_name)
@@ -130,9 +118,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                           % (self.name, input_name)
                     msgs.warn(text)
         # Calculate the change in floating species in state
-        dstate_names = ["%s'" % n for n in self.state_names]
-        dstate_ser = pd.Series(self.ctlsb.get(dstate_names))
-        return dstate_ser.values
+        # TODO: Delete
+        # dstate_ser = pd.Series(self.ctlsb.get(dstate_names))
+        arr = np.array([v for v in self.ctlsb.get(self.dstate_names).values()])
+        return arr
 
     def _outfcn(self, time, x_vec, _, __):
         """
@@ -154,5 +143,5 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                 out_vec[out_idx] = x_vec[state_idx]
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
-        self.logger.add(time, self.ctlsb.get(self.state_names).values())
+        #self.logger.add(time, self.ctlsb.get(self.state_names).values())
         return out_vec

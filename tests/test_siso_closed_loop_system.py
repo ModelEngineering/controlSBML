@@ -12,8 +12,8 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 SIZE = 10
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL3 = """
@@ -177,29 +177,20 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.show()
 
     def testMakeFullStatelosedLoopSystem2(self):
-        if IGNORE_TEST:
-          return
+        # TESTING
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
         closed_loop_outputs=["sum_F_R.out", 
               "sum_D_U.out", "cl_output.out"]
-        siso.makePIDClosedLoopSystem(kp=10, ki=0, kf=None,
+        siso.makePIDClosedLoopSystem(kp=1, ki=0, kf=None,
             noise_amp=0, noise_frq=20,
             closed_loop_outputs=closed_loop_outputs)
-        ts = siso.makeStepResponse(time=1, step_size=1, end_time=300,
+        ts = siso.makeStepResponse(time=1, step_size=1, end_time=30,
               points_per_time=2)
         ts.columns = ["input", "e(t)", "system.in", "output"]
-        if IS_PLOT:
-            ctl.plotOneTS(ts, xlabel="time", ylim=[-5, 5])
         self.assertGreater(len(ts), 0)
-        df = siso.factory.report()
-        self.assertGreater(len(df), 0)
-        if IS_PLOT:
-            plt.plot(df.index, df["sum_F_R.out"])
-            plt.xlabel("time")
-            plt.ylabel("e(t)")
-            plt.show()
+        self.assertEqual(sum(sum(np.isnan(ts.to_numpy()))), 0)
 
     def testMakeFullState(self):
         if IGNORE_TEST:

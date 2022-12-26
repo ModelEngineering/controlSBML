@@ -98,16 +98,18 @@ class ControlBase(object):
             text += "  Species are: %s" % str(self.species_names)
             text += "  States are: %s" % str(self.state_names)
             raise RuntimeError(text)
+        #
         possible_names = set(self.species_names).union(self.reaction_names)
         if not set(self.output_names) <= set(possible_names):
             diff = list(set(self.output_names).difference(self.species_names))
             text = "Outputs must be species or fluxes."
             text += "The following outputs are invalid: %s" % str(diff)
             raise ValueError(text)
-        possible_names = set(self.species_names).union(self.reaction_names)
+        #
+        possible_names = self.species_names
         if not set(self.input_names) <= set(possible_names):
             diff = list(set(self.input_names).difference(possible_names))
-            text = "Inputs must be a species or a reaction."
+            text = "Inputs must be a species."
             text += "   Invalid names are: %s" % str(diff)
             raise ValueError(text)
 
@@ -150,8 +152,6 @@ class ControlBase(object):
         -------
         pd.DataFrame
         """
-        # FIXME: This may fail if is_reduced = True because
-        #        and input_names includes state since these states are dropped
         is_state_input = len(set(self.input_names).intersection(
               self.state_names)) > 0
         if self.is_reduced and is_state_input:
@@ -159,7 +159,8 @@ class ControlBase(object):
         # Initializations 
         state_names = self.state_names
         # Delete states that are inputs
-        state_names = list(set(self.state_names).difference(self.input_names))
+        # TODO: Delete since no longer deleting input state
+        #state_names = list(set(self.state_names).difference(self.input_names))
         state_names = sorted(state_names,
               key=lambda n: self.state_names.index(n))
         num_state = len(state_names)
@@ -340,13 +341,14 @@ class ControlBase(object):
         return self.roadrunner.model.getTime()
 
     # TODO: More complete check of attributes?
-    def equals(self, other):
+    def equals(self, other, is_quick_check=False):
         """
         Checks that they have the same information
 
         Parameters
         ----------
         other: ControlSBML
+        is_quick_check: bool (don't do detailed comparisons)
 
         Returns
         -------
@@ -379,10 +381,11 @@ class ControlBase(object):
         if IS_DEBUG:
              print("5: %d" % bValue)
         # Check the roadrunner state
-        if bValue:
-            for key, value in self.roadrunner.items():
-                if self.isRoadrunnerKey(key):
-                    bValue = bValue and (other.roadrunner[key] == value)
+        if not is_quick_check:
+            if bValue:
+                for key, value in self.roadrunner.items():
+                    if self.isRoadrunnerKey(key):
+                        bValue = bValue and (other.roadrunner[key] == value)
         if IS_DEBUG:
              print("6: %d" % bValue)
         return bValue
@@ -454,10 +457,11 @@ class ControlBase(object):
         reaction_inputs = [n for n in self.input_names if n in self.reaction_names]
         return species_inputs, reaction_inputs
 
-    def _makeBDF(self, time=None):
+    def _makeBDF_deprecated(self, time=None):
         """
         Constructs a dataframe for the B matrix.
         The columns must be in the same order as the input_names.
+        This version changed the A matrix.
 
         Parameters
         ---------
@@ -490,6 +494,48 @@ class ControlBase(object):
             B_mat = np.repeat(0, self.num_state)
             B_mat = np.reshape(B_mat, (self.num_state, ncol))
             B_df = pd.DataFrame(B_mat, index=self.state_names)
+        #
+        return B_df
+
+    # TODO: Use input_name as an optional argument?
+    def _makeBDF(self):
+        """
+        Constructs a dataframe for the B matrix assuming that there is external control over the input_names.
+        Positive values of an input indicates that addition of a species; negatives indicate the removal.
+        Does not change the A matrix.
+
+        Example:
+            State names: W, X, Y, Z
+            Input names: W, Y
+
+            B matrix:
+
+                W Y
+                ---
+            W | 1 0
+            X | 0 0
+            Y | 0 1
+            Z | 0 0
+
+        Returns
+        -------
+        DataFrame
+            index: state_names
+            columns: input_names
+            values: 0, 1
+        """
+        if self.num_input == 0:
+            ncol = 1
+        else:
+            ncol = self.num_input
+        # Construct the dataframe
+        B_mat = np.repeat(0, self.num_input*self.num_state)
+        B_mat = np.reshape(B_mat, (self.num_state, self.num_input))
+        B_df = pd.DataFrame(B_mat, index=self.state_names, columns=self.input_names)
+        # Indicate where the input affects the state
+        for input_name in self.input_names:
+            pos = self.state_names.index(input_name)
+            B_df[input_name][pos] = 1
         #
         return B_df
 
@@ -533,14 +579,15 @@ class ControlBase(object):
             columns = A_df.columns
             # Remove any state that's an input
             # Allow state to be generated internally
-            for name in self.input_names:
-                if name in columns:
-                    A_df = A_df.drop(name, axis=0)
-                    A_df = A_df.drop(name, axis=1)
+            # TODO: Remove. Deleted because of new definition of input
+            #for name in self.input_names:
+            #    if name in columns:
+            #        A_df = A_df.drop(name, axis=0)
+            #        A_df = A_df.drop(name, axis=1)
             A_mat = A_df.values
         #
         if B_mat is None:
-            B_df = self._makeBDF(time=time)
+            B_df = self._makeBDF()
             if B_df is None:
                 B_mat = None
             else:

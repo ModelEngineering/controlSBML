@@ -33,6 +33,21 @@ S2 = 0
 S3 = 0
 S4 = 0
 """
+LINEAR3_MDL = """
+S1 -> S2; k1*S1
+J1: S1 -> S3; k2*S1
+J2: S2 -> S3; k3*S2
+J3: S3 -> ; k3*S3
+
+k1 = 1
+k2 = 2
+k3 = 3
+k4 = 4
+S1 = 10
+S2 = 0
+S3 = 0
+S4 = 0
+"""
 LINEAR_MDL = """
 J0: $S0 -> S1; k0*$S0
 J1: S1 -> S2; k1*S1
@@ -198,11 +213,13 @@ class TestControlBase(unittest.TestCase):
 
     def testCopyEquals(self):
         if IGNORE_TEST:
-          return
+            return
+        self.init()
         ctlsb = self.ctlsb.copy()
-        self.assertTrue(ctlsb.equals(self.ctlsb))
+        # FIXME: takes a long time
+        self.assertTrue(ctlsb.equals(self.ctlsb, is_quick_check=True))
         ctlsb.antimony = ""
-        self.assertFalse(ctlsb.equals(self.ctlsb))
+        self.assertFalse(ctlsb.equals(self.ctlsb, is_quick_check=True))
 
     def testMakeStateSpace1(self):
         if IGNORE_TEST:
@@ -218,15 +235,15 @@ class TestControlBase(unittest.TestCase):
 
     def testMakeStateSpace2(self):
         if IGNORE_TEST:
-          return
-        ctlsb = ControlBase(SIMPLE_MDL, is_reduced=True)
+            return
+        ctlsb = ControlBase(LINEAR_MDL, input_names=["S1"],
+              output_names=["S2"])
         sys = ctlsb.makeStateSpace()
-        self.assertEqual(sys.nstates, 1)
+        self.assertEqual(sys.nstates, 3)
         times = [0.1*v for v in range(50)]
         X0 = ctlsb.state_ser.values
         _, y_vals = control.forced_response(sys, T=times, X0=X0)
-        self.assertEqual(len(y_vals), 2)  # S1, S2 are outputs
-        self.assertEqual(len(y_vals[0]), len(times))
+        self.assertGreater(y_vals[-1], y_vals[0])
 
     def testMakeStateSpace3(self):
         if IGNORE_TEST:
@@ -257,9 +274,9 @@ class TestControlBase(unittest.TestCase):
 
     def testMakeStateSpaceReducableWithOutputFlux(self):
         if IGNORE_TEST:
-          return
+            return
         def test(time, is_equal):
-            ctlsb = ControlBase(REDUCABLE_MDL, output_names=["S1", "J1"],
+            ctlsb = ControlBase(REDUCABLE_MDL, output_names=["S1", "S2"],
                   is_reduced=True)
             ctlsb.setTime(time)
             sys = ctlsb.makeStateSpace()
@@ -269,7 +286,7 @@ class TestControlBase(unittest.TestCase):
         test(0, False)
         test(1, True)
 
-    def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=None,
+    def _simulate(self, u_val, mdl=LINEAR_MDL, input_names=["S1"],
           output_names=None, end_time=END_TIME):
         """
         Simulates the linear model with an input.
@@ -284,7 +301,6 @@ class TestControlBase(unittest.TestCase):
         -------
         array-float
         """
-        input_names = setList(input_names, REACTION_NAMES)
         output_names = setList(output_names, OUTPUT_NAMES)
         ctlsb = ControlBase(mdl,
               input_names=input_names, output_names=output_names)
@@ -295,10 +311,9 @@ class TestControlBase(unittest.TestCase):
         _, y_vals = control.forced_response(sys, T=times, X0=X0, U=U)
         return y_vals
 
-    # FIXME: TEst fails
     def testMakeStateSpaceLeveledInputs(self):
         if IGNORE_TEST:
-          return
+            return
         y_dct = {u: self._simulate(u) for u in [0, 1, 2]}
         keys = y_dct.keys()
         for key in range(len(keys)-1):
@@ -310,24 +325,31 @@ class TestControlBase(unittest.TestCase):
 
     def testMakeStateSpaceZeroInput(self):
         if IGNORE_TEST:
-          return
+            return
         self.init()
-        input_names = ["J0"]
+        input_names = ["S1"]
         ctlsb = ControlBase(LINEAR_MDL,
-              input_names=input_names, output_names=["S3", "S2"])
+              input_names=input_names, output_names=["S1", "S2", "S3"])
         sys = ctlsb.makeStateSpace(A_mat=ctlsb.jacobian_df.values)
         num_state, _ = np.shape(ctlsb.jacobian_df.values)
         self.assertEqual(np.shape(sys.B), (num_state, 1))
-        self.assertEqual(np.shape(sys.C), (2, num_state))
+        self.assertEqual(np.shape(sys.C), (3, num_state))
         # Simulate the system
-        END = 30
-        times = [0*v for v in range(END)]
+        END = 50
+        times = [0.1*v for v in range(END)]
         X0 = ctlsb.state_ser.values
         U = np.repeat(2, END)
         times, y_val1s = control.forced_response(sys, T=times, X0=X0, U=U)
         times, y_val2s = control.forced_response(sys, T=times, X0=X0)
-        for idx in range(2):
-            self.assertEqual(np.sum(y_val1s[idx, :] - y_val2s[idx, :])**2, 0)
+        for time in times:
+            total = sum([y_val2s[i, int(time)] for i in range(3)])
+            self.assertTrue(np.isclose(total, X0[0]))
+        #
+        time_start = int(times[0])
+        time_end = int(times[-1])
+        total_end = sum([y_val1s[i, time_end] for i in range(3)])
+        total_start = sum([y_val1s[i, time_start] for i in range(3)])
+        self.assertGreater(total_end - total_start, 0.2)
 
     def test_state_ser(self):
         if IGNORE_TEST:
@@ -366,29 +388,26 @@ class TestControlBase(unittest.TestCase):
 
     def testMakeBMatrixReactionInputs(self):
         if IGNORE_TEST:
-          return
-        ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_REACTION_NAMES)
-        B_df = ctlsb._makeBDF()
-        self.assertEqual(np.shape(B_df.values), (3, 3))
-        self.assertTrue(all(B_df.values.flatten()
-              == ctlsb.full_stoichiometry_df.values.flatten()))
-        #
-        ctlsb = ControlBase(LINEAR_MDL, input_names=["J0", "J2"])
-        B_df = ctlsb._makeBDF()
-        self.assertEqual(np.shape(B_df.values), (3, 2))
+            return
+        with self.assertRaises(ValueError):
+            # Reactions cannot be an input
+            ctlsb = ControlBase(LINEAR_MDL, 
+                 input_names=LINEAR_MDL_REACTION_NAMES)
 
     def testMakeBMatrixSpeciesInputs(self):
         if IGNORE_TEST:
-          return
-        input_names = ["J0", "S1", "J2"]
-        ctlsb = ControlBase(LINEAR_MDL, input_names=input_names)
-        B_df = ctlsb._makeBDF()
-        trues = [x == y for x, y in zip(B_df.columns, input_names)]
-        self.assertEqual(np.shape(B_df.values), (3, 3))
+            return
+        for input_names in [ None, ["S2"], ["S1", "S2"]]:
+            ctlsb = ControlBase(LINEAR_MDL, input_names=input_names)
+            B_df = ctlsb._makeBDF()
+            trues = [B_df[c].sum() == 1 for c in B_df.columns]
+            self.assertTrue(all(trues))
+            self.assertEqual(len(B_df), len(ctlsb.state_names))
         #
         ctlsb = ControlBase(LINEAR_MDL, input_names=LINEAR_MDL_SPECIES_NAMES)
         B_df = ctlsb._makeBDF()
-        self.assertEqual(np.shape(B_df.values), (1, 2))
+        self.assertEqual(np.shape(B_df.values),
+              (3, len(LINEAR_MDL_SPECIES_NAMES)))
 
     def testMakeUserError(self):
         if IGNORE_TEST:
@@ -400,23 +419,19 @@ class TestControlBase(unittest.TestCase):
 
     def testMakeNonlinearIOSystem(self):
         if IGNORE_TEST:
-          return
-        ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"])
-        effector_dct = {"J0": "S0"}
-        non_sys = ctlsb.makeNonlinearIOSystem("tst", effector_dct=effector_dct)
+            return
+        ctlsb = ControlBase(LINEAR_MDL, input_names=["S1"])
+        non_sys = ctlsb.makeNonlinearIOSystem("tst")
         self.assertTrue("NonlinearIOSystem" in str(type(non_sys)))
 
     def testMakeTransferFunction(self):
         if IGNORE_TEST:
-          return
-        ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"], output_names=["S1"])
+            return
+        ctlsb = ControlBase(LINEAR_MDL, input_names=["S3"], output_names=["S1"])
         tf = ctlsb.makeTransferFunction()
         self.assertTrue("TransferFunction" in str(type(tf)))
         with(self.assertRaises(ValueError)):
             ctlsb = ControlBase(LINEAR_MDL, output_names=["S1"])
-            tf = ctlsb.makeTransferFunction()
-        with(self.assertRaises(ValueError)):
-            ctlsb = ControlBase(LINEAR_MDL, input_names=["J0"] )
             tf = ctlsb.makeTransferFunction()
 
     def testReduceTransferFunction(self):
@@ -448,20 +463,18 @@ class TestControlBase(unittest.TestCase):
 
     def testMakeTransferFunction2(self):
         if IGNORE_TEST:
-          return
-        ctlsb = ControlBase(MODEL_FILE,
-            input_names=["DEPTOR"], output_names=["mTORC1"])
-        #   input_names=["v11"], output_names=["mTORC1_DEPTOR"])
-        tf = ctlsb.makeTransferFunction(time=3.3, atol=1e-3)
+            return
+        ctlsb = ControlBase(LINEAR3_MDL,
+            input_names=["S1"], output_names=["S3"])
+        tf = ctlsb.makeTransferFunction(time=1, atol=1e-3)
         dcgain = tf.dcgain()
-        if not np.isnan(dcgain):
-            self.assertGreater(np.abs(tf.dcgain()), 0)
+        self.assertLess(np.abs(dcgain -  0.33), 0.01)
 
     def testMakeFluxJacobian(self):
         if IGNORE_TEST:
-          return
+            return
         ctlsb = ControlBase(MODEL_FILE,
-            input_names=["v11"], output_names=["mTORC1_DEPTOR"])
+            input_names=["IR"], output_names=["mTORC1_DEPTOR"])
         df_0 = ctlsb.makeFluxJacobian(0)
         df_2 = ctlsb.makeFluxJacobian(2)
         df = df_0 - df_2

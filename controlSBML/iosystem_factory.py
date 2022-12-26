@@ -215,7 +215,9 @@ class IOSystemFactory(object):
             poles = np.array(poles)
         except:
             # Insert that poles are distinct
-            poles = np.array([poles + 0.1*n for n in range(num_state_input)])
+            #poles = np.array([poles + 0.1*n for n in range(num_state_input)])
+            poles = np.array([poles - 0.1*n for n in 
+                 range(ctlsb.num_state)])
         if not is_distinct_poles:
             raise ValueError("Poles must be distinct. Not: %s" % str(poles))
         # Calculate the gain matrix
@@ -223,7 +225,8 @@ class IOSystemFactory(object):
         def outfcn(_, __, u_vec, ___):
             # u_vec: list-float - reference, state variables
             ref = u_vec[0]/dcgain
-            arr = np.array(u_vec[1:])
+            #arr = np.array(u_vec[1:])
+            arr = u_vec
             output = ref - kp_vec.dot(arr)
             return output
         #

@@ -25,7 +25,7 @@ class TestLogger(unittest.TestCase):
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        self.assertEquals(len(self.logger.dct[lg.TIME]), 0)
+        self.assertEqual(len(self.logger.dct[lg.TIME]), 0)
 
     def testAdd(self):
         if IGNORE_TEST:
@@ -41,9 +41,9 @@ class TestLogger(unittest.TestCase):
         size = 10
         [self.logger.add(n, np.repeat(n, len(ITEM_NAMES))) for n in range(size)]
         df = self.logger.report()
-        self.assertEquals(len(df.columns), len(ITEM_NAMES))
-        self.assertEquals(len(df), size)
-        self.assertEquals(df.index.name, lg.TIME)
+        self.assertEqual(len(df.columns), len(ITEM_NAMES))
+        self.assertEqual(len(df), size)
+        self.assertEqual(df.index.name, lg.TIME)
 
     def testMerge(self):
         if IGNORE_TEST:
@@ -54,9 +54,9 @@ class TestLogger(unittest.TestCase):
         [logger.add(n, np.repeat(n, len(ITEM_NAMES))) for n in range(size)]
         merged_logger = self.logger.merge("new_logger", [logger])
         df = merged_logger.report()
-        self.assertEquals(len(df.columns), 2*len(ITEM_NAMES))
-        self.assertEquals(len(df), size)
-        self.assertEquals(df.index.name, lg.TIME)
+        self.assertEqual(len(df.columns), 2*len(ITEM_NAMES))
+        self.assertEqual(len(df), size)
+        self.assertEqual(df.index.name, lg.TIME)
 
    
 if __name__ == '__main__':

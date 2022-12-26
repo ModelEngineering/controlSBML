@@ -109,7 +109,7 @@ class TestControlAnalysis(unittest.TestCase):
         if IGNORE_TEST:
           return
         step_val = 2
-        ctlsb = ControlAnalysis(LINEAR_MDL, input_names=["J0"])
+        ctlsb = ControlAnalysis(LINEAR_MDL, input_names=["S1"])
         ctlsb.setTime(2)
         ctlsb.set({"S0": step_val})
         rr_df = ctlsb.simulateRoadrunner()

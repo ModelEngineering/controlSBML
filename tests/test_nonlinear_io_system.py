@@ -13,7 +13,6 @@ IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
-EFFECTOR_DCT = {"J0": "E_J0"}
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -31,16 +30,18 @@ S2 = 0
 S3 = 0
 """
 NONLINEAR_MDL = """
+species E_J0;
 #J0: ->  S0; 1 + E_J0
-J0: S0 -> S1; S0 + E_J0
-J2: S1 -> S2; S1*S1
-J3: S2 -> $S3; S2*S1
+J0: S0 -> S1; k1*S0*E_J0
+J2: S1 -> S2; k2*S1*S1
+J3: S2 -> $S3; k3*S2*S1
 
 S0 = 10
 S1 = 0
 S2 = 0
-E_J0 = 0
+E_J0 = 1
 $S3 = 3
+k1 =1; k2=2; k3=3
 """
 
 
@@ -56,9 +57,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def init(self, do_simulate_on_update=True):
         self.ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
-              input_names=["J0"], output_names=["S1", "S2"])
+              input_names=["E_J0"], output_names=["S1", "S2"])
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb,
-               effector_dct=EFFECTOR_DCT,
                do_simulate_on_update=do_simulate_on_update)
 
     def testConstructor(self):
@@ -122,14 +122,6 @@ class TestNonlinearIOSystem(unittest.TestCase):
         ser_1 = self.sys.makeStateSer(time=1)
         self.assertGreater(ser_0.loc["S0"], ser_1.loc["S1"])
 
-    def testInplist(self):
-        if IGNORE_TEST:
-          return
-        self.init()
-        names = self.sys.inplist
-        self.assertTrue(all([self.sys.name in n for n in names]))
-        self.assertEqual(len(names), self.sys.num_input)
-
     def _checkWithSimulation(self, df):
         df_rr = self.ctlsb.simulateRoadrunner(start_time=0, end_time=END_TIME,
                points_per_time=POINTS_PER_TIME)     
@@ -154,15 +146,14 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def testWithInputOutputResponse(self):
         if IGNORE_TEST:
-          return
+            return
         self.init()
         df = self.runInputOutputResponse(0)
         self._checkWithSimulation(df)
         # Output increases with inpu
         df1 = self.runInputOutputResponse(1)
         df2 = self.runInputOutputResponse(10)
-        diff = (df2 - df1).sum().sum()
-        self.assertGreater(diff, 10)
+        self.assertGreater(df2["S1"].values[1], df1["S1"].values[1])
 
     def testWithInputOutputResponseWithoutEffector(self):
         if IGNORE_TEST:
@@ -170,17 +161,6 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb)
         df = self.runInputOutputResponse(0)
-
-    def testLogging(self):
-        if IGNORE_TEST:
-          return
-        self.init()
-        _ = self.runInputOutputResponse(0)
-        df = self.sys.logger.report()
-        diff = set(self.ctlsb.state_names).symmetric_difference(df.columns)
-        self.assertEqual(len(diff), 0)
-        self.assertGreater(len(df), 0)
-
 
 if __name__ == '__main__':
   unittest.main()

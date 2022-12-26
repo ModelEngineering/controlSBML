@@ -108,6 +108,10 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 1.0.0
+    * Redefined inputs as species adjustment (positive or negative)
+    * ControlSBML.equals has an option to do a "quick check"
+    * Deprecated the use of an effector dictionary
 * 0.2.23 12/18/2022
     * Updates for using toml files
 * 0.2.22

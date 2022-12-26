@@ -176,17 +176,17 @@ class TestIOSystemFactory(unittest.TestCase):
 
     def testMakeFullStateController(self):
         if IGNORE_TEST:
-          return
+            return
         ctlsb = ctl.ControlSBML(MODEL, input_names=["S0"], output_names=["S2"])
         controller = self.factory.makeFullStateController("controller",
               ctlsb, dcgain=1.0, poles=-10, time=1)
-        times = [0, 1, 2, 3, 4]
-        U = np.array([(1, 1, 1,) for _ in range(len(times))])
+        times = [0.1*n for n in range(50)]
+        U = np.array([(0, 0, 0,) for _ in range(len(times))])
+        U[0] = np.array([1, 1, 1,])
         U = U.transpose()
         result = control.input_output_response(controller, T=times, U=U)
         outputs = result.outputs[0]
         self.assertEqual(len(times), len(outputs))
-        self.assertEqual(len(set(outputs)), 1)
 
     def testBug1(self):
         if IGNORE_TEST:
