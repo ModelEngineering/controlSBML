@@ -4,25 +4,13 @@ Basic Usage
 .. highlight:: python
    :linenothreshold: 5
 
-The basic usage of ``controlSBML`` involves wrapping an SBML
-simulation as a ``control`` package object,
-and then using the tools in the ``control`` package.
-The details are:
+The basic usage of ``controlSBML`` creates a
+``control.NonlinearIOSystem`` object for an SBML model,
+and then applies the tools in the ``control`` package
+to this object.
 
-1. Construct a ``ControlSBML`` object for the SBML model.
-
-2. From this object, obtain objects used in the CalTech package:
-
-   a. ``NonlinearIOSystem`` object that wraps the entire SBML model; and
-
-   b. ``StateSpace`` object that is a linear approximation to the SBML model
-
-3. Do control analysis and design using the ``control`` package.
-
-The basic usage involves steps 2 and 2a above.
-
-In the sequel, we use the following simple example of
-an Antiimony representation of a model.
+In the sequel, we use the following
+Antiimony representation of an SBML model.
 
 .. code-block:: python
 

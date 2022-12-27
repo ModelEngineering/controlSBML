@@ -1,5 +1,5 @@
-Modeling Closed Loop Systems
-============================
+Modeling Closed Loop
+====================
 
 .. highlight:: python
    :linenothreshold: 5
@@ -33,4 +33,7 @@ Setting the control objective.
 
 Constructing the NonlinearIOSystem for the controller.
 
-Specifying the closed loop system.
+Specifying the closed loop system. Note that input names and output names
+are available for interaconnection.
+
+Evaluating the closed loop system.

@@ -1,13 +1,21 @@
 Installation
 ============
 
-``controlSBML`` can be installed using
-``pip install controlSBML``,
-and the CalTech ``control`` package can be installed using
-``pip install control``.
+You need to install both ``controlSBML`` and the
+the CalTech ``control`` package.
+You can do this in a terminal window on Windows, Mac,
+and Linux by entering the commands below.
 
-Also, the code fragments in this documentation assume
-that you have the following statements:
+.. code-block:: python
+
+    pip install controlSBML
+    pip install control
+
+If you are in a Jupyter notebook, you should insert a ``!``
+before ``pip``.
+
+The code scripts in this documentation assumes
+that the following statements appear before you run the scripts:
 
 .. code-block:: python
 
