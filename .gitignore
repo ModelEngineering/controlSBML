@@ -3,6 +3,7 @@ __pycache__
 data/*.xml
 dist/
 sym
+docs/build/
 .ipynb_*
 ./todo.txt
 local.txt
