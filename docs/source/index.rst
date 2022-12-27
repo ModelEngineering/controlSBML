@@ -68,6 +68,11 @@ for an entire closed loop system.
 At present, the package only supports models that have a single control input
 and a single signal used in feedback (SISO systems).
 
+There is a fourth category of features provided by ``controlSBML``.
+These are convenience methods for control analysis and design.
+Typically, these are a simplified way to access capabilities that
+are provided by the ``control`` pacakge, possibly with some new features.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -75,6 +80,9 @@ and a single signal used in feedback (SISO systems).
    installation
    basics
    closed_loop_system
+   element_factories
+   template_closed_loop_systems
+   convenience_methods
 
 
 
