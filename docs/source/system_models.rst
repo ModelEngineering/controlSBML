@@ -1,13 +1,21 @@
-Basic Usage
-===========
+System Models Using SBML
+========================
 
 .. highlight:: python
    :linenothreshold: 5
 
-The basic usage of ``controlSBML`` creates a
-``control.NonlinearIOSystem`` object for an SBML model,
-and then applies the tools in the ``control`` package
-to this object.
+
+``controlSBML`` provides ways to construct a system
+model from an SBML model that can be used by the ``control`` package.
+Two kinds of models can be created.
+The first wraps the entire SBML model as a
+``control.NonlinearIOSystem`` object.
+This allows the ``control`` package to do the same kind of detailed
+simulations that are provided by SBML simulators as as ``libroadrunner``
+and ``Copasi``.
+The second model is a linear approximation to the SBML model
+that is encapsulated in a
+``control.StateSpace`` object.
 
 In the sequel, we use the following
 Antiimony representation of an SBML model.
@@ -59,8 +67,8 @@ are lists of strings.
 Inputs and outputs must be specified to make use of
 subsequent capabilities of ``ControlSBML``.
 
-Using ``controls.NonlinearIOSystem``
-#####################################################
+Creating ``control.NonlinearIOSystem``
+######################################
 
 The following code fragment does a simulation using
 the ``control`` package and plots
@@ -111,3 +119,20 @@ Below is the plot constructed by running this script.
 
 .. image:: images/simple_model_plot.png
   :width: 400
+
+Creating ``control.StateSpace``
+###############################
+
+We can construct a linear approximation of an SBML model by
+selecting an operating point (the values of of state variables,
+which are floating species) and estimating state values
+using a linear approximation.
+The operating point is defined by a simulation time at which
+all state values are obtained.
+The linear approximation is calculated using the
+Jacobian evaluated at the selected time.
+
+Once a ``ControlSBML`` object has been constructed, we use
+the method ``makeStateSpace`` to create
+a ``control.StateSpace`` object.
+This is illustrated below.

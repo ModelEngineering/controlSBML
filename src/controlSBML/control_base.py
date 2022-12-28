@@ -567,6 +567,7 @@ class ControlBase(object):
         #
         if time is None:
             time = self.getTime()
+        self.setTime(time)
         # Construct the matrices
         A_mat = df2Mat(A_mat)
         B_mat = df2Mat(B_mat)
