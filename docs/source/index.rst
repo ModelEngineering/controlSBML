@@ -7,8 +7,8 @@
 =====================================================
 
 ``controlSBML`` provides a bridge between SBML models and the
-CalTech
-control systems library.
+`CalTech control systems library <https://python-control.readthedocs.io/en/0.9.2/>`_.
+`CalTech control systems library <https://python-control.readthedocs.io/en/latest/intro.html>`_.
 At the lowest level, this bridge wraps an SBML model as an object known
 to the ``control`` package so that its tools can be
 applied to SBML models.
@@ -53,10 +53,11 @@ are provided by the ``control`` pacakge, possibly with some new features.
    installation
    concepts
    system_models
-   closed_loop_models
+   modeling_closed_loops
    element_factories
    system_factories
    convenience_methods
+   detailed_example
 
 
 

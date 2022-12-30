@@ -77,8 +77,9 @@ Some biological systems are modeled using the Systems Biology Markup Language (S
 a community standard for biomedical models that provides a
 way to describe and simulate behavior (e.g., how changes in enzyme levels
 affect the concentrations of metabolites).
-The CalTech control systems library
-(https://sourceforge.net/projects/python-control/) provides an extensive
+The
+`CalTech control systems library <https://python-control.readthedocs.io/en/latest/intro.html>`_.
+provides an extensive
 collection of Python-based tools for control analsysis and design.
 The ``controlSBML`` package provides ways for control engineers
 to use SBML models in the control system library so that

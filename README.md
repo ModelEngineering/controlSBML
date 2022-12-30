@@ -110,6 +110,8 @@ that continuous integration is done only *without* ``slycot``.
 ## Version History
 * 1.0.4
     * Fix bug so that makeStateSpace honors the time argument
+    * Updated Sphinx documentation
+    * Fix bug with __version__
 * 1.0.3
     * Fix bug with file path in _version
 * 1.0.1

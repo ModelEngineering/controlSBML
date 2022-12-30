@@ -1,14 +1,15 @@
-Modeling Closed Loop
-====================
+Modeling Closed Loops
+=====================
 
 .. highlight:: python
    :linenothreshold: 5
 
 Here, we illustrate how to use ``controlSBML`` to model a closed loop system
 for the SBML model.
-The Antimony model is specified below.
-Note that the use of a dollar sign (``$``) indicates
-a fixed species whose concentration does not change.
+Most of the work is done by the
+`CalTech control library <https://python-control.readthedocs.io/en/0.9.2/>`_.
+
+For the open loop system, we use the Antimony model below.
 
 .. code-block:: python
 
