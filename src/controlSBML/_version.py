@@ -4,8 +4,6 @@ import tomli
 import os
 
 DIR = os.path.dirname(os.path.abspath(__file__))
-DIR = os.path.dirname(DIR)
-DIR = os.path.dirname(DIR)
 PATH = os.path.join(DIR, "pyproject.toml")
 
 try:
