@@ -4,7 +4,7 @@
    contain the root `toctree` directive.
 
 ``controlSBML``: Control engineering with SBML models
-======================================================
+=====================================================
 
 ``controlSBML`` provides a bridge between SBML models and the
 control systems library.
