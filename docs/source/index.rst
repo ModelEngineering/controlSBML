@@ -7,24 +7,27 @@
 =====================================================
 
 ``controlSBML`` provides a bridge between SBML models and the
+CalTech
 control systems library.
 At the lowest level, this bridge wraps an SBML model as an object known
-to the controls package so that SBML models can be analyzed.
+to the ``control`` package so that its tools can be
+applied to SBML models.
 The approach is:
 
 1. Construct a ``ControlSBML`` object for the SBML model.
 
-2. From this object, obtain objects used in the CalTech package:
+2. From this object, obtain objects used in the CalTech package.
 
-   a. ``NonlinearIOSystem`` object that wraps the entire SBML model; and
+   a. ``control.NonlinearIOSystem`` objects wrap the entire SBML model to construct computational testbeds for closed loop systems.
    
-   b. ``StateSpace`` object that is a linear approximation to the SBML model
+   b. ``control.StateSpace`` objects are linear approximations to the SBML model for control analysis and design using transfer functions.
 
-3. Do control analysis and design using the CalTech package.
+3. Do control analysis and design using the ``control`` package.
 
 Below, we provide an overview of the features of ``controlSBML``.
 Readers who are less familiar with control engineering
-are encouraged to read the "Concepts" section.
+are encouraged to read the
+:ref:`Concepts section <concepts>`:.
 
 Beyond this, ``controlSBML`` facilitates the construction of
 models of controllers and filters to facilitate the evaluation of candidate
@@ -52,7 +55,7 @@ are provided by the ``control`` pacakge, possibly with some new features.
    system_models
    closed_loop_models
    element_factories
-   template_closed_loop_systems
+   system_factories
    convenience_methods
 
 

@@ -1,21 +1,25 @@
-System Models Using SBML
-========================
+``ctl.ControlSBML``
+===============
 
 .. highlight:: python
    :linenothreshold: 5
 
 
-``controlSBML`` provides ways to construct a system
-model from an SBML model that can be used by the ``control`` package.
-Two kinds of models can be created.
-The first wraps the entire SBML model as a
-``control.NonlinearIOSystem`` object.
+``controlSBML`` provides ways to use an SBML model to construct an
+object representing a system
+model that can be used by the ``control`` package.
+Two kinds of ``control`` objects can be constructed.
+The first,
+``control.NonlinearIOSystem``,
+wraps an entire nonlinear SBML model.
 This allows the ``control`` package to do the same kind of detailed
 simulations that are provided by SBML simulators as as ``libroadrunner``
 and ``Copasi``.
-The second model is a linear approximation to the SBML model
-that is encapsulated in a
-``control.StateSpace`` object.
+The second object,
+``control.StateSpace``, provides a linear approximation to the SBML model.
+``control.NonlinearIOSystem`` and
+``control.StateSpace`` objects are constructed from an
+``ctl.ControlSBML`` object.
 
 In the sequel, we use the following
 Antiimony representation of an SBML model.
@@ -28,15 +32,15 @@ Antiimony representation of an SBML model.
         S1 = 10; S2 = 0; E1 = 1;
     """
 
-``ControlSBML`` Constructors
-############################
-We begin with constructing a ``ControlSBML`` object.
+Constructors
+############
+We begin with constructing a ``ctl.ControlSBML`` object.
 This requires having a representation of an SBML model.
 This can be an XML file, an XML URL, an antimony file,
 or a ``libroadrunner`` object.
 We refer to any of these representations of the SBML model as
-a *reference*.
-The following constructs ``ControlSBML`` object for this model.
+a *model reference*.
+The following constructs ``ctl.ControlSBML`` object for this model.
 
 .. code-block:: python
 
@@ -44,10 +48,10 @@ The following constructs ``ControlSBML`` object for this model.
 
 This object has a number of useful properties.
 
-* ``ctlsb.antimony`` is the Antimony representation, even if the reference is an XML file or a ``libroadrunner`` object.
-* ``ctlsb.roadrunner`` is the ``libroadrunner`` object.
+* ``ctlsb.antimony`` is the Antimony string that corresponds to the model reference in the constructor.
+* ``ctlsb.roadrunner`` is the ``libroadrunner`` object for the model reference in the constructor.
 * ``ctlsb.state_ser`` is a ``pandas`` ``Series`` that provides the values of the concentrations of floating species (the state variables).
-* ``ctlsb.setTime(time)`` runs the simulation to a desired time. This updates ``ctlsb.state_ser``.
+* ``ctlsb.setTime(time)`` runs the simulation from time 0 to a desired time. This updates ``ctlsb.state_ser``.
 
 To create an object that is more useful for control analysis,
 you should specify at least one *input* and at least one *output*.
@@ -65,10 +69,10 @@ An example of this constructor is:
 Note that both ``input_names`` and ``output_names``
 are lists of strings.
 Inputs and outputs must be specified to make use of
-subsequent capabilities of ``ControlSBML``.
+subsequent capabilities of ``ctl.ControlSBML``.
 
-``control.NonlinearIOSystem`` objects
-#####################################
+``control.NonlinearIOSystem``
+#############################
 
 The method ``ctl.ControlSBML.makeNonlinearIOSystem`` constructs
 a ``control.NonlinearIOSystem`` object for an SBML model.
@@ -128,10 +132,14 @@ We execute the statement below to plot the simulation results.
 .. image:: images/simple_model_plot.png
   :width: 400
 
-``control.StateSpace`` objects
-##############################
+``control.StateSpace``
+######################
 
-A state space model is a linear system of differential equations.
+A state space model is a linear system of differential equations
+in which there are
+:math:`n` states,
+:math:`p` inputs, and
+:math:`q` outputs.
 
 .. math:: 
     
@@ -151,20 +159,25 @@ where:
 
 
 :math:`{\bf x}` is the state variable,
-:math:`{\bf u}` is the forced input,
+:math:`{\bf u}` is the input vector,
 and :math:`{\bf y}` is the output.
 
-``controlSBML`` uses the floating species
-in the SBML model as state variables.
-The :math:`{\bf u}` are the ``input_names``,
-and the :math:`{\bf y}` are the ``output_names``.
+``controlSBML`` constructs a ``control.StateSpace``
+object for an SBML model as follows.
+The state variables are
+floating species.
+The :math:`{\bf u}` are names of floating
+species that are manipulated inputs (``input_names``).
+The :math:`{\bf y}` are the names
+of measured outputs (``output_names``), either
+floating species or names of reactions whose fluxes are output.
 A
 linear approximation for an SBML model is constructed
 using the Jacobian of the state variables at a specified operating point.
 The operating point is a simulation time at which state variables are assigned their values
 to calculate the Jacobian.
 
-Once a ``ControlSBML`` object has been constructed,
+Once a ``ctl.ControlSBML`` object has been constructed,
 the method ``makeStateSpace`` is used to create
 a ``control.StateSpace`` object.
 This is illustrated below to construct a ``control.StateSpace`` object using
@@ -176,7 +189,7 @@ time 0 as the operating point.
         input_names=["E1"], output_names=["S1", "S2"])
     state_space = ctlsb.makeStateSpace(time=0)
 
-The resulting state space model is represented below:
+The resulting state space model is represented below.
 :math:`{\bf A}` is in the upper left;
 :math:`{\bf B}` is in the upper right;
 and :math:`{\bf C}` is in the lower left.
@@ -185,10 +198,19 @@ Note that :math:`{\bf A}` is A
 ``E1``, ``S1``, and ``S2`` are floating species
 and hence state variables.
 :math:`{\bf B}` is a :math:`3 \times 1` matrix
-because there is one forced input, ``E1``.
+because there is one input, ``E1``.
 And, :math:`{\bf C}` is :math:`2 \times 3` because
 there are two outputs, ``S1``, ``S2``.
 
-
 .. image:: images/state_space_matrix.png
   :width: 200
+
+
+Items
+
+    1. Simulate StateSpace
+
+    2. Transfer function
+
+    3. Interpret singular state space A matrix
+

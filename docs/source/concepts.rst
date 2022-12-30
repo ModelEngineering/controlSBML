@@ -1,8 +1,17 @@
-Concepts
-========
+Concepts and Terms
+==================
 
-Control engineering is a discipline that is applied to a wide variety
-of fields, including mechanical, electrical, and computer engineering.
+.. _concepts:
+
+Control engineering is widely used in science and engineering
+to improve performance and cost effectiveness.
+Mechanical engineers use control engineering to build resilient
+structures from inexpensive compoonents.
+Electrical engineers use conrol engineering to create
+circuits with lower power demands and larger ratios of signal to noise.
+Computer engineers use control engineering to improve the
+efficiency and quality of job scheduling in large computing complexes.
+
 In biological systems, control engineering addresses applications such as:
 
 * biostats (or chemostat) that maintain a constant population of microbes (chemical species);
@@ -15,22 +24,25 @@ A first consideration in control systems is to establish
 **control objectives**.
 Common control objectives are:
 
-* *stability*: does the system to a steady state value after a disturbance;
+* *stability*: Does reach a steady state value after a disturbance?
 
-* *speed of response*: how quickly does the system settle after a disturbance (if they settle);
+* *speed of response*: How quickly does the system settle after a disturbance?
 
-* *oscillations*: are their oscillations (which may be desired or undesired); and
+* *oscillations*: Are there oscillations (which may be desired or undesired)?
   
-* *bias*: does the system deviate from the desired outputs.
+* *bias*: Does the system deviate from the desired outputs?
 
-In control engineering, we start with an existing system that does
-not achieve control objectives
-(e.g., regulation of glucose concentrations).
-The existing system is called the **open loop system (OLS)**.
-Control engineering is of particular interest if the OLS
-cannot easily be re-engineered to meet control objectives.
-Control engineering creates a new system, the **closed loop system (CLS)**,
-in which one or more new element is added.
+Suppose we have a system that does not achieve one or more
+of its control objectives.
+One approach is to reengineer the system.
+However, sometimes reengineering is either too expensive or it
+is simply infeasible (i.e., changing a person' DNA).
+Control engineering is largely about the second case.
+We use the term **open loop system (OLP)** to refer to
+the existing system.
+Starting with the OLS,
+control engineers add additional elements to create 
+a **closed loop system (CLS)** that meets the control objectives.
 These elements include:
 
 * *Controllers* provide regulation (e.g., administration of insulin) in response to a biological signal (e.g., blood concentration of glucose).
@@ -68,5 +80,6 @@ affect the concentrations of metabolites).
 The CalTech control systems library
 (https://sourceforge.net/projects/python-control/) provides an extensive
 collection of Python-based tools for control analsysis and design.
-What is missing is an ability to combine SBML models with analysis
-capabilities such as those in the control systems library.
+The ``controlSBML`` package provides ways for control engineers
+to use SBML models in the control system library so that
+existing biomedical models can used in control analysis and design.
