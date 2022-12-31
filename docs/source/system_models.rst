@@ -108,7 +108,8 @@ the ``control.TimeResponseData`` object.
 
 .. code-block:: python
 
-    def plotTimeResponse(time_response):
+    def plotTimeResponse(time_response, output_names,
+          is_legend=True, stmts=None):
         # Plots the results of running a simulation
         outputs = time_response.outputs
         times = time_response.time
@@ -118,7 +119,12 @@ the ``control.TimeResponseData`` object.
                 plt.plot(times, outputs[idx,:], c=colors[idx])
             else:
                 plt.plot(times, outputs, c=colors[idx])
-        _ = plt.legend(output_names)
+        if is_legend:
+            _ = plt.legend(output_names)
+        if stmts is None:
+            stmts = []
+        for stmt in stmts:jj
+            exec(stmt)
         plt.xlabel("time")
         plt.ylabel("concentration")
 
