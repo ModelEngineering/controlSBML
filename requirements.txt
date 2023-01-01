@@ -5,6 +5,7 @@ control
 docstring-expander
 jupyterlab
 matplotlib
+nose2
 nose
 pandas
 pip>20
