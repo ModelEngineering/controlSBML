@@ -15,7 +15,7 @@ jobs:
       run: |
         PYTHONPATH=`pwd`/src
         export PYTHONPATH
-        nosetests tests
+        nose2 tests
     - name: Run notebooks
       run: |
         PYTHONPATH=`pwd/src`
