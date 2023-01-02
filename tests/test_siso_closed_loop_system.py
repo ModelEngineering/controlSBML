@@ -12,8 +12,8 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 SIZE = 10
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL3 = """
@@ -177,7 +177,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.show()
 
     def testMakeFullStatelosedLoopSystem2(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         ctlsb = ctl.ControlSBML(BIOMD823, input_names=["pAkt"],
               output_names=["pDEPTOR"])
         siso = SISOClosedLoopSystem(ctlsb)
