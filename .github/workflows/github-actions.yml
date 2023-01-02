@@ -8,8 +8,8 @@ jobs:
     - name: Set up Python 3.8.16
     - uses: actions/setup-python@v2
       with:
-          python-version: '3.8.16'
-          architecture: 'x64'
+          python-version: "3.8.16"
+          architecture: "x64"
       env:
           AGENT_TOOLSDIRECTORY: /opt/hostedtoolcache
           ACTIONS_STEP_DEBUG: true
