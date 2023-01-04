@@ -6,8 +6,10 @@ TESTFILE=test_docs.py
 cd ${REPOPATH}/controlSBML
 source activate.sh
 cd docs/source
-rm ${TESTFILE}
-for f in installation.rst system_models.rst
+if [ -f "$TESTFILE" ]; then
+    rm ${TESTFILE}
+fi
+for f in installation.rst system_models.rst modeling_closed_loops.rst
     do
     grep-line.sh $f >> ${TESTFILE}
 done

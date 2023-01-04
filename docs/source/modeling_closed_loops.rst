@@ -21,6 +21,9 @@ For the open loop system, we use the Antimony model below.
         k = 0.8
     """
 
+.. end-code-block
+
+
 Open loop system
 ################
 
@@ -44,7 +47,10 @@ we use the following script, which produces the plot below.
         times, X0=ctl.makeStateVector(simple_ols), U=0)
     plotTimeResponse(time_response, ["S2"], is_legend=False)
     plt.plot([times[0], times[-1]], [REF, REF], linestyle="--")
-    legend(["S2", "REF"])
+    plt.legend(["S2", "REF"])
+
+.. end-code-block
+
 
 
 .. image:: images/modeling_closed_loops-plot1.png
@@ -102,6 +108,9 @@ The full collection of arguments to the functions are:
         dx = REF - y[0]
         return dx
 
+.. end-code-block
+
+
 
 .. code-block:: python
 
@@ -118,6 +127,9 @@ The full collection of arguments to the functions are:
         output = kI*x[0] + kP*new_err
         return output
 
+.. end-code-block
+
+
 Notice that we introduced a new variable :math:`x(t)`.
 This is a state variable.
 It is used to calculate the integral of the control errors.
@@ -133,6 +145,9 @@ Now we can construct the ``control.NonlinearIOSystem`` object.
           inputs=['in'],
           outputs=['out'],
           name='controller')
+
+.. end-code-block
+
 
 In addition to specifying the update and output functions,
 this constructor also indicates the number of internal states
@@ -194,6 +209,9 @@ and outputs from the assembly of
     outlist=["simple_ols.S2", "controller.out"],
     )
 
+.. end-code-block
+
+
 
 Evaluation
 ##########
@@ -220,6 +238,9 @@ although there are some subtlties.
     plotTimeResponse(time_response, 
           ["S2", "controller.out"],
           stmts=stmts, is_legend=False)
+
+.. end-code-block
+
 
 .. image:: images/modeling_closed_loops-plot2.png
   :width: 400
