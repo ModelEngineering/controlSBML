@@ -11,6 +11,8 @@ and Linux by entering the commands below.
     pip install controlSBML
     pip install control
 
+.. end-code-block
+
 If you are in a Jupyter notebook, you should insert a ``!``
 before ``pip``.
 
@@ -21,4 +23,8 @@ that the following statements appear before you run the scripts:
 
     import control
     import controlSBML as ctl
+    import numpy as np
+    import matplotlib.pyplot as plt
+
+.. end-code-block
 

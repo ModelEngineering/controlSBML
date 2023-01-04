@@ -32,6 +32,8 @@ Antiimony representation of an SBML model.
         S1 = 10; S2 = 0; E1 = 1;
     """
 
+.. end-code-block
+
 Constructors
 ############
 We begin with constructing a ``ctl.ControlSBML`` object.
@@ -45,6 +47,9 @@ The following constructs ``ctl.ControlSBML`` object for this model.
 .. code-block:: python
 
     ctlsb = ctl.ControlSBML(SIMPLE_MODEL)
+
+.. end-code-block
+
 
 This object has a number of useful properties.
 
@@ -65,6 +70,9 @@ An example of this constructor is:
 
     ctlsb = ctl.ControlSBML(SIMPLE_MODEL,
         input_names=["E1"], output_names=["S2"])
+
+.. end-code-block
+
 
 Note that both ``input_names`` and ``output_names``
 are lists of strings.
@@ -87,6 +95,9 @@ For example,
             input_names=["E1"], output_names=["S1", "S2"])
     sys = ctlsb.makeNonlinearIOSystem("simple")
 
+.. end-code-block
+
+
 ``sys`` is a ``control.NonlinearIOSystem`` object,
 and the following simulates this system for 5 s.
 
@@ -95,6 +106,9 @@ and the following simulates this system for 5 s.
     times = [0.1*n for n in range(51)]
     time_response = control.input_output_response(sys,
         times, X0=ctl.makeStateVector(sys))
+
+.. end-code-block
+
 
 ``ctlsb`` is constructed to have the input ``E1`` and the outputs ``S1`` and ``S2``.
 ``sys`` is a ``control.NonlinearIOSystem`` object
@@ -123,17 +137,23 @@ the ``control.TimeResponseData`` object.
             _ = plt.legend(output_names)
         if stmts is None:
             stmts = []
-        for stmt in stmts:jj
+        for stmt in stmts:
             exec(stmt)
         plt.xlabel("time")
         plt.ylabel("concentration")
+
+.. end-code-block
+
 
 
 We execute the statement below to plot the simulation results.
 
 .. code-block:: python
 
-    plotTimeResponse(time_response)
+    plotTimeResponse(time_response, ["S1", "S2"])
+
+.. end-code-block
+
 
 .. image:: images/simple_model_plot.png
   :width: 400
@@ -195,6 +215,9 @@ time 0 as the operating point.
         input_names=["S1"], output_names=["S2"])
     state_space = ctlsb.makeStateSpace(time=0)
 
+.. end-code-block
+
+
 The resulting state space model is represented below.
 :math:`{\bf x}` is a 3 dimensional vector
 that correspond to the state variables (floating species)
@@ -219,6 +242,9 @@ The transfer function for the above system is obtained by
 .. code-block:: python
 
     transfer_function = control.tf(state_space)
+
+.. end-code-block
+
 
 and is displayed as
 
@@ -247,6 +273,9 @@ Now consider a slightly different reaction network.
           input_names=["S1"], output_names=["S2"])
     state_space = ctlsb.makeStateSpace()
 
+.. end-code-block
+
+
 The state space matrices are:
 
 .. image:: images/state_space2.png
@@ -260,8 +289,11 @@ to a unit step in the input in ``S1``.
     times = [0.1*n for n in range(301)]
     ss_time_response = control.forced_response(state_space,
           times, X0=[10, 0], U=1)
-    plotTimeResponse(ss_time_response, is_legend=False)
+    plotTimeResponse(ss_time_response, ["S2"], is_legend=False)
     plt.plot([0, 30], [1.25, 1.25], linestyle="--")
+
+.. end-code-block
+
 
 
 .. image:: images/step_response2.png
