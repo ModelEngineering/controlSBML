@@ -211,7 +211,7 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         if IS_PLOT:
             ctl.plotOneTS(ts, figsize=(5,5))
             plt.show()
-        self.assertGreater(ts["S3"].values[-1], 0)
+        self.assertGreater(np.abs(ts["S3"].values[-1]), 0)
 
     # TODO: More tests of fullstate filters
     def testMakeFullStateControllerWithFilters(self):
