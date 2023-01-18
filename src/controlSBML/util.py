@@ -78,6 +78,10 @@ def plotOneTS(ts, **kwargs):
     ----------
     ts: TimeSeries
     #@expand
+
+    Returns
+    -------
+    matplotlib.axes
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
@@ -89,6 +93,7 @@ def plotOneTS(ts, **kwargs):
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
     mgr.doFigOpts()
+    return ax
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
 def plotManyTS(*tss, ncol=1, names=None, **kwargs):
@@ -103,6 +108,10 @@ def plotManyTS(*tss, ncol=1, names=None, **kwargs):
     names: list-str
         Names of the dataframes
     #@expand
+
+    Returns
+    -------
+    array-matplotlib.axes
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
@@ -130,6 +139,7 @@ def plotManyTS(*tss, ncol=1, names=None, **kwargs):
             new_mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
         new_mgr.doPlotOpts()
     mgr.doFigOpts()
+    return axes
 
 def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
       points_per_time=cn.POINTS_PER_TIME):

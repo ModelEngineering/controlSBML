@@ -4,19 +4,18 @@
    contain the root `toctree` directive.
 
 ``controlSBML``: Control engineering with SBML models
-=====================================================
+=============================================================
 
 ``controlSBML`` provides a bridge between SBML models and the
-`CalTech control systems library <https://python-control.readthedocs.io/en/0.9.2/>`_.
 `CalTech control systems library <https://python-control.readthedocs.io/en/latest/intro.html>`_.
 At the lowest level, this bridge wraps an SBML model as an object known
 to the ``control`` package so that its tools can be
 applied to SBML models.
 The approach is:
 
-1. Construct a ``ControlSBML`` object for the SBML model.
+1. Construct a ``controlSBML.ControlSBML`` object for the SBML model.
 
-2. From this object, obtain objects used in the CalTech package.
+2. From this object, obtain objects used in the ``control`` package.
 
    a. ``control.NonlinearIOSystem`` objects wrap the entire SBML model to construct computational testbeds for closed loop systems.
    
@@ -29,22 +28,14 @@ Readers who are less familiar with control engineering
 are encouraged to read the
 :ref:`Concepts section <concepts>`:.
 
-Beyond this, ``controlSBML`` facilitates the construction of
-models of controllers and filters to facilitate the evaluation of candidate
-designs.
-This is done through the use of *element factories* that create
-``NonlinearIOSystem`` objects that can be used in the evaluation of
-closed loop designs.
+In addition to providing a bridge between SBML and the ``control`` package,
+``controlSBML`` provides the following.
 
-A third capability of ``controlSBML`` is to automate model construction
-for an entire closed loop system.
-At present, the package only supports models that have a single control input
-and a single signal used in feedback (SISO systems).
+1. Automating the construction of models of elements in a closed loop system; in particular, controllers and filters.  This is done through the use of **element factories** that create ``NonlinearIOSystem`` objects that can be used in the evaluation of closed loop designs.
 
-There is a fourth category of features provided by ``controlSBML``.
-These are convenience methods for control analysis and design.
-Typically, these are a simplified way to access capabilities that
-are provided by the ``control`` pacakge, possibly with some new features.
+2. Automating model construction for an entire closed loop system.  These are referred to as  **system factories**.  At present, the package only supports models that have a single control input and a single signal used in feedback (SISO systems).
+
+3. Convenience methods for control analysis and design.  Typically, these are a simplified way to access capabilities that are provided by the ``control`` pacakge, possibly with some new features.
 
 .. toctree::
    :maxdepth: 2

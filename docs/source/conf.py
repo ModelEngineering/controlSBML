@@ -12,8 +12,11 @@
 #
 import os
 import sys
+sys.path.insert(0, "/Users/jlheller/home/Technical/repos/controlSBML/ctl/lib/python3.9/site-packages/")
 import inspect
-sys.path.insert(0, os.path.abspath('../..'))
+import docstring_expander
+import tomli
+sys.path.insert(0, os.path.abspath('../../src'))
 
 
 # -- Project information -----------------------------------------------------

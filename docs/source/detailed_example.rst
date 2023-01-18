@@ -4,7 +4,22 @@ Detailed Example
 .. highlight:: python
    :linenothreshold: 5
 
-Show control of Wolf model.
+This section illustrates the construction of a closed loop system for
+moderately complicated open loop system, the mTOR pathway as modeled
+in Biomodels 823 (Varusai2018).
+The figure below provides an overview of the pathway that is modelled.
+
+.. image:: images/mTOR-network.png
+  :width: 600
+
+Our objective is to control the concentration of the concentration of DEPTOR, the
+mTOR interacting proteint with the DEP dependendent domain.
+concentration of 100.
+
+Below we display the model in the Antimony modeling language.
+We have modified the model slightly by adding the chemical species ``E_v11``.
+In the spirit of Metabolic Control Analysis,
+this species has an additive effect on the kinetics of reaction ``v11``.
 
 .. code-block:: python
 
@@ -50,15 +65,15 @@ Show control of Wolf model.
       species mTORC1 in compartment_, pmTORC1 in compartment_, mTORC2 in compartment_;
       species pmTORC2 in compartment_, imTORC2 in compartment_, mTORC1_DEPTOR in compartment_;
       species mTORC2_DEPTOR in compartment_, DEPTOR in compartment_, pDEPTOR in compartment_;
-      species E_v1 in compartment_, E_v6 in compartment_, E_v11 in  compartment_;
+      E_v11 in  compartment_;
     
       // Reactions:
-      v1: IR => pIR; E_v1 + compartment_*Henri_Michaelis_Menten__irreversible(IR, Km1, V1);
+      v1: IR => pIR; compartment_*Henri_Michaelis_Menten__irreversible(IR, Km1, V1);
       v2: pIR => IR; compartment_*Henri_Michaelis_Menten__irreversible(pIR, Km2, V2);
       v3: IRS => pIRS; compartment_*HMM_Mod(k3c, IRS, pIR, Km3);
       v4: pIRS => IRS; compartment_*Henri_Michaelis_Menten__irreversible(pIRS, Km4, V4);
       v5: Akt => pAkt; compartment_*Function_for_v5(k5ca, pIRS, Akt, Km5a, k5cb, pmTORC2, Km5b);
-      v6: pAkt => Akt; E_v6 + compartment_*Henri_Michaelis_Menten__irreversible(pAkt, Km6, V6);
+      v6: pAkt => Akt; compartment_*Henri_Michaelis_Menten__irreversible(pAkt, Km6, V6);
       v7: mTORC1 => pmTORC1; compartment_*HMM_Mod(k7c, mTORC1, pAkt, Km7);
       v8: pmTORC1 => mTORC1; compartment_*Henri_Michaelis_Menten__irreversible(pmTORC1, Km8, V8);
       v9: mTORC2 => pmTORC2; compartment_*HMM_Mod(k9c, mTORC2, pIR, Km9);
@@ -90,8 +105,6 @@ Show control of Wolf model.
       DEPTOR = 350;
       pDEPTOR = 0;
       // Added to model
-      E_v1 = 1;
-      E_v6 = 1;
       E_v11 = 1;
     
       // Compartment initializations:
@@ -201,5 +214,78 @@ Show control of Wolf model.
     Varusai2018___Dynamic_modelling_of_the_mTOR_signalling_network_reveals_complex_emergent_behaviours_conferred_by_DEPTOR property "http://identifiers.org/ncit/C101595"
     Varusai2018___Dynamic_modelling_of_the_mTOR_signalling_network_reveals_complex_emergent_behaviours_conferred_by_DEPTOR taxon "http://identifiers.org/taxonomy/9606"
     """
+ 
+.. end-code-block
+
+To simplify the analysis, we make use of the ``ctl.Timeseries`` class (essentially a ``pandas.DataFrame`` whose index is time in milliseconds).
+``controlSBML`` has several methods that makes it easy to plot and manipulate ``ctl.Timeseries`` objects.
+
+We begin by creating a ``control.NonlinearIOSystem`` for the mTOR model.
+
+.. code-block:: python
+
+    ctlsb = ctl.ControlSBML(NEW_MTOR,
+                            input_names=["E_v11"],
+                            output_names=["mTORC1_DEPTOR", "pAkt"])
+    mtor = ctlsb.makeNonlinearIOSystem("mtor")
+ 
+.. end-code-block
+
+Next, we plot the open loop behavior of the model.
+
+.. code-block:: python
+
+    ctlsb = ctl.ControlSBML(NEW_MTOR,
+                            input_names=["E_v11"],
+                            output_names=["mTORC1_DEPTOR", "pAkt"])
+    mtor = ctlsb.makeNonlinearIOSystem("mtor")
+    ctl.plotOneTS(ctl.simulateSystem(mtor, end_time=500), figsize=(5,5))
+ 
+.. end-code-block
+
+.. image:: images/detailed_example_fig1.png
+    :width: 400
+
+ We see that ``mTORC1_DEPTOR`` in open loop oscilates and generally has a value above our
+ target of 100.
+
+ Next, we construct a PI controller.
+
+
+.. code-block:: python
+
+    ref = 100  # Desired concentration for mTORC1_DEPTOR
+    kP = 0.1
+    kI = 0.01
+    # Calculate derivative of state
+    def updfcn(t, x, u, _):
+        # Accumulate the control error
+        # t: float (time)
+        # x: array-float (state)
+        # u: array-float (output from OLS)
+        # returns: array-float (derivative of state)
+        dx = ref - u[0]
+        #print(t, u, dx)
+        return dx
+    
+    # Calculate output value
+    def outfcn(t, x, y, _):
+        # Calculate the output from the input
+        # t: float (time)
+        # x: array-float (state)
+        # e: array-float (inputs)
+        # returns: array (output)
+        new_err = ref - y[0]
+        output = -kI*x[0] - kP*new_err
+        #print(t, output)
+        return output
+    
+    # Create a PI Controller
+    controller = control.NonlinearIOSystem(
+      updfcn,
+      outfcn,
+      states=1,
+      inputs=['in'],
+      outputs=['out'], name='controller')
 
 .. end-code-block
