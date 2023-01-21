@@ -41,8 +41,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.do_simulate_on_update = do_simulate_on_update
         # Useful properties
         self.input_names = ctlsb.input_names
-        self.state_names = [s for s in ctlsb.species_names
-              if not s in self.input_names]
+        self.state_names = list(ctlsb.species_names)
         self.dstate_names = ["%s'" % n for n in self.state_names]
         self.output_names = ctlsb.output_names
         self.num_state = len(self.state_names)
@@ -104,24 +103,13 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         # Adust the state
         state_dct = {n: x_vec[i] for i, n in enumerate(self.state_names)}
         self.ctlsb.set(state_dct)
-        # Set values for inputs
+        # Calculate the derivatives of floating species in state
+        derivative_arr = np.array([v for v in self.ctlsb.get(self.dstate_names).values()])
+        # Adjust the derivatives based on the input
         input_dct = {n: u_vec[i] for i, n in enumerate(self.input_names)}
-        for input_name, input_value in input_dct.items():
-            try:
-                cur_val = self.ctlsb.get(input_name)
-                new_val = cur_val + float(input_value)
-                self.ctlsb.set({input_name: float(new_val)})
-            except RuntimeError:
-                if input_name not in self._ignored_inputs:
-                    self._ignored_inputs.append(input_name)
-                    text = "System %s: Input %s cannot be set. Ignored."  \
-                          % (self.name, input_name)
-                    msgs.warn(text)
-        # Calculate the change in floating species in state
-        # TODO: Delete
-        # dstate_ser = pd.Series(self.ctlsb.get(dstate_names))
-        arr = np.array([v for v in self.ctlsb.get(self.dstate_names).values()])
-        return arr
+        for idx, input_name in enumerate(input_dct.keys()):
+            derivative_arr[idx] += input_dct[input_name]
+        return derivative_arr
 
     def _outfcn(self, time, x_vec, _, __):
         """
