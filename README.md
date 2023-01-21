@@ -108,6 +108,9 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 1.0.5  1/22/2023
+    * Fix bugs in NonlinearIOSystem relating to states and calculations in updfcn.
+    * Changes to documentation
 * 1.0.4
     * Fix bug so that makeStateSpace honors the time argument
     * Updated Sphinx documentation

@@ -28,7 +28,7 @@ S1 = 1
 S2 = 2
 S3 = 3
 """
-INITIAL_VALUES = [1, 2, 3]
+INITIAL_VALUES = [10, 1, 2, 3]
 INPUT_NAMES = ["E1"]
 OUTPUT_NAMES = ["S1", "S2"]
 
@@ -91,7 +91,7 @@ class TestFunctions(unittest.TestCase):
         if IGNORE_TEST:
           return
         x_vec = ctl.simulate_system.makeStateVector(self.interconnect)
-        self.assertEqual(len(x_vec), 3)
+        self.assertEqual(len(x_vec), 4)
 
     def testSimulateSystemCtlNonlinearIOSystem(self):
         if IGNORE_TEST:
