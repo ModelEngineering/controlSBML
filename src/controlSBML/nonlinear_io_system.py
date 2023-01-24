@@ -84,7 +84,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         calculate fluxes. No simulation is run, and so this technique
         may not always work.
         Inputs that change floating species are viewed as additions to the species,
-        not setting the level of the species.       
+        not setting the level of the species.
 
         Parameters
         ----------
@@ -133,3 +133,62 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             raise ValueError("Outputs could not be calculated.")
         #self.logger.add(time, self.ctlsb.get(self.state_names).values())
         return out_vec
+
+    def _makeStairs(self, num_point, num_step, initial_value, final_value):
+        """
+        Constructs a monotone sequence of steps.
+        
+        Parameters
+        ----------
+        num_point: number of points in the staircase
+        num_step: int (number of steps in the stair response.
+        start_value: float (initial values of the inputs)
+        final_value: float (ending values of the inputs)
+        
+        Returns
+        -------
+        np.ndarray
+        """
+        stairs = []  # Base value of stairs
+        num_point_in_step = int(num_point/num_step)
+        for num in range(num_step):
+            stairs.extend(list(np.repeat(num, num_point_in_step)))
+        num_added_point = num_point - len(stairs)
+        if num_added_point < 0:
+            raise RuntimeError("Negative residual count")
+        elif num_added_point > 0:
+            stairs.extend(list(np.repeat(num_step - 1, num_added_point)))
+        stairs = np.array(stairs)
+        # Rescale
+        stairs = stairs*(final_value - initial_value)/(num_step - 1)
+        stairs += initial_value
+        #
+        return stairs
+
+    def plotStairResponse(self, times, num_step, initial_values, final_values, is_plot=True):
+        """
+        Plots the response to a monotonic sequence of step inputs.
+        
+        Parameters
+        ----------
+        times: list-float (times for the responses)
+        num_step: int (number of steps in the stair response.
+        start_values: list-float (initial values of the inputs)
+        final_values: list-float (ending values of the inputs)
+        is_plot: bool
+        
+        Returns
+        -------
+        Timeseries (response of outputs)
+        """
+        # Construct the staircase inputs
+        num_point = len(times)
+        stairs = []  # Base value of stairs
+        for initial_value, final_value in zip(initial_values, final_values):
+            new_stairs = self._makeStairs(num_point, num_step, initial_value, final_value)
+            stairs.extend(new_stairs)
+        # Restructure
+        result_arr = np.array(stairs)
+        result_arr = np.reshape(result_arr, (num_point, len(initial_values)))
+        return result_arr
+

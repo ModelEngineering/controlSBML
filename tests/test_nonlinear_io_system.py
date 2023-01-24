@@ -157,10 +157,29 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def testWithInputOutputResponseWithoutEffector(self):
         if IGNORE_TEST:
-          return
+            return
         self.init()
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb)
         df = self.runInputOutputResponse(0)
+
+    def testPlotStairResponse(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        def test(num_point, num_step, initial_value=0, final_value=5):
+            result = self.sys._makeStairs(num_point, num_step, initial_value, final_value)
+            self.assertTrue(len(result), num_point)
+            num_distinct = len(set(result))
+            self.assertEqual(num_distinct, num_step)
+            self.assertEqual(result[0], initial_value)
+            self.assertEqual(result[-1], final_value)
+            return result
+        #
+        test, (20, 4)
+        result = test(19, 4)
+        result = test(191, 17)
+        result = test(91, 15)
+
 
 if __name__ == '__main__':
   unittest.main()
