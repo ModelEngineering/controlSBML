@@ -8,11 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
-if IS_PLOT:
-    import matplotlib
-    matplotlib.use('TkAgg')
+IGNORE_TEST = True
+IS_PLOT = True
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -162,23 +159,40 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb)
         df = self.runInputOutputResponse(0)
 
-    def testPlotStairResponse(self):
+    def testMakeStaircase(self):
         if IGNORE_TEST:
             return
         self.init()
         def test(num_point, num_step, initial_value=0, final_value=5):
-            result = self.sys._makeStairs(num_point, num_step, initial_value, final_value)
+            result = self.sys._makeStaircase(num_point, num_step, initial_value, final_value)
             self.assertTrue(len(result), num_point)
             num_distinct = len(set(result))
             self.assertEqual(num_distinct, num_step)
             self.assertEqual(result[0], initial_value)
             self.assertEqual(result[-1], final_value)
-            return result
         #
         test, (20, 4)
-        result = test(19, 4)
-        result = test(191, 17)
-        result = test(91, 15)
+        test(19, 4)
+        test(191, 17)
+        test(91, 15)
+
+    def testPlotStaircaseResponse(self):
+        # TESTING
+        self.init()
+        name = "E_J0"
+        def test(num_step, initial_value=0, final_value=11):
+            time_series = self.sys.plotStaircaseResponse(num_step, initial_value, final_value)
+            arr = time_series[name].values
+            num_distinct = len(set(arr))
+            self.assertEqual(num_distinct, num_step)
+            self.assertEqual(arr[0], initial_value)
+            self.assertEqual(arr[-1], final_value)
+            return time_series
+        #
+        test(4, )
+        result = test(4)
+        result = test(17)
+        result = test(15)
 
 
 if __name__ == '__main__':

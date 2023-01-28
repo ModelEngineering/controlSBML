@@ -4,6 +4,8 @@ import controlSBML.constants as cn
 from controlSBML import logger as lg
 from controlSBML import msgs
 from controlSBML import util
+from controlSBML.simulate_system import simulateSystem
+import controlSBML.timeseries as ts
 
 import control
 import numpy as np
@@ -17,15 +19,15 @@ MIN_ELAPSED_TIME = 1e-2
 class NonlinearIOSystem(control.NonlinearIOSystem):
 
     def __init__(self, name, ctlsb,
-         do_simulate_on_update=False,  **kwargs):
+         input_names=None, do_simulate_on_update=False):
         """
         Parameters
         ----------
         name: Name of the non-linear system created
         ctlsb: ControlSBML
+        input_names: list-str (names of inputs to system)
         do_simulate_on_update: bool
             simulate to the current time before each state update
-        kwargs: dict (additional keyword arguments provided by caller)
 
         Usage:
             sys = NonlinearIOSystem(func, None,
@@ -40,7 +42,13 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.ctlsb = ctlsb
         self.do_simulate_on_update = do_simulate_on_update
         # Useful properties
-        self.input_names = ctlsb.input_names
+        if input_names is None:
+            self.input_names = list(ctlsb.input_names)
+        else:
+            diff = set(input_names).difference(ctlsb.input_names)
+            if len(diff) != 0:
+                raise ValueError("Invalid input names: %s" % diff)
+            self.input_names = [input_names[0]]
         self.state_names = list(ctlsb.species_names)
         self.dstate_names = ["%s'" % n for n in self.state_names]
         self.output_names = ctlsb.output_names
@@ -134,9 +142,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         #self.logger.add(time, self.ctlsb.get(self.state_names).values())
         return out_vec
 
-    def _makeStairs(self, num_point, num_step, initial_value, final_value):
+    def _makeStaircase(self, num_point, num_step, initial_value, final_value):
         """
-        Constructs a monotone sequence of steps.
+        A staircase is a sequence of steps of the same magnitude and duration.
         
         Parameters
         ----------
@@ -165,30 +173,44 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         #
         return stairs
 
-    def plotStairResponse(self, times, num_step, initial_values, final_values, is_plot=True):
+    def plotStaircaseResponse(self, num_step, initial_value, final_value,
+          input_name=None, start_time=cn.START_TIME,
+          end_time=cn.END_TIME, points_per_time=cn.POINTS_PER_TIME,
+          is_plot=True, **plotOpts):
         """
-        Plots the response to a monotonic sequence of step inputs.
-        
+        Plots the response to a monotonic sequence of step inputs. Assumes a
+        single input.
+
         Parameters
         ----------
-        times: list-float (times for the responses)
-        num_step: int (number of steps in the stair response.
-        start_values: list-float (initial values of the inputs)
-        final_values: list-float (ending values of the inputs)
-        is_plot: bool
-        
+        num_step: int (number of steps in staircase)
+        initial_value: float (value for first step)
+        final_value: float (value for final step)
+        input_name: str (name of the input or first input to ctlsb)
+        start_time: float (starting time for the simulation)
+        end_time: float (ending time for the simulation)
+        plotOpts: dict (plot options)
+
         Returns
         -------
         Timeseries (response of outputs)
         """
+        # Handle defaults
+        if input_name is None:
+            if len(self.ctlsb.input_names) == 0:
+                raise ValueError("Must specify at least one input name")
+            input_name = self.ctlsb.input_names[0]
+        new_sys = NonlinearIOSystem(self.name, self.ctlsb, input_names=[input_name],
+              do_simulate_on_update=self.do_simulate_on_update)
         # Construct the staircase inputs
-        num_point = len(times)
-        stairs = []  # Base value of stairs
-        for initial_value, final_value in zip(initial_values, final_values):
-            new_stairs = self._makeStairs(num_point, num_step, initial_value, final_value)
-            stairs.extend(new_stairs)
+        num_point = points_per_time*(end_time - start_time) + 1
+        staircase_arr = new_sys._makeStaircase(num_point, num_step, initial_value, final_value)
         # Restructure
-        result_arr = np.array(stairs)
-        result_arr = np.reshape(result_arr, (num_point, len(initial_values)))
-        return result_arr
+        time_series = simulateSystem(new_sys, u_vec=staircase_arr, start_time=start_time,
+               end_time=end_time, points_per_time=points_per_time)
+        # Include the inputs
+        time_series[input_name] = staircase_arr
+        if is_plot:
+            util.plotOneTS(time_series, **plotOpts)
+        return time_series
 

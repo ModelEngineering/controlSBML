@@ -69,14 +69,14 @@ def getModel(file_name=MODEL_823_FILE):
     return model_str
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
-def plotOneTS(ts, **kwargs):
+def plotOneTS(time_series, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
     columns are legends.
 
     Parameters
     ----------
-    ts: TimeSeries
+    time_series: TimeSeries
     #@expand
 
     Returns
@@ -88,8 +88,8 @@ def plotOneTS(ts, **kwargs):
     ax = mgr.plot_opts.get(cn.O_AX)
     if ax is None:
         _, ax = plt.subplots(1)
-    ax.plot(ts.times, ts)
-    legend_spec = cn.LegendSpec(ts.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
+    ax.plot(time_series.index, time_series)
+    legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
     mgr.doFigOpts()

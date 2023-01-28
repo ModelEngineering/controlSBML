@@ -607,7 +607,7 @@ class ControlBase(object):
         ss = control.StateSpace(A_mat, B_mat, C_mat, D_mat)
         return ss
 
-    def makeNonlinearIOSystem(self, name, effector_dct=None):
+    def makeNonlinearIOSystem(self, name):
         """
         Creates an object that can be used in connections with the
         control package.
@@ -615,15 +615,12 @@ class ControlBase(object):
         Parameters
         ----------
         name: str (name of the system)
-        effector_dct: dict (maps reaction inputs to roadrunner muteables)
-            key: str (input name)
-            value: str (name of roadrunner muteable)
 
         Returns
         -------
         controlSBML.NonelinearIOSystem
         """
-        return ctl.NonlinearIOSystem(name, self, effector_dct=effector_dct)
+        return ctl.NonlinearIOSystem(name, self)
 
     @staticmethod
     def reduceTransferFunction(tf, atol=ATOL):
@@ -663,12 +660,12 @@ class ControlBase(object):
         Creates a transfer function for the system. Verifies that there
         is a single input and a single output. Reduces the order of the
         transfer function as needed.
-        
+
         Parameters
         ----------
         time: float (time at which Jacobian is obtained)
         atol: absolute tolerance for comparison
-        
+
         Returns
         -------
         control.TransferFunction

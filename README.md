@@ -108,6 +108,10 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 1.0.6 
+    * makeTransferFunction uses simulation data and has options to control the complexity of resulting transfer function.
+    * plotStaircaseResponse shows effect of an input on outpus
+    * Remove cruft from effector_dct
 * 1.0.5  1/22/2023
     * Fix bugs in NonlinearIOSystem relating to states and calculations in updfcn.
     * Changes to documentation
