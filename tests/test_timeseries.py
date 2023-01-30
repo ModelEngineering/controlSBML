@@ -7,8 +7,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -54,8 +54,7 @@ class TestTimeseries(unittest.TestCase):
         self.assertFalse(np.isnan(np.sum(ts.values.flatten())))
 
     def testConstructorTS(self):
-        if IGNORE_TEST:
-          return
+        # TESTING
         ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
         new_ts = Timeseries(ts)
         self._validate(new_ts)

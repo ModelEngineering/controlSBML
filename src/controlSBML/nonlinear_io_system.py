@@ -45,8 +45,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         if input_names is None:
             self.input_names = list(ctlsb.input_names)
         else:
-            diff = set(input_names).difference(ctlsb.input_names)
+            diff = set(input_names).difference(ctlsb.state_names)
             if len(diff) != 0:
+                import pdb; pdb.set_trace()
                 raise ValueError("Invalid input names: %s" % diff)
             self.input_names = [input_names[0]]
         self.state_names = list(ctlsb.species_names)
@@ -176,7 +177,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     def plotStaircaseResponse(self, num_step, initial_value, final_value,
           input_name=None, start_time=cn.START_TIME,
           end_time=cn.END_TIME, points_per_time=cn.POINTS_PER_TIME,
-          is_plot=True, **plotOpts):
+          is_plot=True, ax2=None, **plotOpts):
         """
         Plots the response to a monotonic sequence of step inputs. Assumes a
         single input.
@@ -189,11 +190,12 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         input_name: str (name of the input or first input to ctlsb)
         start_time: float (starting time for the simulation)
         end_time: float (ending time for the simulation)
+        ax2: Matplotlib.Axes (second y axis)
         plotOpts: dict (plot options)
 
         Returns
         -------
-        Timeseries (response of outputs)
+        util.PlotResult
         """
         # Handle defaults
         if input_name is None:
@@ -206,11 +208,22 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         num_point = points_per_time*(end_time - start_time) + 1
         staircase_arr = new_sys._makeStaircase(num_point, num_step, initial_value, final_value)
         # Restructure
-        time_series = simulateSystem(new_sys, u_vec=staircase_arr, start_time=start_time,
+        output_ts = simulateSystem(new_sys, u_vec=staircase_arr, start_time=start_time,
                end_time=end_time, points_per_time=points_per_time)
         # Include the inputs
-        time_series[input_name] = staircase_arr
+        output_ts[input_name] = staircase_arr
         if is_plot:
-            util.plotOneTS(time_series, **plotOpts)
-        return time_series
+            ax = util.plotOneTS(output_ts, **plotOpts)
+            if ax2 is None:
+                ax2 = ax
+            # FIXME: But in 2nd y axis
+            if False:
+                staircase_ts = ts.Timeseries(staircase_arr, columns=[input_name],
+                      times=output_ts.index)
+                _ = util.plotOneTS(staircase_ts, **plotOpts, ax=ax2)
+
+        else:
+            ax = None
+        #
+        return util.PlotResult(time_series=output_ts, ax=ax)
 

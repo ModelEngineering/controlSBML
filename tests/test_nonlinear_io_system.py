@@ -179,20 +179,23 @@ class TestNonlinearIOSystem(unittest.TestCase):
     def testPlotStaircaseResponse(self):
         # TESTING
         self.init()
-        name = "E_J0"
+        name = "S1"
         def test(num_step, initial_value=0, final_value=11):
-            time_series = self.sys.plotStaircaseResponse(num_step, initial_value, final_value)
-            arr = time_series[name].values
+            plot_result = self.sys.plotStaircaseResponse(num_step,
+                  initial_value, final_value,
+                  input_name=name)
+            arr = plot_result.time_series[name].values
             num_distinct = len(set(arr))
             self.assertEqual(num_distinct, num_step)
             self.assertEqual(arr[0], initial_value)
             self.assertEqual(arr[-1], final_value)
-            return time_series
+            return plot_result
         #
-        test(4, )
         result = test(4)
+        self.assertEquals(str(result), "")
         result = test(17)
         result = test(15)
+        test(4, )
 
 
 if __name__ == '__main__':

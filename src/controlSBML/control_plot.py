@@ -172,7 +172,7 @@ class ControlPlot(ControlAnalysis):
         Constructs bode plots for a State Spaesystem.
         This is done by constructing n*n
         SISO systems where there n states.
-    
+
         Parameters
         ----------
         is_magnitude: bool

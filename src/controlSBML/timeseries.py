@@ -27,7 +27,7 @@ def findCommonIndices(index1, index2):
     ----------
     index1: list/index
     index2: list/index
-    
+
     Returns
     -------
     sorted list
@@ -44,7 +44,7 @@ def align(ts1, ts2):
     ----------
     ts1: Timeseries/TimeseriesSer
     ts2: Timeseries/TimeseriesSer
-    
+
     Returns
     -------
     Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
@@ -54,13 +54,38 @@ def align(ts1, ts2):
     new_ts2 = ts2.loc[common_indices, :]
     return new_ts1, new_ts2
 
+def convertTime(times):
+    """
+    Converts float seconds to int ms.
+
+    Parameters
+    ----------
+    times: list-float
+
+    Returns
+    -------
+    list-int
+    """
+    # Check if this is an index in the correct units
+    if "pandas.core.indexes" in str(type(times)):
+        if times.name == cn.TIMESERIES_INDEX_NAME:
+            return list(times)
+    # Must convert
+    arr = np.array(times).astype(float)
+    new_arr = arr*cn.MS_IN_SEC
+    new_arr = new_arr.astype(int)
+    return new_arr
+
+
 ############# CLASSES ###############
 class TimeseriesSer(pd.Series):
 
     def __init__(self, ser, times=None):
         if times is None:
             times = ser.index
-        super().__init__(ser, index=times)
+        new_times = convertTime(times)
+        super().__init__(ser, index=new_times)
+        self.index.name = cn.TIMESERIES_INDEX_NAME
 
     @property
     def ser(self):
@@ -78,7 +103,7 @@ class TimeseriesSer(pd.Series):
         Parameters
         ----------
         other: Timeseries/TimeseriesSer
-        
+
         Returns
         -------
         Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
@@ -152,9 +177,9 @@ class Timeseries(pd.DataFrame):
         else:
             raise ValueError("Unsupported data container.")
         #
-        df.index = self._convertTime(times)
+        df.index = convertTime(times)
         # Fix the columns if needed
-        new_columns = [str(c)[1:-1] 
+        new_columns = [str(c)[1:-1]
               if str(c)[0] == "[" else c for c in df.columns]
         df.columns = new_columns
         super().__init__(df)
@@ -184,29 +209,6 @@ class Timeseries(pd.DataFrame):
             return ts
         else:
             return self.__class__(item, times=item.index)
-               
-    @staticmethod
-    def _convertTime(times):
-        """
-        Converts float seconds to int ms.
-
-        Parameters
-        ----------
-        times: list-float
-        
-        Returns
-        -------
-        list-int
-        """
-        # Check if this is an index in the correct units
-        if "pandas.core.indexes" in str(type(times)):
-            if times.name == cn.TIMESERIES_INDEX_NAME:
-                return list(times)
-        # Must convert
-        arr = np.array(times).astype(float)
-        new_arr = arr*cn.MS_IN_SEC
-        new_arr = new_arr.astype(int)
-        return new_arr
 
     @property
     def df(self):

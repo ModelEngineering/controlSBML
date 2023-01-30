@@ -17,6 +17,8 @@ MODEL_URLPAT =  REPO_URL + "/models/%s"
 MODEL_823_FILE = "biomodels_823.ant"
 LOCAL_FILE = "local.txt"
 
+############### FUNCTIONS ################
+
 def calculateMatrixDistance(mat1, mat2):
     """
     Calculates the distance between two matrices with the same shape.
@@ -88,7 +90,8 @@ def plotOneTS(time_series, **kwargs):
     ax = mgr.plot_opts.get(cn.O_AX)
     if ax is None:
         _, ax = plt.subplots(1)
-    ax.plot(time_series.index, time_series)
+    times = np.array(time_series.index)/cn.MS_IN_SEC
+    ax.plot(times, time_series)
     legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
@@ -303,3 +306,25 @@ def timeresponse2Timeseries(timeresponse, column_names=None):
 
 def isNumber(item):
     return isinstance(item, float) or isinstance(item, int)
+
+
+############### CLASSES ################
+class PlotResult(object):
+    """
+    Contains data returned from a plot method.
+
+    Properties:
+        time_series: Timeseries
+            index: times in plot
+            columns: variables plotted
+        ax: Matplotlib.Axes (axis plotted)
+    """
+
+    def __init__(self, time_series=None, ax=None, ax2=None):
+        self.time_series = time_series
+        self.ax = ax
+        self.ax2 = ax2
+
+    def __repr__(self):
+        """Avoid printer this object."""
+        return("")
