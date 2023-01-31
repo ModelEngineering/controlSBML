@@ -10,6 +10,12 @@ import tellurium as te
 
 IGNORE_TEST = True
 IS_PLOT = True
+if False:
+    import matplotlib
+    matplotlib.use("TkAgg")
+    import tkinter
+    root = tkinter.Tk()
+    root.configure(background="white")
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)

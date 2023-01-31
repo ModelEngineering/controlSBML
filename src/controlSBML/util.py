@@ -16,6 +16,7 @@ MODULE_URLPAT =  REPO_URL + "/controlSBML/%s.py"  # Pattern for module URL
 MODEL_URLPAT =  REPO_URL + "/models/%s"
 MODEL_823_FILE = "biomodels_823.ant"
 LOCAL_FILE = "local.txt"
+FIGURE_WRITER_IDX = 0  # Index of figures writter
 
 ############### FUNCTIONS ################
 
@@ -27,7 +28,7 @@ def calculateMatrixDistance(mat1, mat2):
     ----------
     mat1 - np.array
     mat2 - np.array
-    
+
     Returns
     -------
     float
@@ -55,11 +56,11 @@ def getSharedCodes(module_name="util"):
 
 def getModel(file_name=MODEL_823_FILE):
     """
-    
+
     Parameters
     ----------
     file_name: str (filename with extension)
-    
+
     Returns
     -------
     str
@@ -71,7 +72,7 @@ def getModel(file_name=MODEL_823_FILE):
     return model_str
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
-def plotOneTS(time_series, **kwargs):
+def plotOneTS(time_series, ax2=None, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
     columns are legends.
@@ -88,8 +89,10 @@ def plotOneTS(time_series, **kwargs):
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
     ax = mgr.plot_opts.get(cn.O_AX)
-    if ax is None:
+    if (ax is None) and (ax2 is None):
         _, ax = plt.subplots(1)
+    if ax2 is not None:
+        ax = ax2
     times = np.array(time_series.index)/cn.MS_IN_SEC
     ax.plot(times, time_series)
     legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
@@ -154,7 +157,7 @@ def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
     start_time: float
     end_time: float
     points_per_time: int
-    
+
     Returns
     -------
     np.ndarray
@@ -290,7 +293,7 @@ def timeresponse2Timeseries(timeresponse, column_names=None):
     ----------
     timeresponse: control.Timeresponse
     column_names: list-str
-    
+
     Returns
     -------
     Timeseries

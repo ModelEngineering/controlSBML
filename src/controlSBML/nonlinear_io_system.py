@@ -177,7 +177,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     def plotStaircaseResponse(self, num_step, initial_value, final_value,
           input_name=None, start_time=cn.START_TIME,
           end_time=cn.END_TIME, points_per_time=cn.POINTS_PER_TIME,
-          is_plot=True, ax2=None, **plotOpts):
+          is_plot=True, ax2=None, **plot_opts):
         """
         Plots the response to a monotonic sequence of step inputs. Assumes a
         single input.
@@ -191,7 +191,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         start_time: float (starting time for the simulation)
         end_time: float (ending time for the simulation)
         ax2: Matplotlib.Axes (second y axis)
-        plotOpts: dict (plot options)
+        plot_opts: dict (plot options)
 
         Returns
         -------
@@ -213,17 +213,23 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         # Include the inputs
         output_ts[input_name] = staircase_arr
         if is_plot:
-            ax = util.plotOneTS(output_ts, **plotOpts)
-            if ax2 is None:
-                ax2 = ax
             # FIXME: But in 2nd y axis
+            staircase_ts = ts.Timeseries(staircase_arr, columns=[input_name],
+                  times=output_ts.index)
             if False:
-                staircase_ts = ts.Timeseries(staircase_arr, columns=[input_name],
-                      times=output_ts.index)
-                _ = util.plotOneTS(staircase_ts, **plotOpts, ax=ax2)
+                output_ts = staircase_ts.copy()
+                del output_ts[input_name]
+                ax = util.plotOneTS(output_ts, **plot_opts)
+                if ax2 is None:
+                    ax2 = ax.twinx()
+                new_opts = dict(plot_opts)
+                new_opts[cn.O_AX] = ax2
+                _ = util.plotOneTS(staircase_ts[input_name], **new_opts)
+            else:
+                ax = util.plotOneTS(output_ts, **plot_opts)
 
         else:
             ax = None
         #
-        return util.PlotResult(time_series=output_ts, ax=ax)
+        return util.PlotResult(time_series=staircase_ts, ax=ax, ax2=ax2)
 

@@ -6,9 +6,11 @@ from controlSBML.option_management.options import Options
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 
 
 class OptionManager(object):
+    figure_idx = 0  # Index for automated figure generation
 
     def __init__(self, kwargs):
         """
@@ -70,7 +72,7 @@ class OptionManager(object):
     def setAx(self, is_override=False):
         """
         Sets the current axis.
-        
+
         Parameters
         ----------
         is_override: bool
@@ -88,7 +90,7 @@ class OptionManager(object):
     def getAx(self, is_override=False):
         """
         Sets the current axis.
-        
+
         Returns
         -------
         matplotlib.Axes
@@ -151,3 +153,17 @@ class OptionManager(object):
         fig.set_size_inches(fig_width, fig_length)
         if new_kwargs[cn.O_IS_PLOT]:
             plt.show()
+        writefig = new_kwargs[cn.O_WRITEFIG]
+        if isinstance(writefig, str):
+            writeFigure(writefig)
+        elif isinstance(writefig, bool):
+            if writefig:
+                self.writeFigure()
+
+    @classmethod
+    def writeFigure(cls, file_path=None, is_write=False):
+        if file_path is None:
+            filename = "figure_%d.pdf" % cls.figure_idx
+            cls.figure_idx  += 1
+            file_path = os.path.join(cn.PLOT_DIR, filename)
+        plt.savefig(file_path)

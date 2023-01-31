@@ -25,9 +25,10 @@ class LegendSpec():
 
 ################ DIRECTORIES #################
 PROJECT_DIR = os.path.dirname(os.path.abspath(__file__))
-for _ in range(1):
+for _ in range(2):
   PROJECT_DIR = os.path.dirname(PROJECT_DIR)
 CODE_DIR = os.path.join(PROJECT_DIR, "controlSBML")
+PLOT_DIR = PROJECT_DIR
 TEST_DIR = os.path.join(PROJECT_DIR, "tests")
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
 BIOMODELS_ZIP_FILENAME = "biomodels.zip"
@@ -39,6 +40,7 @@ C_DF = None  # Use default value of C matrix
 END_TIME = 5  # Default endtime
 EVENT = "event"
 INPUT = "input"
+IS_PLOT = False
 OUTPUT = "output"
 OUT_STATE = "out_state"
 PARAMS = "params"
@@ -64,6 +66,7 @@ O_POINTS_PER_TIME = "points_per_time"
 O_START_TIME = "start_time"
 O_SUPTITLE = "suptitle"
 O_TITLE = "title"
+O_WRITEFIG = "writefig"  # Write the figure
 O_XLABEL = "xlabel"
 O_XLIM = "xlim"
 O_XTICKLABELS = "xticklabels"
@@ -87,8 +90,8 @@ PLOT_DCT = dict(
       legend_crd=None,
       ylim=None,
       xlim=None,
-      xlabel="",           
-      ylabel="",           
+      xlabel="",
+      ylabel="",
       title="",
       ax=None,
       xticklabels=None,
@@ -100,6 +103,7 @@ FIG_DCT = dict(
       figure=None,
       figsize=(10, 10),
       suptitle="",
+      writefig=False,
       )
 
 DEFAULT_DCTS = [PLOT_DCT, FIG_DCT, SIM_DCT]
@@ -132,7 +136,8 @@ KWARGS = [
     # FIGURE OPTIONS
     Kwarg(O_FIGURE, default=None, dtype=matplotlib, doc="Figure option"),
     Kwarg(O_FIGSIZE, default=None, dtype=(float, float), doc="widith, height"),
-    Kwarg(O_IS_PLOT, default=True, dtype=bool, doc="Do the plot"),
+    Kwarg(O_IS_PLOT, default=True, dtype=bool, doc="Display the plot"),
+    Kwarg(O_WRITEFIG, default=False, dtype=bool, doc="Write the plot"),
     Kwarg(O_SUPTITLE, default="", dtype=str, doc="Figure title"),
     ]
 SIM_KWARGS = list(SIM_DCT.keys())
