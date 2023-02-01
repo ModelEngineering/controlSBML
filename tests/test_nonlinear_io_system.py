@@ -1,8 +1,10 @@
 import controlSBML as ctl
+import controlSBML.constants as cn
 
 import control
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import unittest
 import tellurium as te
@@ -41,6 +43,9 @@ $S3 = 3
 k1 =1; k2=2; k3=3
 """
 
+# Temporarily change the plot path
+cn.PLOT_DIR = os.path.join(cn.PLOT_DIR, "tests")
+
 
 #############################
 # Tests
@@ -51,12 +56,24 @@ class TestNonlinearIOSystem(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
+        self.removeFiles()
+
+    def tearDown(self):
+        plt.close()
+        self.removeFiles()
 
     def init(self, do_simulate_on_update=True):
         self.ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
               input_names=["E_J0"], output_names=["S1", "S2"])
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb,
                do_simulate_on_update=do_simulate_on_update)
+
+    def removeFiles(self):
+        for ffile in os.listdir(cn.PLOT_DIR):
+            if ("figure_" in ffile) and (".pdf") in ffile:
+                path = os.path.join(cn.PLOT_DIR, ffile)
+                if os.path.isfile(path):
+                    os.remove(path)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -182,13 +199,16 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         name = "S1"
         staircase_name = "%s_staircase" % name
-        ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
-              input_names=["S1"], output_names=["S2"])
+        output_names = ["S1", "S2"]
+        ctlsb = ctl.ControlSBML(LINEAR_MDL,
+              input_names=["S1"], output_names=output_names)
+        legend_spec = cn.LegendSpec(output_names, crd=(.5, 1))
         sys = ctl.NonlinearIOSystem("test_sys", ctlsb)
         def test(num_step, initial_value=0, final_value=11):
             plot_result = sys.plotStaircaseResponse(num_step,
-                  initial_value, final_value,
-                  input_name=name, writefig=True)
+                  initial_value, final_value, end_time=200,
+                  input_name=name, writefig=True, figsize=(5,5),
+                  legend_spec=legend_spec)
             arr = plot_result.time_series[staircase_name].values
             num_distinct = len(set(arr))
             self.assertEqual(num_distinct, num_step)

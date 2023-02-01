@@ -176,7 +176,6 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         #
         return stairs
 
-    # FIXME: use the options correctly for simulation and plotting
     def plotStaircaseResponse(self, num_step, initial_value, final_value,
           input_name=None, start_time=cn.START_TIME,
           end_time=cn.END_TIME, points_per_time=cn.POINTS_PER_TIME,
@@ -201,8 +200,6 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         util.PlotResult
         """
-        if len(self.output_labels) > 1:
-           warnings.warn("System has multiple outputs. Only plotting the first one.")
         # Handle defaults
         if input_name is None:
             if len(self.ctlsb.input_names) == 0:
@@ -223,25 +220,21 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         ax2 = None
         if is_plot:
             plot_opts = Options(plot_opts, cn.DEFAULT_DCTS)
-            output_ts = result_ts.copy()
-            if len(output_ts.columns) > 2:
-                for column in output_ts.columns:
-                    del output_ts[column]
             # Plot the output
+            output_ts = result_ts.copy()
             del output_ts[staircase_name]
             column_names = list(result_ts)
             revised_opts = Options(plot_opts, cn.DEFAULT_DCTS)
             revised_opts.set(cn.O_WRITEFIG, False)
             revised_opts.set(cn.O_IS_PLOT,  False)
-            revised_opts.set(cn.O_YLABEL, column_names[0])
-            revised_opts.set(cn.O_LEGEND_SPEC, cn.LegendSpec([]))
             plot_result = util.plotOneTS(output_ts, **revised_opts)
             ax = plot_result.ax
             if ax2 is None:
                 ax2 = ax.twinx()
             # Plot the staircase
             times = np.array(result_ts.index)/cn.MS_IN_SEC
-            ax2.plot(times, result_ts[staircase_name], color="red")
+            ax2.plot(times, result_ts[staircase_name], color="red",
+                  linestyle="--")
             ax2.set_ylabel(staircase_name, color="red")
             ax2.legend([])
             opt = plot_opts.get(cn.O_WRITEFIG)

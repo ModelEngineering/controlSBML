@@ -110,7 +110,7 @@ that continuous integration is done only *without* ``slycot``.
 ## Version History
 * 1.0.6 
     * makeTransferFunction uses simulation data and has options to control the complexity of resulting transfer function.
-    * plotStaircaseResponse shows effect of an input on outpus
+    * plotStaircaseResponse shows effect of a staircase input on outputs
     * Remove cruft from effector_dct
     * Added plot option writefig which takes arguments, True, False, str (path)
 * 1.0.5  1/22/2023

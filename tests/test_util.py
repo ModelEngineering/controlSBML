@@ -25,7 +25,7 @@ NAMED_ARRAY = MDL_RR.simulate()
 MAT = np.array(range(10))
 MAT = np.reshape(MAT, (2, 5))
 DF = pd.DataFrame(NAMED_ARRAY, columns=NAMED_ARRAY.colnames)
-        
+
 
 #############################
 # Tests

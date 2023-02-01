@@ -8,8 +8,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 DCT = dict(cn.PLOT_DCT)
 DCT.update(cn.SIM_DCT)
 if IS_PLOT:
@@ -62,7 +62,8 @@ class TestOptionManager(unittest.TestCase):
         self.option_mgr.doFigOpts()
 
     def testWritefig(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         def test(writefig, idx=0):
             dct = dict(DCT)
             _, ax = plt.subplots(1)
