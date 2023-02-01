@@ -153,17 +153,25 @@ class OptionManager(object):
         fig.set_size_inches(fig_width, fig_length)
         if new_kwargs[cn.O_IS_PLOT]:
             plt.show()
-        writefig = new_kwargs[cn.O_WRITEFIG]
-        if isinstance(writefig, str):
-            writeFigure(writefig)
-        elif isinstance(writefig, bool):
-            if writefig:
-                self.writeFigure()
+        self.writeFigure(new_kwargs[cn.O_WRITEFIG])
 
     @classmethod
-    def writeFigure(cls, file_path=None, is_write=False):
-        if file_path is None:
-            filename = "figure_%d.pdf" % cls.figure_idx
-            cls.figure_idx  += 1
-            file_path = os.path.join(cn.PLOT_DIR, filename)
-        plt.savefig(file_path)
+    def writeFigure(cls, writefig):
+        """
+        Writes a figure to a path specified by the option.
+        """
+        is_write = False
+        file_path = None
+        if isinstance(writefig, str):
+            filepath = writefig
+            is_write = True
+        elif isinstance(writefig, bool):
+            if writefig:
+                filepath = None
+                is_write = True
+        if is_write:
+            if file_path is None:
+                filename = "figure_%d.pdf" % cls.figure_idx
+                cls.figure_idx  += 1
+                file_path = os.path.join(cn.PLOT_DIR, filename)
+            plt.savefig(file_path)

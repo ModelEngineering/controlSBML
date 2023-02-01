@@ -84,13 +84,15 @@ def plotOneTS(time_series, ax2=None, **kwargs):
 
     Returns
     -------
-    matplotlib.axes
+    PlotResult
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
     ax = mgr.plot_opts.get(cn.O_AX)
     if (ax is None) and (ax2 is None):
-        _, ax = plt.subplots(1)
+        fig, ax = plt.subplots(1)
+    elif cn.O_FIGURE in kwargs.keys():
+        fig = kwargs[cn.O_FIGURE]
     if ax2 is not None:
         ax = ax2
     times = np.array(time_series.index)/cn.MS_IN_SEC
@@ -99,7 +101,7 @@ def plotOneTS(time_series, ax2=None, **kwargs):
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
     mgr.doFigOpts()
-    return ax
+    return PlotResult(ax=ax, ax2=ax2, fig=fig, time_series=time_series)
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
 def plotManyTS(*tss, ncol=1, names=None, **kwargs):
@@ -323,10 +325,11 @@ class PlotResult(object):
         ax: Matplotlib.Axes (axis plotted)
     """
 
-    def __init__(self, time_series=None, ax=None, ax2=None):
+    def __init__(self, time_series=None, ax=None, ax2=None, fig=None):
         self.time_series = time_series
         self.ax = ax
         self.ax2 = ax2
+        self.fig = fig
 
     def __repr__(self):
         """Avoid printer this object."""

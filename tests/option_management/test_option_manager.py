@@ -43,7 +43,9 @@ class TestOptionManager(unittest.TestCase):
     def removeFiles(self):
         for ffile in os.listdir(cn.PLOT_DIR):
             if ("figure_" in ffile) and (".pdf") in ffile:
-                os.remove(ffile)
+                path = os.path.join(cn.PLOT_DIR, ffile)
+                if os.path.isfile(path):
+                    os.remove(path)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -73,7 +75,6 @@ class TestOptionManager(unittest.TestCase):
             option_mgr.doPlotOpts()
             option_mgr.doFigOpts()
             #
-            import pdb; pdb.set_trace()
             if isinstance(writefig, bool):
                 filename = "figure_%d.pdf" % idx
                 path = os.path.join(cn.PLOT_DIR, filename)
@@ -83,12 +84,16 @@ class TestOptionManager(unittest.TestCase):
                 is_file = True
             if is_file:
                 self.assertTrue(os.path.isfile(path))
-                os.remove(path)
             else:
                 self.assertFalse(os.path.isfile(path))
 
         test(False)
+        test(True, idx=0)
         test(True, idx=1)
+        test(False, idx=2)
+        path = os.path.join(cn.PLOT_DIR, "figure_10.pdf")
+        test(path)
+        test(False, idx=2)
 
 
 if __name__ == '__main__':

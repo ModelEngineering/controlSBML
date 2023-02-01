@@ -6,10 +6,13 @@ from controlSBML import msgs
 from controlSBML import util
 from controlSBML.simulate_system import simulateSystem
 import controlSBML.timeseries as ts
+from controlSBML.option_management.option_manager import OptionManager
+from controlSBML.option_management.options import Options
 
 import control
 import numpy as np
 import pandas as pd
+import warnings
 
 
 ARG_LST = [cn.TIME, cn.STATE, cn.INPUT, cn.PARAMS]
@@ -47,7 +50,6 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         else:
             diff = set(input_names).difference(ctlsb.state_names)
             if len(diff) != 0:
-                import pdb; pdb.set_trace()
                 raise ValueError("Invalid input names: %s" % diff)
             self.input_names = [input_names[0]]
         self.state_names = list(ctlsb.species_names)
@@ -174,13 +176,15 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         #
         return stairs
 
+    # FIXME: use the options correctly for simulation and plotting
     def plotStaircaseResponse(self, num_step, initial_value, final_value,
           input_name=None, start_time=cn.START_TIME,
           end_time=cn.END_TIME, points_per_time=cn.POINTS_PER_TIME,
           is_plot=True, ax2=None, **plot_opts):
         """
         Plots the response to a monotonic sequence of step inputs. Assumes a
-        single input.
+        single input. Assumes a single output. If there is more than one,
+        only the first is plotted.
 
         Parameters
         ----------
@@ -197,6 +201,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         util.PlotResult
         """
+        if len(self.output_labels) > 1:
+           warnings.warn("System has multiple outputs. Only plotting the first one.")
         # Handle defaults
         if input_name is None:
             if len(self.ctlsb.input_names) == 0:
@@ -208,28 +214,39 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         num_point = points_per_time*(end_time - start_time) + 1
         staircase_arr = new_sys._makeStaircase(num_point, num_step, initial_value, final_value)
         # Restructure
-        output_ts = simulateSystem(new_sys, u_vec=staircase_arr, start_time=start_time,
+        result_ts = simulateSystem(new_sys, u_vec=staircase_arr, start_time=start_time,
                end_time=end_time, points_per_time=points_per_time)
-        # Include the inputs
-        output_ts[input_name] = staircase_arr
+        staircase_name = "%s_staircase" % input_name
+        result_ts[staircase_name] = staircase_arr
+        # Do the plots
+        ax = None
+        ax2 = None
         if is_plot:
-            # FIXME: But in 2nd y axis
-            staircase_ts = ts.Timeseries(staircase_arr, columns=[input_name],
-                  times=output_ts.index)
-            if False:
-                output_ts = staircase_ts.copy()
-                del output_ts[input_name]
-                ax = util.plotOneTS(output_ts, **plot_opts)
-                if ax2 is None:
-                    ax2 = ax.twinx()
-                new_opts = dict(plot_opts)
-                new_opts[cn.O_AX] = ax2
-                _ = util.plotOneTS(staircase_ts[input_name], **new_opts)
-            else:
-                ax = util.plotOneTS(output_ts, **plot_opts)
-
-        else:
-            ax = None
+            plot_opts = Options(plot_opts, cn.DEFAULT_DCTS)
+            output_ts = result_ts.copy()
+            if len(output_ts.columns) > 2:
+                for column in output_ts.columns:
+                    del output_ts[column]
+            # Plot the output
+            del output_ts[staircase_name]
+            column_names = list(result_ts)
+            revised_opts = Options(plot_opts, cn.DEFAULT_DCTS)
+            revised_opts.set(cn.O_WRITEFIG, False)
+            revised_opts.set(cn.O_IS_PLOT,  False)
+            revised_opts.set(cn.O_YLABEL, column_names[0])
+            revised_opts.set(cn.O_LEGEND_SPEC, cn.LegendSpec([]))
+            plot_result = util.plotOneTS(output_ts, **revised_opts)
+            ax = plot_result.ax
+            if ax2 is None:
+                ax2 = ax.twinx()
+            # Plot the staircase
+            times = np.array(result_ts.index)/cn.MS_IN_SEC
+            ax2.plot(times, result_ts[staircase_name], color="red")
+            ax2.set_ylabel(staircase_name, color="red")
+            ax2.legend([])
+            opt = plot_opts.get(cn.O_WRITEFIG)
+            plot_opts.set(cn.O_WRITEFIG, opt)
+            OptionManager.writeFigure(plot_opts[cn.O_WRITEFIG])
         #
-        return util.PlotResult(time_series=staircase_ts, ax=ax, ax2=ax2)
+        return util.PlotResult(time_series=result_ts, ax=ax, ax2=ax2)
 

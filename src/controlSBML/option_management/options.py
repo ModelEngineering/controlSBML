@@ -62,6 +62,24 @@ class Options(dict):
         if is_default:
             self[key] = default
 
+    def get(self, key):
+        """
+        Retrieves the key or its default value.
+
+        Parameters
+        ----------
+        key: str
+
+        Returns
+        -------
+        object
+        """
+        if key in self.keys():
+            return self[key ]
+        if key in self.all_default_dct.keys():
+            return self.all_default_dct[key]
+        raise ValueError("Cannot find a dictionary with key=%s" % key)
+
     def parse(self):
         """
         Parses options in to lists coresponding to the dictionaries provided.

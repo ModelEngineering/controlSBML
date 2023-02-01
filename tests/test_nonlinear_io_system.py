@@ -8,14 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
-if False:
-    import matplotlib
-    matplotlib.use("TkAgg")
-    import tkinter
-    root = tkinter.Tk()
-    root.configure(background="white")
+IGNORE_TEST = False
+IS_PLOT = False
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -183,14 +177,19 @@ class TestNonlinearIOSystem(unittest.TestCase):
         test(91, 15)
 
     def testPlotStaircaseResponse(self):
-        # TESTING
+        if IGNORE_TEST:
+            return
         self.init()
         name = "S1"
+        staircase_name = "%s_staircase" % name
+        ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
+              input_names=["S1"], output_names=["S2"])
+        sys = ctl.NonlinearIOSystem("test_sys", ctlsb)
         def test(num_step, initial_value=0, final_value=11):
-            plot_result = self.sys.plotStaircaseResponse(num_step,
+            plot_result = sys.plotStaircaseResponse(num_step,
                   initial_value, final_value,
-                  input_name=name)
-            arr = plot_result.time_series[name].values
+                  input_name=name, writefig=True)
+            arr = plot_result.time_series[staircase_name].values
             num_distinct = len(set(arr))
             self.assertEqual(num_distinct, num_step)
             self.assertEqual(arr[0], initial_value)
@@ -198,7 +197,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
             return plot_result
         #
         result = test(4)
-        self.assertEquals(str(result), "")
+        self.assertEqual(str(result), "")
         result = test(17)
         result = test(15)
         test(4, )
