@@ -5,6 +5,7 @@ import controlSBML.constants as cn
 from controlSBML.control_analysis import ControlAnalysis
 from controlSBML.control_extensions.state_space_tf import StateSpaceTF
 from controlSBML.option_management.option_manager import OptionManager
+from controlSBML.util import PlotResult
 
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
@@ -23,6 +24,10 @@ class ControlPlot(ControlAnalysis):
         names: list-str
             variables to to plot
         #@expand
+
+        Returns
+        ------
+        PlotResult
         """
         # Parse the options
         mgr = OptionManager(kwargs)
@@ -48,6 +53,7 @@ class ControlPlot(ControlAnalysis):
         mgr.doPlotOpts()  # Recover lost plot options
         # Finalize the figure
         mgr.doFigOpts()
+        return PlotResult(ax=ax)
 
     # TODO: Deprecate plotLinearApproximation. Use plotAccuracy instead.
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
@@ -60,13 +66,17 @@ class ControlPlot(ControlAnalysis):
         A_mat: A matrix of approximation model
             default is Jacobian at current time
         #@expand
+
+        Returns
+        ------
+        PlotResult
         """
         mgr = OptionManager(kwargs)
         start_time = mgr.sim_opts[cn.O_START_TIME]
         rr_ts = self.simulateRoadrunner(**mgr.sim_opts)
         nrow = 1
         ncol = len(self.output_names)
-        _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
+        fig, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         linear_ts = self.simulateLinearSystem(time=start_time,
               **mgr.sim_opts)
@@ -98,6 +108,7 @@ class ControlPlot(ControlAnalysis):
                 ax.set_yticklabels([])
             new_mgr.doPlotOpts()
         mgr.doFigOpts()
+        return PlotResult(ax=axes, fig=fig, time_series=linear_ts)
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
     def plotAccuracy(self, model_reference=None, times=0, **kwargs):
@@ -114,6 +125,10 @@ class ControlPlot(ControlAnalysis):
             Time at which Jacobian is calculated
             default: [0]
         #@expand
+
+        Returns
+        ------
+        PlotResult
         """
         if times == 0:
             times = [0]
@@ -127,7 +142,7 @@ class ControlPlot(ControlAnalysis):
         rr_ts = ctlsb.simulateRoadrunner(**mgr.sim_opts)
         nrow = len(times)
         ncol = len(self.output_names)
-        _, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
+        fig, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
         for irow, time in enumerate(times):
             linear_ts = ctlsb.simulateLinearSystem(time=time,
@@ -164,6 +179,7 @@ class ControlPlot(ControlAnalysis):
                     #ax.text(-2, y_max/2, "%2.1f" % time)
                 new_mgr.doPlotOpts()
         mgr.doFigOpts()
+        return PlotResult(ax=axes, fig=fig, time_series=rr_ts)
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
     def plotBode(self, is_magnitude=True, is_phase=True, is_plot=True,
@@ -182,9 +198,14 @@ class ControlPlot(ControlAnalysis):
         is_plot: bool
             Display plots
         #@expand
+
+        Returns
+        ------
+        PlotResult
         """
         mimo_sys = self.makeStateSpace()
         tf = StateSpaceTF(mimo_sys, input_names=self.input_names,
               output_names=self.output_names)
         tf.plotBode(is_magnitude==is_magnitude, is_phase==is_phase,
               is_plot=is_plot, **kwargs)
+        return PlotResult()

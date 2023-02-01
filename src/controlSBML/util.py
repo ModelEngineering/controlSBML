@@ -119,7 +119,7 @@ def plotManyTS(*tss, ncol=1, names=None, **kwargs):
 
     Returns
     -------
-    array-matplotlib.axes
+    PlotResult
     """
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
@@ -147,7 +147,7 @@ def plotManyTS(*tss, ncol=1, names=None, **kwargs):
             new_mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
         new_mgr.doPlotOpts()
     mgr.doFigOpts()
-    return axes
+    return PlotResult(ax=axes, fig=fig)
 
 def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
       points_per_time=cn.POINTS_PER_TIME):
@@ -326,6 +326,14 @@ class PlotResult(object):
     """
 
     def __init__(self, time_series=None, ax=None, ax2=None, fig=None):
+        """
+        Parameters
+        ----------
+        time_series: Timeseries
+        ax: Matplotlib.Axes or array-Matplot.Axes
+        ax2: Matplotlib.Axes or array-Matplot.Axes
+        fig: Matplotlib.Figure
+        """
         self.time_series = time_series
         self.ax = ax
         self.ax2 = ax2

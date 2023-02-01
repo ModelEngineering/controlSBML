@@ -57,7 +57,7 @@ class TestFunctions(unittest.TestCase):
         model_str = util.getModel()
         rr = te.loada(model_str)
         self.assertTrue("roadrunner" in str(type(rr)))
- 
+
     def testPlotOneTS(self):
         if IGNORE_TEST:
           return
