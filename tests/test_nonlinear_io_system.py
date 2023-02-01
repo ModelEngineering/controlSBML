@@ -72,7 +72,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         for ffile in os.listdir(cn.PLOT_DIR):
             if ("figure_" in ffile) and (".pdf") in ffile:
                 path = os.path.join(cn.PLOT_DIR, ffile)
-                if os.path.isfile(path):
+                if os.path.isfile(path) and (not IGNORE_TEST):
                     os.remove(path)
 
     def testConstructor(self):
@@ -208,6 +208,35 @@ class TestNonlinearIOSystem(unittest.TestCase):
             plot_result = sys.plotStaircaseResponse(num_step,
                   initial_value, final_value, end_time=200,
                   input_name=name, writefig=True, figsize=(5,5),
+                  legend_spec=legend_spec)
+            arr = plot_result.time_series[staircase_name].values
+            num_distinct = len(set(arr))
+            self.assertEqual(num_distinct, num_step)
+            self.assertEqual(arr[0], initial_value)
+            self.assertEqual(arr[-1], final_value)
+            return plot_result
+        #
+        result = test(4)
+        self.assertEqual(str(result), "")
+        result = test(17)
+        result = test(15)
+        test(4, )
+
+    def testPlotStaircaseResponseWithoutPlot(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        name = "S1"
+        staircase_name = "%s_staircase" % name
+        output_names = ["S1", "S2"]
+        ctlsb = ctl.ControlSBML(LINEAR_MDL,
+              input_names=["S1"], output_names=output_names)
+        legend_spec = cn.LegendSpec(output_names, crd=(.5, 1))
+        sys = ctl.NonlinearIOSystem("test_sys", ctlsb)
+        def test(num_step, initial_value=0, final_value=11):
+            plot_result = sys.plotStaircaseResponse(num_step,
+                  initial_value, final_value, end_time=200,
+                  input_name=name, is_plot=False,
                   legend_spec=legend_spec)
             arr = plot_result.time_series[staircase_name].values
             num_distinct = len(set(arr))

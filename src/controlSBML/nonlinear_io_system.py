@@ -9,6 +9,7 @@ import controlSBML.timeseries as ts
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.option_management.options import Options
 
+from docstring_expander.expander import Expander
 import control
 import numpy as np
 import pandas as pd
@@ -148,38 +149,37 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     def _makeStaircase(self, num_point, num_step, initial_value, final_value):
         """
         A staircase is a sequence of steps of the same magnitude and duration.
-        
+
         Parameters
         ----------
         num_point: number of points in the staircase
         num_step: int (number of steps in the stair response.
         start_value: float (initial values of the inputs)
         final_value: float (ending values of the inputs)
-        
+
         Returns
         -------
         np.ndarray
         """
-        stairs = []  # Base value of stairs
+        steps = []  # Steps in the staircase
         num_point_in_step = int(num_point/num_step)
         for num in range(num_step):
-            stairs.extend(list(np.repeat(num, num_point_in_step)))
-        num_added_point = num_point - len(stairs)
+            steps.extend(list(np.repeat(num, num_point_in_step)))
+        num_added_point = num_point - len(steps)
         if num_added_point < 0:
             raise RuntimeError("Negative residual count")
         elif num_added_point > 0:
-            stairs.extend(list(np.repeat(num_step - 1, num_added_point)))
-        stairs = np.array(stairs)
+            steps.extend(list(np.repeat(num_step - 1, num_added_point)))
+        staircase_arr = np.array(steps)
         # Rescale
-        stairs = stairs*(final_value - initial_value)/(num_step - 1)
-        stairs += initial_value
+        staircase_arr = staircase_arr*(final_value - initial_value)/(num_step - 1)
+        staircase_arr += initial_value
         #
-        return stairs
+        return staircase_arr
 
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
     def plotStaircaseResponse(self, num_step, initial_value, final_value,
-          input_name=None, start_time=cn.START_TIME,
-          end_time=cn.END_TIME, points_per_time=cn.POINTS_PER_TIME,
-          is_plot=True, ax2=None, **plot_opts):
+          input_name=None, ax2=None, **kwargs):
         """
         Plots the response to a monotonic sequence of step inputs. Assumes a
         single input. Assumes a single output. If there is more than one,
@@ -191,22 +191,25 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         initial_value: float (value for first step)
         final_value: float (value for final step)
         input_name: str (name of the input or first input to ctlsb)
-        start_time: float (starting time for the simulation)
-        end_time: float (ending time for the simulation)
         ax2: Matplotlib.Axes (second y axis)
-        plot_opts: dict (plot options)
+        #@expand
 
         Returns
         -------
         util.PlotResult
         """
+        # Handle the options
+        mgr = OptionManager(kwargs)
+        start_time = mgr.options.get(cn.O_START_TIME)
+        end_time = mgr.options.get(cn.O_END_TIME)
+        points_per_time = mgr.options.get(cn.O_POINTS_PER_TIME)
+        is_plot = mgr.options.get(cn.O_IS_PLOT)
         # Handle defaults
         if input_name is None:
             if len(self.ctlsb.input_names) == 0:
                 raise ValueError("Must specify at least one input name")
             input_name = self.ctlsb.input_names[0]
-        new_sys = NonlinearIOSystem(self.name, self.ctlsb, input_names=[input_name],
-              do_simulate_on_update=self.do_simulate_on_update)
+        new_sys = NonlinearIOSystem(self.name, self.ctlsb, input_names=[input_name])
         # Construct the staircase inputs
         num_point = points_per_time*(end_time - start_time) + 1
         staircase_arr = new_sys._makeStaircase(num_point, num_step, initial_value, final_value)
@@ -219,7 +222,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         ax = None
         ax2 = None
         if is_plot:
-            plot_opts = Options(plot_opts, cn.DEFAULT_DCTS)
+            plot_opts = Options(mgr.plot_opts, cn.DEFAULT_DCTS)
             # Plot the output
             output_ts = result_ts.copy()
             del output_ts[staircase_name]
@@ -237,9 +240,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                   linestyle="--")
             ax2.set_ylabel(staircase_name, color="red")
             ax2.legend([])
-            opt = plot_opts.get(cn.O_WRITEFIG)
-            plot_opts.set(cn.O_WRITEFIG, opt)
-            OptionManager.writeFigure(plot_opts[cn.O_WRITEFIG])
+            OptionManager.writeFigure(mgr.options.get(cn.O_WRITEFIG))
         #
         return util.PlotResult(time_series=result_ts, ax=ax, ax2=ax2)
 
