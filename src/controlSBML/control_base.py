@@ -15,6 +15,7 @@ from controlSBML.make_roadrunner import makeRoadrunner
 import controlSBML as ctl
 from controlSBML import util
 from controlSBML import msgs
+import controlSBML.siso_transfer_function_builder as stb
 
 import control
 import numpy as np
@@ -156,7 +157,7 @@ class ControlBase(object):
               self.state_names)) > 0
         if self.is_reduced and is_state_input:
             raise ValueError("Cannot handle input states for is_reduced=True")
-        # Initializations 
+        # Initializations
         state_names = self.state_names
         # Delete states that are inputs
         # TODO: Delete since no longer deleting input state
@@ -294,7 +295,7 @@ class ControlBase(object):
         Parameters
         ----------
         time: float
-        
+
         Returns
         -------
         pd.DataFrame
@@ -404,7 +405,7 @@ class ControlBase(object):
         object/dict
         """
         if names is None:
-            names = [k for k in self.roadrunner.keys() if not ")" in k] 
+            names = [k for k in self.roadrunner.keys() if not ")" in k]
         if isinstance(names, str):
             return self.roadrunner[names]
         return {n: self.roadrunner[n] for n in names}
@@ -630,7 +631,7 @@ class ControlBase(object):
         Parameters
         ----------
         tf: control.TransferFunction
-        
+
         Returns
         -------
         tf: control.TransferFunction
@@ -654,6 +655,37 @@ class ControlBase(object):
         new_denominator = reduceOrder(denominator, lowest_order)
         new_tf = control.TransferFunction(new_numerator, new_denominator)
         return new_tf
+
+    def makeSISOTransferFunctionBuilder(self, system_name="sys",
+          input_name=None, output_name=None):
+        """
+        Creates a SISOTransferFunctionBuilder to construct a SISO transfer function.
+        The default input and output names are the first input and output names.
+
+        Parameters
+        ----------
+        system_name: str
+        input_name: str
+        output_name: str
+
+        Returns
+        -------
+        SISOTransferFunctionBuilder
+        """
+        def getName(specified_name, names):
+            if specified_name is None:
+                if len(names) < 1:
+                    raise ValueError("Must specify at least one name")
+                name = names[0]
+            else:
+                name = specified_name
+            return name
+        #
+        input_name = getName(input_name, self.input_names)
+        output_name = getName(output_name, self.output_names)
+        sys = self.makeNonlinearIOSystem(system_name)
+        return stb.SISOTransferFunctionBuilder(sys, input_name=input_name,
+              output_name=output_name)
 
     def makeTransferFunction(self, time=None, atol=ATOL):
         """
@@ -694,7 +726,7 @@ class ControlBase(object):
         ----------
         time: float
             Time at which this is calculated
-        
+
         Returns
         -------
         pd.DataFrame

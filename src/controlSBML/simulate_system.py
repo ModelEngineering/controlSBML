@@ -3,7 +3,10 @@
 import controlSBML.constants as cn
 import controlSBML as ctl
 from controlSBML import util
+from controlSBML.option_management.option_manager import OptionManager
+from controlSBML.option_management.options import Options
 
+from docstring_expander.expander import Expander
 import control
 import numpy as np
 import pandas as pd
@@ -34,9 +37,9 @@ def makeStateVector(sys, start_time=0):
     result = [float(v) for v in x_lst]
     return result
 
+@Expander(cn.KWARGS, cn.SIM_KWARGS)
 def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
-      start_time=cn.START_TIME, end_time=cn.END_TIME,
-      points_per_time=cn.POINTS_PER_TIME):
+      **kwargs):
     """
     Simulates the system. Provides default values for initial state by
     setting control systems to 0 and setting controlSBML.NonlinearIOSystem
@@ -48,14 +51,17 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
     output:names: list-str (names of the outputs)
     initial_x_vec: np.array or pd.Series
     u_vec: np.array or pd.Series
-    start_time: float (start of simulation)
-    end_time: float (end of simulation)
-    points_per_time: int (number of simulation timepoints per second)
+    #@expand
 
     Returns
     -------
     Timeseries
     """
+    # Handle simulation options
+    mgr = OptionManager(kwargs)
+    start_time = mgr.options.get(cn.O_START_TIME)
+    end_time = mgr.options.get(cn.O_END_TIME)
+    points_per_time = mgr.options.get(cn.O_POINTS_PER_TIME)
     # Construc initial state vector if necesary
     if initial_x_vec is None:
         initial_x_vec = np.array(makeStateVector(sys, start_time=start_time))

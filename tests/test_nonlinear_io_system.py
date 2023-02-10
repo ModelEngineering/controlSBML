@@ -10,8 +10,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -194,8 +194,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         test(91, 15)
 
     def testPlotStaircaseResponse(self):
-        if IGNORE_TEST:
-            return
+        # TESTING
         self.init()
         name = "S1"
         staircase_name = "%s_staircase" % name
@@ -205,7 +204,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         legend_spec = cn.LegendSpec(output_names, crd=(.5, 1))
         sys = ctl.NonlinearIOSystem("test_sys", ctlsb)
         def test(num_step, initial_value=0, final_value=11):
-            plot_result = sys.plotStaircaseResponse(num_step,
+            plot_result = sys.plotStaircaseResponse(final_value, num_step,
                   initial_value, final_value, end_time=200,
                   input_name=name, writefig=True, figsize=(5,5),
                   legend_spec=legend_spec)

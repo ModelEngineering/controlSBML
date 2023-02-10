@@ -109,7 +109,7 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 1.0.6 
-    * makeTransferFunction uses simulation data and has options to control the complexity of resulting transfer function.
+    * ControlSBML.makeSISOTransferFunctionBuilder creates a SISOTransferFunctionBuilder object. The plotStaircaseResponse method of SISOTransferFuntionBuilder indicates the controlability of an input for the output. fitTransferFunction fits a transfer function to the outputs produced by a staircase input.
     * plotStaircaseResponse shows effect of a staircase input on outputs
     * Remove cruft from effector_dct
     * Added plot option writefig which takes arguments, True, False, str (path)

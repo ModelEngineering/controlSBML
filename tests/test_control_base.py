@@ -482,6 +482,18 @@ class TestControlBase(unittest.TestCase):
         max_val = df.max().max()
         self.assertGreater(max_val, 0.5)
 
+    def testMakeSISOTransferFunctionBuilder(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlBase(MODEL_FILE,
+            input_names=["IR"], output_names=["mTORC1_DEPTOR"])
+        builder = ctlsb.makeSISOTransferFunctionBuilder()
+        self.assertTrue("Builder" in str(type(builder)))
+        #
+        self.init()
+        with self.assertRaises(ValueError):
+            builder = self.ctlsb.makeSISOTransferFunctionBuilder()
+
 
 if __name__ == '__main__':
   unittest.main()

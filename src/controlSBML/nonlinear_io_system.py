@@ -240,7 +240,6 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                   linestyle="--")
             ax2.set_ylabel(staircase_name, color="red")
             ax2.legend([])
-            OptionManager.writeFigure(mgr.options.get(cn.O_WRITEFIG))
+            mgr.doFigOpts()
         #
         return util.PlotResult(time_series=result_ts, ax=ax, ax2=ax2)
-

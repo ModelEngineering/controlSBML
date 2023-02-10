@@ -6,7 +6,7 @@ A Time Series (TS) object is a DataFrame structured as:
   - Columns are variable names
   - name attribute is "Timeseries"
 
-Note that if complex artithematic is failing using Timeseries, then 
+Note that if complex artithematic is failing using Timeseries, then
 use the ".df" and ".ser" properties to convert back to a pandas objects if needed.
 Alternatively, if a pandas object is returned from an operation,
 then use Timeseries or TimeseriesSer to reconstruct the object.
@@ -15,6 +15,7 @@ then use Timeseries or TimeseriesSer to reconstruct the object.
 import controlSBML as ctl
 import controlSBML.constants as cn
 
+import copy
 import numpy as np
 import pandas as pd
 
@@ -197,7 +198,7 @@ class Timeseries(pd.DataFrame):
         Parameters
         ----------
         key: column of Timeseries
-        
+
         Returns
         -------
         Timeseries
@@ -221,7 +222,7 @@ class Timeseries(pd.DataFrame):
         Parameters
         ----------
         other: Timeseries/TimeseriesSer
-        
+
         Returns
         -------
         Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
@@ -238,7 +239,7 @@ class Timeseries(pd.DataFrame):
     def mat2TS(mat, column_names=None, row_names=None):
         """
         Converts a numpy ndarray or array-like to a Timeseries.
-    
+
         Parameters
         ----------
         mat: np.Array, NamedArray, DataFrame
@@ -248,4 +249,5 @@ class Timeseries(pd.DataFrame):
         df = ctl.mat2DF(mat, column_names=column_names, row_names=row_names)
         return Timeseries(df)
 
-    
+    def copy(self):
+        return Timeseries(self)
