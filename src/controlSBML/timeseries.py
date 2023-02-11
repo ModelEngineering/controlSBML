@@ -15,7 +15,6 @@ then use Timeseries or TimeseriesSer to reconstruct the object.
 import controlSBML as ctl
 import controlSBML.constants as cn
 
-import copy
 import numpy as np
 import pandas as pd
 
