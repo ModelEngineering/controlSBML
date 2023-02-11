@@ -108,7 +108,8 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 1.0.6 
+* 1.0.7
+* 1.0.6  2/11/2023
     * ControlSBML.makeSISOTransferFunctionBuilder creates a SISOTransferFunctionBuilder object. The plotStaircaseResponse method of SISOTransferFuntionBuilder indicates the controlability of an input for the output. fitTransferFunction fits a transfer function to the outputs produced by a staircase input.
     * plotStaircaseResponse shows effect of a staircase input on outputs
     * Remove cruft from effector_dct
