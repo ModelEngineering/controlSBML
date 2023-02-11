@@ -73,6 +73,21 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     def setTime(self, time):
         self.ctlsb.setTime(time)
 
+    def makeStateSer(self, time=0):
+        """
+        Gets the values of state at the specified time.
+
+        Parameters
+        ----------
+        time: float
+
+        Returns
+        -------
+        pd.Series
+        """
+        self.setTime(time)
+        return util.makeRoadrunnerSer(self.ctlsb.roadrunner, self.state_names)
+
     def _updfcn(self, time, x_vec, u_vec, _):
         """
         Computes the change in state by adding the input to its current value.
