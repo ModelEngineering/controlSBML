@@ -136,10 +136,10 @@ class SISOTransferFunctionBuilder(object):
         input_name: str
         output_name: str
         """
-        if len(sys.input_labels) != 1:
-            raise ValueError("System must have exactly one input.")
-        if len(sys.output_labels) != 1:
-            raise ValueError("System must have exactly one output.")
+        if len(sys.input_labels) == 0:
+            raise ValueError("System must have an input.")
+        if len(sys.output_labels) == 0:
+            raise ValueError("System must have an output.")
         #
         self.sys = sys
         self.input_name = input_name

@@ -163,15 +163,17 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         name = "S1"
         staircase_name = "%s_staircase" % name
-        output_names = ["S1", "S2"]
+        output_names = ["S2"]
         ctlsb = ctl.ControlSBML(LINEAR_MDL,
               input_names=["S1"], output_names=output_names)
         legend_spec = cn.LegendSpec(output_names, crd=(.5, 1))
-        sys = ctl.NonlinearIOSystem("test_sys", ctlsb)
+        builder = ctlsb.makeSISOTransferFunctionBuilder(input_name=name,
+              output_name=["S2"])
         def test(num_step, initial_value=0, final_value=11):
-            plot_result = sys.plotStaircaseResponse(num_step,
-                  initial_value, final_value, end_time=200,
-                  input_name=name, is_plot=False,
+            plot_result = builder.plotStaircaseResponse(num_step=num_step,
+                  initial_value=initial_value,
+                  final_value=final_value, end_time=200,
+                  is_plot=False,
                   legend_spec=legend_spec)
             arr = plot_result.time_series[staircase_name].values
             num_distinct = len(set(arr))

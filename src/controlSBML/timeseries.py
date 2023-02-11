@@ -249,5 +249,5 @@ class Timeseries(pd.DataFrame):
         df = ctl.mat2DF(mat, column_names=column_names, row_names=row_names)
         return Timeseries(df)
 
-    def copy(self):
+    def copy(self, **kwargs):
         return Timeseries(self)
