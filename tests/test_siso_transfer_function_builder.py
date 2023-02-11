@@ -38,7 +38,7 @@ builder = stb.SISOTransferFunctionBuilder(LINEAR_SYS)
 plot_response = builder.plotStaircaseResponse(final_value=10, is_plot=False)
 LINEAR_TS = plot_response.time_series
 # Temporarily change the plot path
-cn.PLOT_DIR = os.path.join(cn.PLOT_DIR, "tests")
+cn.PLOT_DIR = cn.TEST_DIR
 
 
 #############################
