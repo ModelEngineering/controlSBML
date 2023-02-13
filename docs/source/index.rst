@@ -33,9 +33,11 @@ In addition to providing a bridge between SBML and the ``control`` package,
 
 1. Automating the construction of models of elements in a closed loop system; in particular, controllers and filters.  This is done through the use of **element factories** that create ``NonlinearIOSystem`` objects that can be used in the evaluation of closed loop designs.
 
-2. Automating model construction for an entire closed loop system.  These are referred to as  **system factories**.  At present, the package only supports models that have a single control input and a single signal used in feedback (SISO systems).
+2. Methods to aid in system identification of SBML models as transfer functions.
 
-3. Convenience methods for control analysis and design.  Typically, these are a simplified way to access capabilities that are provided by the ``control`` pacakge, possibly with some new features.
+3. Automating model construction for an entire closed loop system.  These are referred to as  **system factories**.  At present, the package only supports models that have a single control input and a single signal used in feedback (SISO systems).
+
+4. Convenience methods for control analysis and design.  Typically, these are a simplified way to access capabilities that are provided by the ``control`` pacakge, possibly with some new features.
 
 .. toctree::
    :maxdepth: 2
@@ -44,6 +46,7 @@ In addition to providing a bridge between SBML and the ``control`` package,
    installation
    concepts
    system_models
+   siso_transfer_function_builder
    modeling_closed_loops
    element_factories
    system_factories
