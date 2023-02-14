@@ -7,7 +7,9 @@ import numpy as np
 import os
 import pandas as pd
 import unittest
+import shutil
 import tellurium as te
+import tempfile
 
 
 IGNORE_TEST = False
@@ -44,7 +46,10 @@ k1 =1; k2=2; k3=3
 """
 
 # Temporarily change the plot path
-cn.PLOT_DIR = os.path.join(cn.PLOT_DIR, "tests")
+if IS_PLOT:
+    cn.PLOT_DIR = os.path.join(cn.TEST_DIR, "plots")
+else:
+    cn.PLOT_DIR= tempfile.mkdtemp()
 
 
 #############################
@@ -63,6 +68,10 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.removeFiles()
 
     def init(self, do_simulate_on_update=True):
+        if IS_PLOT:
+            cn.PLOT_DIR = os.path.join(cn.TEST_DIR, "plots")
+        else:
+            cn.PLOT_DIR= tempfile.mkdtemp()
         self.ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
               input_names=["E_J0"], output_names=["S1", "S2"])
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb,
@@ -74,6 +83,9 @@ class TestNonlinearIOSystem(unittest.TestCase):
                 path = os.path.join(cn.PLOT_DIR, ffile)
                 if os.path.isfile(path) and (not IGNORE_TEST):
                     os.remove(path)
+        if IS_PLOT and ("var" in self.cn.PLOT_DIR):
+            shutil.rmtree(cn.PLOT_DIR)
+
 
     def testConstructor(self):
         if IGNORE_TEST:

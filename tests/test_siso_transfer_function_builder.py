@@ -8,7 +8,9 @@ import numpy as np
 import os
 import pandas as pd
 import unittest
+import shutil
 import tellurium as te
+import tempfile
 
 
 IGNORE_TEST = False
@@ -38,7 +40,7 @@ builder = stb.SISOTransferFunctionBuilder(LINEAR_SYS)
 plot_response = builder.plotStaircaseResponse(final_value=10, is_plot=False)
 LINEAR_TS = plot_response.time_series
 # Temporarily change the plot path
-cn.PLOT_DIR = cn.TEST_DIR
+cn.TEST_DIR = tempfile.TemporaryDirectory()
 
 
 #############################
@@ -96,6 +98,10 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.removeFiles()
 
     def init(self, do_simulate_on_update=True):
+        if IS_PLOT:
+            cn.PLOT_DIR = os.path.join(cn.TEST_DIR, "plots")
+        else:
+            cn.PLOT_DIR= tempfile.mkdtemp()
         self.ctlsb = ctl.ControlSBML(LINEAR_MDL,
               input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb,
@@ -108,6 +114,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
                 path = os.path.join(cn.PLOT_DIR, ffile)
                 if os.path.isfile(path) and (not IGNORE_TEST):
                     os.remove(path)
+        if IS_PLOT and ("var" in self.cn.PLOT_DIR):
+            shutil.rmtree(cn.PLOT_DIR)
 
     def testConstructor(self):
         if IGNORE_TEST:
