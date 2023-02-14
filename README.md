@@ -109,6 +109,8 @@ that continuous integration is done only *without* ``slycot``.
 
 ## Version History
 * 1.0.8 2/14/2023
+    * Use temporary directory for plots created in tests
+* 1.0.8 2/14/2023
     * Avoid error if Jacobian cannot be calculated.
     * Better handling of warnings
 * 1.0.7 2/11/2023

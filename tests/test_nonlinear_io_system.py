@@ -83,6 +83,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
                 path = os.path.join(cn.PLOT_DIR, ffile)
                 if os.path.isfile(path) and (not IGNORE_TEST):
                     os.remove(path)
+        # FIXME: this won't work in Windows
         if IS_PLOT and ("var" in self.cn.PLOT_DIR):
             shutil.rmtree(cn.PLOT_DIR)
 
