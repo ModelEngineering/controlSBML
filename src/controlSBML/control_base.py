@@ -263,7 +263,11 @@ class ControlBase(object):
             jacobian_mat = self.roadrunner.getReducedJacobian()
             self.roadrunner.conservedMoietyAnalysis = current_bool
         else:
-            jacobian_mat = self.roadrunner.getFullJacobian()
+            try:
+                jacobian_mat = self.roadrunner.getFullJacobian()
+            except RuntimeError as excp:
+                msgs.warn("Cannot calculate Jacobian because %s" % excp)
+                return None
         if len(jacobian_mat.rownames) != len(jacobian_mat.colnames):
             raise RuntimeError("Jacobian is not square!")
         names = list(jacobian_mat.colnames)
@@ -273,8 +277,12 @@ class ControlBase(object):
 
     @property
     def state_names(self):
-        state_names = list(self.jacobian_df.columns)
-        return self._sortList(self.species_names, state_names)
+        jacobian_df = self.jacobian_df
+        if jacobian_df is not None:
+            state_names = list(jacobian_df.columns)
+            return self._sortList(self.species_names, state_names)
+        else:
+            return self.species_names
 
     @property
     def num_state(self):
@@ -305,6 +313,8 @@ class ControlBase(object):
             current_time = self.getTime()
             self.setTime(time)
         jacobian_df = self.jacobian_df.copy()
+        if jacobian_df is None:
+            raise ValueError("Cannot calculate Jacobian")
         if time is not None:
             self.setTime(current_time)
         return jacobian_df

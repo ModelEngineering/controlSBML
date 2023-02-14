@@ -108,6 +108,9 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
+* 1.0.8 2/14/2023
+    * Avoid error if Jacobian cannot be calculated.
+    * Better handling of warnings
 * 1.0.7 2/11/2023
     * Add missing dependency (lmfit)
 * 1.0.6  2/11/2023
