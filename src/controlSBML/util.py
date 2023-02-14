@@ -2,6 +2,7 @@ import controlSBML.constants as cn
 import controlSBML as ctl
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.option_management.options import Options
+from controlSBML import msgs
 
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
@@ -9,6 +10,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import urllib.request
+import warnings
 
 
 REPO_URL =  "https://github.com/ModelEngineering/controlSBML/raw/main"
@@ -285,7 +287,11 @@ def setRoadrunnerValue(roadrunner, name_dct):
     for name, value in name_dct.items():
         if isinstance(value, int):
             value = float(value)
-        roadrunner[name] = value
+        try:
+            roadrunner[name] = value
+        except RuntimeError:
+            msgs.warn("Could not set value for %s" % name)
+
 
 def timeresponse2Timeseries(timeresponse, column_names=None):
     """

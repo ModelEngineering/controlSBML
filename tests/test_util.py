@@ -19,7 +19,7 @@ if IS_PLOT:
 times = [1.0*n for n in range(SIZE)]
 TS = Timeseries(pd.DataFrame({"a": range(SIZE)}), times=times)
 TS["b"] = 10*TS["a"]
-MDL = "A->B; 1; A=0; B=0;"
+MDL = "A->B; 1; A=0; B=0; TOT:=A+B"
 MDL_RR = te.loada(MDL)
 NAMED_ARRAY = MDL_RR.simulate()
 MAT = np.array(range(10))
@@ -122,6 +122,19 @@ class TestFunctions(unittest.TestCase):
         timeresponse = control.input_output_response(sys, times, U=times)
         ts = util.timeresponse2Timeseries(timeresponse)
         self.assertEqual(len(ts), SIZE)
+
+    def testSetRoadrunner(self):
+        if IGNORE_TEST:
+            return
+        rr = te.loada(MDL)
+        value = 100
+        util.setRoadrunnerValue(rr, {"A": value})
+        self.assertTrue(np.isclose(value, rr["A"]))
+        #
+        with self.assertWarns(Warning):
+            util.setRoadrunnerValue(rr, {"TOT": value})
+
+
 
 
 if __name__ == '__main__':

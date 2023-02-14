@@ -1,6 +1,7 @@
 """Generate messages for the application."""
 
 import sys
+import warnings
 
 def error(text):
   print("***Error. Reason follows.")
@@ -8,5 +9,5 @@ def error(text):
   sys.exit()
 
 def warn(text):
-  print("\n\n***Warning***\n")
-  print("   %s" % text)
+  new_text = "\n\n***Warning*** %s" % text
+  warnings.warn(new_text)
