@@ -110,14 +110,16 @@ class TestNonlinearIOSystem(unittest.TestCase):
         for ffile in os.listdir(cn.PLOT_DIR):
             if ("figure_" in ffile) and (".pdf") in ffile:
                 path = os.path.join(cn.PLOT_DIR, ffile)
-                if os.path.isfile(path) and (not IGNORE_TEST):
+                if os.path.isfile(path) and IGNORE_TEST:
                     os.remove(path)
+        # FIXME: This won't work in windows
         if IS_PLOT and ("var" in cn.PLOT_DIR):
             shutil.rmtree(cn.PLOT_DIR)
 
     def testConstructor(self):
         if IGNORE_TEST:
-          return
+            return
+        self.init()
         self.assertTrue(isinstance(self.builder, stb.SISOTransferFunctionBuilder ))
 
     def testMakeStaircase(self):

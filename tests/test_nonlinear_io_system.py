@@ -69,7 +69,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def init(self, do_simulate_on_update=True):
         if IS_PLOT:
-            cn.PLOT_DIR = os.path.join(cn.TEST_DIR, "plots")
+            cn.PLOT_DIR = cn.TEST_DIR
         else:
             cn.PLOT_DIR= tempfile.mkdtemp()
         self.ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
@@ -81,16 +81,16 @@ class TestNonlinearIOSystem(unittest.TestCase):
         for ffile in os.listdir(cn.PLOT_DIR):
             if ("figure_" in ffile) and (".pdf") in ffile:
                 path = os.path.join(cn.PLOT_DIR, ffile)
-                if os.path.isfile(path) and (not IGNORE_TEST):
+                if os.path.isfile(path) and IGNORE_TEST:
                     os.remove(path)
         # FIXME: this won't work in Windows
         if IS_PLOT and ("var" in cn.PLOT_DIR):
             shutil.rmtree(cn.PLOT_DIR)
 
-
     def testConstructor(self):
         if IGNORE_TEST:
-          return
+            return
+        self.init()
         self.assertTrue(isinstance(self.ctlsb, ctl.ControlSBML))
 
     def runSimulation(self, states=None):
