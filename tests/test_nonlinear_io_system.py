@@ -47,7 +47,7 @@ k1 =1; k2=2; k3=3
 
 # Temporarily change the plot path
 if IS_PLOT:
-    cn.PLOT_DIR = os.path.join(cn.TEST_DIR, "plots")
+    cn.PLOT_DIR = cn.TEST_DIR
 else:
     cn.PLOT_DIR= tempfile.mkdtemp()
 
@@ -84,7 +84,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
                 if os.path.isfile(path) and (not IGNORE_TEST):
                     os.remove(path)
         # FIXME: this won't work in Windows
-        if IS_PLOT and ("var" in self.cn.PLOT_DIR):
+        if IS_PLOT and ("var" in cn.PLOT_DIR):
             shutil.rmtree(cn.PLOT_DIR)
 
 

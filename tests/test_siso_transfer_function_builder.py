@@ -39,8 +39,6 @@ LINEAR_SYS = ctlsb.makeNonlinearIOSystem("LINEAR_SYS")
 builder = stb.SISOTransferFunctionBuilder(LINEAR_SYS)
 plot_response = builder.plotStaircaseResponse(final_value=10, is_plot=False)
 LINEAR_TS = plot_response.time_series
-# Temporarily change the plot path
-cn.TEST_DIR = tempfile.TemporaryDirectory()
 
 
 #############################
@@ -99,7 +97,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def init(self, do_simulate_on_update=True):
         if IS_PLOT:
-            cn.PLOT_DIR = os.path.join(cn.TEST_DIR, "plots")
+            cn.PLOT_DIR = cn.TEST_DIR
         else:
             cn.PLOT_DIR= tempfile.mkdtemp()
         self.ctlsb = ctl.ControlSBML(LINEAR_MDL,
@@ -114,7 +112,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
                 path = os.path.join(cn.PLOT_DIR, ffile)
                 if os.path.isfile(path) and (not IGNORE_TEST):
                     os.remove(path)
-        if IS_PLOT and ("var" in self.cn.PLOT_DIR):
+        if IS_PLOT and ("var" in cn.PLOT_DIR):
             shutil.rmtree(cn.PLOT_DIR)
 
     def testConstructor(self):
@@ -146,10 +144,10 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         staircase_name = "%s_staircase" % self.builder.input_name
         legend_crd = (.5, 1)
-        def test(num_step, initial_value=0, final_value=20):
+        def test(num_step, initial_value=0, final_value=20, start_time=0):
             plot_result = self.builder.plotStaircaseResponse(
                   final_value, num_step=num_step,
-                  initial_value=initial_value, end_time=2500,
+                  initial_value=initial_value, end_time=500, start_time=start_time,
                   writefig=True, figsize=(5,5), is_plot=IS_PLOT,
                   legend_crd=legend_crd)
             arr = plot_result.time_series[staircase_name].values
@@ -159,6 +157,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
             self.assertEqual(arr[-1], final_value)
             return plot_result
         #
+        result = test(4, start_time=20)
         result = test(4)
         self.assertEqual(str(result), "")
         result = test(17)
