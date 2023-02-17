@@ -239,7 +239,7 @@ class Timeseries(pd.DataFrame):
         Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
         """
         common_indices = findCommonIndices(self.index, other.index)
-        new_self = snelf.loc[common_indices, :]
+        new_self = self.loc[common_indices, :]
         if isinstance(other, pd.DataFrame):
             new_other = other.loc[common_indices, :]
         else:  # Series
