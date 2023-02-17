@@ -106,6 +106,8 @@ returns a time series DataFrame.
 ## Developer Notes
 1. The package works with and without ``slycot``. So two virtual environments are needed for testing: ``ctl`` includes ``slycot`` and ``ctl_tst`` does not. Note
 that continuous integration is done only *without* ``slycot``.
+1. To generate a new release, update the version in pyproject.py and in
+_version.py.
 
 ## Version History
 * 1.0.10
