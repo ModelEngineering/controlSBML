@@ -30,7 +30,7 @@ def makeStateVector(sys, start_time=0):
         for sub_sys in sys.syslist:
             x_lst.extend(makeStateVector(sub_sys, start_time=start_time))
     elif isinstance(sys, ctl.NonlinearIOSystem):
-        x_lst.extend(sys.makeStateSer().values)
+        x_lst.extend(sys.makeStateSer(time=start_time).values)
     else:
         new_state = list(np.repeat(0, sys.nstates))
         x_lst.extend(new_state)
@@ -62,12 +62,13 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
     start_time = mgr.options.get(cn.O_START_TIME)
     end_time = mgr.options.get(cn.O_END_TIME)
     points_per_time = mgr.options.get(cn.O_POINTS_PER_TIME)
-    # Construc initial state vector if necesary
+    # Construct initial state vector if necesary
     if initial_x_vec is None:
         initial_x_vec = np.array(makeStateVector(sys, start_time=start_time))
     #
     times = util.makeSimulationTimes(start_time=start_time,
           end_time=end_time, points_per_time=points_per_time)
+    times_diff = np.diff(times)
     if u_vec is not None:
         results = control.input_output_response(sys, times, X0=initial_x_vec,
             U=u_vec)

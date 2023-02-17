@@ -166,10 +166,13 @@ def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
     -------
     np.ndarray
     """
-    num_point = int(points_per_time*(end_time - start_time))
-    dt = (end_time - start_time)/num_point
-    times = [start_time + dt*n for n in range(num_point)]
-    times.append(end_time)  # Include the endpoint
+    MSEC = 1000
+    dt = 1.0/points_per_time
+    dt_ms = int(MSEC*dt)
+    start_ms = int(start_time*MSEC)
+    end_ms = int(end_time*MSEC)
+    times = np.arange(start_ms, end_ms + dt_ms, dt_ms)
+    times = times/MSEC
     return np.array(times)
 
 def mat2DF(mat, column_names=None, row_names=None):

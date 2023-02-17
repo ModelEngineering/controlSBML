@@ -76,6 +76,20 @@ def convertTime(times):
     new_arr = new_arr.astype(int)
     return new_arr
 
+def _calcTimes(ts):
+    # Calculates evenly spaced times from a Timeseries index
+    times_int = list(ts.index)
+    dt = float((times_int[1] - times_int[0])*cn.SEC_IN_MS)
+    start = times_int[0]*cn.SEC_IN_MS
+    end = times_int[-1]*cn.SEC_IN_MS + dt
+    times = np.arange(start, end, dt)
+    times_diff = np.diff(times)
+    # Ensure that times are evenly spaced
+    if not np.allclose(times_diff, times_diff[0]):
+        import pdb; pdb.set_trace()
+        pass
+    return times
+
 
 ############# CLASSES ###############
 class TimeseriesSer(pd.Series):
@@ -93,8 +107,7 @@ class TimeseriesSer(pd.Series):
 
     @property
     def times(self):
-        times = np.array(self.index)
-        return cn.SEC_IN_MS*times
+        return _calcTimes(self)
 
     def align(self, other):
         """
@@ -187,8 +200,7 @@ class Timeseries(pd.DataFrame):
 
     @property
     def times(self):
-        times = np.array(self.index)
-        return cn.SEC_IN_MS*times
+        return _calcTimes(self)
 
     def __getitem__(self, key):
         """
@@ -227,7 +239,7 @@ class Timeseries(pd.DataFrame):
         Timeseries/TimeseriesSer, Timeseries/Timeseries/Ser
         """
         common_indices = findCommonIndices(self.index, other.index)
-        new_self = self.loc[common_indices, :]
+        new_self = snelf.loc[common_indices, :]
         if isinstance(other, pd.DataFrame):
             new_other = other.loc[common_indices, :]
         else:  # Series

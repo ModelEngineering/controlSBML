@@ -108,7 +108,10 @@ returns a time series DataFrame.
 that continuous integration is done only *without* ``slycot``.
 
 ## Version History
-* 1.0.8 2/14/2023
+* 1.0.10
+    * Fixed bug with unequally spaced times
+    * Fixed bug so can start a simulate at a time other than 0 and the correct initial state is obtained.
+* 1.0.9 2/14/2023
     * Use temporary directory for plots created in tests
 * 1.0.8 2/14/2023
     * Avoid error if Jacobian cannot be calculated.

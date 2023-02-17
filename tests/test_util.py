@@ -82,7 +82,7 @@ class TestFunctions(unittest.TestCase):
         #
         times = util.makeSimulationTimes(start_time=1, end_time=4)
         self.assertTrue(times[0] == 1)
-        self.assertTrue(times[-1] == 4)
+        self.assertTrue(np.isclose(times[-1], 4))
         #
         time1s = util.makeSimulationTimes(start_time=1, end_time=4,
             points_per_time=100)

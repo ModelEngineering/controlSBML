@@ -305,6 +305,10 @@ class SISOTransferFunctionBuilder(object):
               **new_kwargs)
         data_ts = plot_result.time_series
         times = data_ts.times
+        times_diff = np.diff(times)
+        if not np.allclose(times_diff, times_diff[0]):
+            import pdb; pdb.set_trace()
+            pass
         staircase_arr = self.getStaircaseArr(data_ts)
         data_in = (times, staircase_arr)
         data_out = data_ts[self.output_name]
