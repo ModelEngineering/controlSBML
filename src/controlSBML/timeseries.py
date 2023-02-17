@@ -86,8 +86,7 @@ def _calcTimes(ts):
     times_diff = np.diff(times)
     # Ensure that times are evenly spaced
     if not np.allclose(times_diff, times_diff[0]):
-        import pdb; pdb.set_trace()
-        pass
+        raise RuntimeError("Times are not evenly spaced.")
     return times
 
 
