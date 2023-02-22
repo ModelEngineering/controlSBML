@@ -125,6 +125,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     def _outfcn(self, time, x_vec, _, __):
         """
         Calculates the values of outputs.
+        Ensures that all state variables are non-negative since they are
+        rates or concentrations.
 
         Parameters
         ----------
@@ -143,6 +145,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
         #self.logger.add(time, self.ctlsb.get(self.state_names).values())
+        out_vec = np.array([np.max(v, 0) for v in out_vec])
         return out_vec
 
     def _makeStaircase(self, num_point, num_step, initial_value, final_value):

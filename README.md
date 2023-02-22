@@ -110,6 +110,8 @@ that continuous integration is done only *without* ``slycot``.
 _version.py.
 
 ## Version History
+* 1.0.11
+    * Ensure that state variables are never negative.
 * 1.0.10
     * Fixed bug with unequally spaced times
     * Fixed bug so can start a simulate at a time other than 0 and the correct initial state is obtained.
