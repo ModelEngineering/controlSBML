@@ -112,7 +112,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         if self.do_simulate_on_update:
             self.setTime(time)  # Consider time dependent functions
         # Adust the state
-        state_dct = {n: x_vec[i] for i, n in enumerate(self.state_names)}
+        state_dct = {n: np.max(x_vec[i], 0)
+              for i, n in enumerate(self.state_names)}
         self.ctlsb.set(state_dct)
         # Calculate the derivatives of floating species in state
         derivative_arr = np.array([v for v in self.ctlsb.get(self.dstate_names).values()])
