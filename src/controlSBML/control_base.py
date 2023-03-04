@@ -53,8 +53,16 @@ class ControlBase(object):
         # First initializations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
-        self.species_names = list(
+        self._default_state_names = list(
               self.roadrunner.getFullStoichiometryMatrix().rownames)
+        # FIXME: Handle State Space models better so can allow BoundarySpecies
+        if False:
+            self.species_names = set(self.roadrunner.getFloatingSpeciesIds())
+            self.species_names = list(
+                  self.species_names.union(self.roadrunner.getBoundarySpeciesIds()))
+        else:
+            self.species_names = list(
+                  self.roadrunner.getFullStoichiometryMatrix().rownames)
         if output_names is None:
             output_names = self.species_names
         self.output_names = output_names
@@ -282,7 +290,7 @@ class ControlBase(object):
             state_names = list(jacobian_df.columns)
             return self._sortList(self.species_names, state_names)
         else:
-            return self.species_names
+            return self._default_state_names
 
     @property
     def num_state(self):
