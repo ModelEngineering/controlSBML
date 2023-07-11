@@ -1,0 +1,16 @@
+numpy==1.19.1
+control
+docstring-expander
+jupyter notebook
+lmfit
+matplotlib
+nose2
+nose
+pandas
+pip>20
+python-libsbml
+seaborn
+symmathSBML
+sympy
+tellurium
+urllib3
