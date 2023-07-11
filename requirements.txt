@@ -3,7 +3,7 @@ build
 coverage
 control
 docstring-expander
-jupyterlab
+jupyter notebook
 lmfit
 matplotlib
 nose2
