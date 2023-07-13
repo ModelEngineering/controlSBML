@@ -1,7 +1,7 @@
-numpy==1.19.1
+numpy
 control
 docstring-expander
-jupyter notebook
+jupyterlab
 lmfit
 matplotlib
 nose2
@@ -10,7 +10,5 @@ pandas
 pip>20
 python-libsbml
 seaborn
-symmathSBML
-sympy
-tellurium
+tellurium==2.2.7
 urllib3
