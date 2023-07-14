@@ -38,7 +38,7 @@ One approach is to reengineer the system.
 However, sometimes reengineering is either too expensive or it
 is simply infeasible (i.e., changing a person' DNA).
 Control engineering is largely about the second case.
-We use the term **open loop system (OLP)** to refer to
+We use the term **open loop system (OLS)** to refer to
 the existing system.
 Starting with the OLS,
 control engineers add additional elements to create 

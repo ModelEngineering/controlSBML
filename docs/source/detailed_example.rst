@@ -244,7 +244,8 @@ Next, we plot the open loop behavior of the model.
 .. end-code-block
 
 .. image:: images/detailed_example_fig1.png
-    :width: 400
+  :width: 400
+
 
  We see that ``mTORC1_DEPTOR`` in open loop oscilates and generally has a value above our
  target of 100.

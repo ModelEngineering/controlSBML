@@ -1,4 +1,4 @@
-Systems Factories
+Element Factories
 =================
 
 .. highlight:: python

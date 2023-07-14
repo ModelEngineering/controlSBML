@@ -1,7 +1,11 @@
 readthedocs
+Herb's request for Bode plots
+Construction of state space representation is done by system identification
+Remove effector_dct. Inputs must be species.
 notebook tests
 Docker container for MIMO
-Herb's request for Bode plots
+
+
 Bugs
   0.1 Recheck that logs match for system output, filter input
   0.2 Order columns by connection

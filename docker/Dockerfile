@@ -3,7 +3,7 @@
 
 # Ubuntu 22.04 (jammy)
 # https://hub.docker.com/_/ubuntu/tags?page=1&name=jammy
-ARG ROOT_CONTAINER=ubuntu:22.04
+ARG ROOT_CONTAINER=amd64/ubuntu
 
 FROM $ROOT_CONTAINER
 
@@ -63,7 +63,7 @@ RUN apt-get update
 RUN apt install -y -f software-properties-common
 RUN add-apt-repository -y ppa:deadsnakes/ppa
 RUN apt-get -y -f install git
-RUN apt-get install -y -f python3.11 python3.11-dev
+#RUN apt-get install -y -f python3.9 python3.9-dev
 RUN apt-get -y -f install python3-pip
 RUN apt-get -y -f install vim
 RUN apt-get -y -f install libncurses5-dev libncursesw5-dev
@@ -77,7 +77,9 @@ RUN git clone https://github.com/ModelEngineering/controlSBML.git
 
 WORKDIR /home/${NB_USER}/controlSBML
 COPY docker_requirements.txt .
+USER ${ROOT}
 RUN python3 -m pip install -r docker_requirements.txt
+USER ${NB_UID}
 ENV PYTHONPATH=/home/${NB_USER}/controlSBML/src
 
 
