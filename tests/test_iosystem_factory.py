@@ -1,10 +1,12 @@
 from controlSBML.iosystem_factory import IOSystemFactory
+from controlSBML import *
 import controlSBML as ctl
 import controlSBML.constants as cn
 
 import control
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import unittest
 
@@ -14,6 +16,8 @@ IS_PLOT = False
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+PLOT_PATH = os.path.join(TEST_DIR, "plot.pdf")
 TIMES = ctl.makeSimulationTimes(end_time=50)
 MODEL_BUG = """
 S1 -> S2; k1*S1
@@ -77,7 +81,7 @@ class TestIOSystemFactory(unittest.TestCase):
     def testMakeSinusoid(self):
         if IGNORE_TEST:
           return
-        sys = self.factory.makeSinusoid("sine", 10, 20)
+        sys = self.factory.makeSinusoid("sine", amplitude=10, frequency=20)
         result = control.input_output_response(sys, T=TIMES)
         self.assertTrue(len(result.y) > 0)
         self.assertTrue(np.var(result.y) > 0)
@@ -94,23 +98,24 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertTrue(all(trues))
 
     def testMakeAdder2(self):
+        # Check on use of minus sign
         if IGNORE_TEST:
           return
-        input_names = ["a", "b", "c", "d"]
+        input_names = ["a", "b", "c", "-d"]
         num_input = len(input_names)
         adder = self.factory.makeAdder("adder", input_names=input_names)
         self.assertEqual(adder.ninputs, num_input)
-        times = [0, 1, 2, 3, 4]
-        u_arr = np.array([np.repeat(t, len(input_names)) for t in times])
+        input_values = [0, 1, 2, 3, 4]
+        u_arr = np.array([np.repeat(t, len(input_names)) for t in input_values])
         u_arr = u_arr.transpose()
-        result = control.input_output_response(adder, T=times, U=u_arr)
-        trues = [r == num_input*t for t, r in zip(times, result.outputs.flatten())]
+        result = control.input_output_response(adder, T=input_values, U=u_arr)
+        trues = [r == (num_input-2)*t for t, r in zip(input_values, result.outputs.flatten())]
         self.assertTrue(all(trues))
 
     def testMakeFilter(self):
         if IGNORE_TEST:
           return
-        sys = self.factory.makeFilter("filter", -1)
+        sys = self.factory.makeFilter("filter", 1)
         length = len(TIMES)
         mean = 5
         U = np.random.normal(mean, 1, length)
@@ -121,10 +126,16 @@ class TestIOSystemFactory(unittest.TestCase):
         lin_sys = sys.linearize(x0=0, u0=0)
         self.assertTrue(lin_sys.dcgain() == 1)
         if IS_PLOT:
-             plt.scatter(result.t.flatten(), result.y.flatten())
-             plt.xlabel("time")
-             plt.ylabel("filter output")
-             plt.show()
+             self.makePlot(sys, times=TIMES, U=U)
+
+    def makePlot(self, sys, times=TIMES, U=None):
+        if U is None:
+            result = control.input_output_response(sys, T=times)
+        else:
+            result = control.input_output_response(sys, T=times, U=U)
+        plt.plot(result.t, result.outputs.flatten())
+        plt.xlabel("time")
+        plt.savefig(PLOT_PATH)
 
     def testMakeFilterZeroInput(self):
         if IGNORE_TEST:
@@ -136,14 +147,24 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertEqual(np.mean(outputs), 1)
         self.assertEqual(np.var(outputs), 0)
 
-    def testMakeConstant(self):
+    def testMakeArbitrarySignal(self):
         if IGNORE_TEST:
           return
-        constant = 3
-        sys = self.factory.makeConstant("constant", constant)
+        sys = self.factory.makeArbitrarySignal("arbitrary", signal_function=lambda t: t)
+        result = control.input_output_response(sys, T=TIMES)
+        self.assertTrue(len(result.y) > 0)
+        self.assertTrue(np.var(result.y) > 0)
+        if IS_PLOT:
+            self.makePlot(sys)
+
+    def testMakeStep(self):
+        if IGNORE_TEST:
+          return
+        step_size = 3
+        sys = self.factory.makeStep("step", step_size=step_size)
         result = control.input_output_response(sys, T=TIMES)
         self.assertTrue(np.var(result.y) == 0)
-        self.assertTrue(result.y.flatten()[0] == constant)
+        self.assertTrue(result.y.flatten()[0] == step_size)
 
     def testMakeMultiplier(self):
         if IGNORE_TEST:
@@ -198,7 +219,7 @@ class TestIOSystemFactory(unittest.TestCase):
         dt = 1/cn.POINTS_PER_TIME
         factory = ctl.IOSystemFactory(dt=dt)
         # Create the elements of the feedback loop
-        noise = factory.makeSinusoid("noise", 0, 20)
+        noise = factory.makeSinusoid("noise", amplitude=0, frequency=20)
         disturbance = factory.makeSinusoid("disturbance", 0, 2)
         
         ctlsb = ctl.ControlSBML(MODEL_BUG, input_names=["S1"], output_names=["S3"])
@@ -240,7 +261,7 @@ class TestIOSystemFactory(unittest.TestCase):
         legends = ["reference", "output"]
         plt.legend(legends)
         if IS_PLOT:
-            plt.show()
+            plt.savefig(PLOT_PATH)
 
     def testMakeStateFilter(self):
         if IGNORE_TEST:
@@ -268,6 +289,7 @@ class TestIOSystemFactory(unittest.TestCase):
         if IS_PLOT:
             ts = ctl.timeresponse2Timeseries(result3s)
             ctl.plotOneTS(ts)
+            plt.savefig(PLOT_PATH)
 
     def testMakeStateFilterZeroFilter(self):
         if IGNORE_TEST:
@@ -282,6 +304,28 @@ class TestIOSystemFactory(unittest.TestCase):
         outputs = results.outputs.flatten()
         self.assertEqual(np.mean(outputs), 1)
         self.assertEqual(np.var(outputs), 0)
+    
+    def testMakeArbitrarySignalTimeshift(self):
+        if IGNORE_TEST:
+            return
+        start_time = 1
+        end_time = 5
+        def shiftedRamp(time):
+           if time > start_time:
+              return time - start_time
+           else:
+              return 0
+        #
+        factory = IOSystemFactory()
+        sys = factory.makeArbitrarySignal("shifted_ramp", shiftedRamp, start_time=start_time, end_time=end_time)
+        result = control.input_output_response(sys, T=TIMES)
+        y_values = result.y.flatten()
+        plt.plot(result.t, result.outputs.flatten())
+        max_value = end_time - start_time
+        self.assertEqual(max(y_values), max_value)
+        self.assertEqual(min(y_values), 0)
+        if IS_PLOT:
+            plt.savefig(PLOT_PATH)
 
 
 if __name__ == '__main__':

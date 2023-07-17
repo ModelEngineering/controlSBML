@@ -1,7 +1,7 @@
-Systems Factories
-=================
+Closed Loop Factories
+=====================
 
 .. highlight:: python
    :linenothreshold: 5
 
-Under construction.
+Under construction!

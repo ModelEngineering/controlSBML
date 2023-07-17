@@ -2,6 +2,7 @@
 
 from docstring_expander.kwarg import Kwarg
 import matplotlib.pyplot
+import numpy as np
 import pandas as pd
 import os
 
@@ -151,3 +152,4 @@ for kwargs in [SIM_KWARGS, PLOT_KWARGS, FIG_KWARGS]:
 MS_IN_SEC = 1000
 SEC_IN_MS = 1.0/MS_IN_SEC
 TIMESERIES_INDEX_NAME = "miliseconds"
+TIMES = np.linspace(0, 5, 1000)

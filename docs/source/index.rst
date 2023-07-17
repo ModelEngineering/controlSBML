@@ -42,7 +42,7 @@ In addition to providing a bridge between SBML and the ``control`` package,
 4. Convenience methods for control analysis and design.  Typically, these are a simplified way to access capabilities that are provided by the ``control`` pacakge, possibly with some new features.
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
    :caption: Contents:
 
    installation
@@ -50,7 +50,7 @@ In addition to providing a bridge between SBML and the ``control`` package,
    system_models
    siso_transfer_function_builder
    modeling_closed_loops
-   system_factories
+   element_factories
    closed_loop_factories
    convenience_methods
    detailed_example

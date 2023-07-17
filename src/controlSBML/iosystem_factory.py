@@ -6,14 +6,15 @@ Inputs have the form in, in1, in2, ...
 Outpus have the form out, out1, out2, ...
 
 IOSystems created:
+    makeStep: outputs a constant value
+    makeSinusoid: creates an IOSystem that outputs a sinusoid
+    makeAribtrarySignal: outputs a signal defined by a function
     makeFilter: creates an exponential filter
     makeStateFilter: creates an exponential filter for state variables
-    makeConstant: outputs a constant value
     makeAdder: creates an IOSystem that outputs the sum of the inputs
     makePassthur: creates an IOSystem that outputs the input
     makePIDController: creates a PID controller
     makeFullStateController: creates a PID controller
-    makeSinusoid: creates an IOSystem that outputs a sinusoid
 """
 
 from controlSBML import constants as cn
@@ -233,17 +234,18 @@ class IOSystemFactory(object):
         return control.NonlinearIOSystem(
             None, outfcn, inputs=controller_input_names, outputs=['out'],
             name=name)
-
-    def makeSinusoid(self, name, amp, frequency):
+    
+    def makeArbitrarySignal(self, name, signal_function=lambda t: 1, start_time=0, end_time=None):
         """
-        Construct a NonlinearIOSystem that outputs a sinusoid.
+        Construct a NonlinearIOSystem that outputs the sum of
         The system has output OUT.
 
         Parameters
         ----------
         name: str
-        amp: float
-        frequency: float
+        signal_function: args: time; returns: float
+        start_time: float (offset at which the signal begins)
+        end_time: float (offset at which the signal ends)
 
         Returns
         -------
@@ -258,18 +260,60 @@ class IOSystemFactory(object):
             ----------
             time: float
             """
-            output = amp*np.sin(time*frequency)
+            output = 0.0
+            if (time >= start_time) and (end_time is None or time <= end_time):
+                output = signal_function(time)
             logger.add(time, [output])
             return output
         #
         return control.NonlinearIOSystem(
             None, outfcn, outputs=[OUT], inputs=[],
             name=name)
+    
+    def makeStep(self, name, step_size=1, start_time=0, end_time=None):
+        """
+        Outputs a constant value.
+
+        Parameters
+        ----------
+        name: str
+        constant: float
+        start_time: float (offset at which the signal begins)
+        end_time: float (offset at which the signal ends)
+
+        Returns
+        -------
+        NonlinearIOSystem
+        """
+        return self.makeArbitrarySignal(name, lambda t: step_size, start_time=start_time, end_time=end_time)
+
+    def makeSinusoid(self, name, amplitude=1, frequency=1, phase=0, dc_offset=0, start_time=0, end_time=None):
+        """
+        Construct a NonlinearIOSystem that outputs a sinusoid.
+        The system has output OUT.
+
+        Parameters
+        ----------
+        name: str
+        amplitude: float
+        frequency: float
+        phase: float (phase in radians)
+        dc_offset: float
+        start_time: float (offset at which the signal begins)
+        end_time: float (offset at which the signal ends)
+
+        Returns
+        -------
+        NonlinearIOSystem
+        """
+        return self.makeArbitrarySignal(name, lambda t: amplitude*np.sin(frequency*t + phase) + dc_offset,
+              start_time=start_time, end_time=end_time)
 
     def makeAdder(self, name, num_input=2, input_names=None):
         """
         Inputs two or more elements. Outputs their sum. Name is "sum".
-        The inputs are IN1, IN2, ... or the names in input_names.
+        The inputs are IN1, IN2, ... or the names in input_names. The presence of
+        a "-" in front of a name indicates that the input is subtracted.
         The output is OUT.
 
         Parameters
@@ -284,6 +328,10 @@ class IOSystemFactory(object):
         """
         if input_names is None:
             input_names = ["%s%d" % (IN, n) for n in range(1, num_input+1)]
+        else:
+            num_input = len(input_names)
+        mult_arr = np.array([1 if not n.startswith("-") else -1 for n in input_names])
+        input_names = [n.replace("-", "") for n in input_names]
         item_names = list(input_names)
         item_names.append(OUT)
         logger = self._registerLogger(name, item_names)
@@ -295,7 +343,7 @@ class IOSystemFactory(object):
             ----------
             u: float, float
             """
-            output = np.sum(u_vec)
+            output = np.sum(u_vec*mult_arr)
             item_values = list(u_vec)
             item_values.append(output)
             logger.add(time, item_values)
@@ -303,20 +351,17 @@ class IOSystemFactory(object):
         #
         return control.NonlinearIOSystem(
             None, outfcn, inputs=input_names, outputs=[OUT], name=name)
-
-    def makeFilter(self, filter_name, constant):
+   
+    def makeFilter(self, filter_name, constant=1):
         """
-        Construct a NonlinearIOSystem for x' = a*x + u, where u is the
-        filter input.
-        The system has input IN and output OUT.
-        The output is normalized so that the DC gain of the filter is 1.
-        A constant of 0 is a passthru.
+        Construct a NonlinearIOSystem for x' = -a*x + a*u, where u is the
+        filter input and -a is the pole of the filer.
+        The system has input 'in' and output 'out'.
 
         Parameters
         ----------
         filter_name: str
-        constant: float
-            e**expo_constant*time
+        constant: float (pole of the filter)
 
         Returns
         -------
@@ -335,7 +380,7 @@ class IOSystemFactory(object):
             """
             x_val = self._array2scalar(x_vec)
             u_val = self._array2scalar(u_vec)
-            dx_val = constant*x_val + u_val
+            dx_val = -constant*x_val + constant*u_val
             return dx_val
         #
         def outfcn(time, x_vec, u_vec, _):
@@ -344,7 +389,7 @@ class IOSystemFactory(object):
             if np.isclose(constant, 0):
                 output = u_val
             else:
-                output = -constant*x_val
+                output = x_val
             logger.add(time, [u_val, x_val, output])
             return output
         #
@@ -464,30 +509,6 @@ class IOSystemFactory(object):
             connections.append([in_signal, out_signal])
         #
         return sys, connections
-            
-            
-
-    def makeConstant(self, name, constant):
-        """
-        Outputs a constant value.
-
-        Parameters
-        ----------
-        name: str
-        constant: float
-
-        Returns
-        -------
-        NonlinearIOSystem
-        """
-        logger = self._registerLogger(name, [OUT])
-        def outfcn(time, _,  __, ___):
-            output = constant
-            logger.add(time, [output])
-            return output
-        #
-        return control.NonlinearIOSystem(
-            None, outfcn, outputs=[OUT], inputs=[], name=name)
 
     def makePassthru(self, name, input_name=None, output_name=None):
         """

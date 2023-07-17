@@ -4,6 +4,7 @@ Construction of state space representation is done by system identification
 Remove effector_dct. Inputs must be species.
 notebook tests
 Docker container for MIMO
+Fix and document logger
 
 
 Bugs

@@ -110,7 +110,13 @@ that continuous integration is done only *without* ``slycot``.
 _version.py.
 
 ## Version History
-* 1.0.11
+* 1.1.0
+    * Fixed bug with ``makeFiler``
+    * readTheDocs documentation for element factories
+    * Improved consistency of API for element factories
+    * Added ``makeAribtrarySignal``
+    * ``makeAdder`` handles minus signs
+* 1.0.11 3/1/2023
     * Ensure that state variables are never negative.
 * 1.0.10
     * Fixed bug with unequally spaced times
