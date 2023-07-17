@@ -18,3 +18,8 @@ dist?
 local.txt
 python.py
 todo.txt
+tests/*.pdf
+*.DS_STORE
+*/_build/*
+*.sav
+.vscode

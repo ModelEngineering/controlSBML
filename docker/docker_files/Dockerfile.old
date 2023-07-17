@@ -1,0 +1,19 @@
+# Image for control SBML
+FROM jupyter/datascience-notebook
+RUN echo $USER
+#USER root
+#RUN sudo mkdir -p /var/lib/apt/lists/missing
+#USER 1001
+#RUN apt-get update
+#RUN apt install -y software-properties-common
+#RUN add-apt-repository -y ppa:deadsnakes/ppa
+#RUN apt-get install -y python3.10 python3.10-dev
+#RUN apt-get -y install git
+#RUN git clone https://github.com/ModelEngineering/controlSBML.git
+#RUN apt-get -y install python3-pip
+#RUN apt-get -y install vim
+#RUN cd /home; mkdir ubuntu; cd ubuntu; mkdir controlSBML
+##RUN pip install -r docker_requirements.txt
+##RUN --mount=type=cache,mode=0755,target=/root/.cache pip install -r requirements.txt
+##COPY . .
+#CMD ["jupyter", "notebook"]
