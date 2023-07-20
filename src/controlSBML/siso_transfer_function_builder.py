@@ -132,7 +132,7 @@ class SISOTransferFunctionBuilder(object):
         """
         Parameters
         ----------
-        sys: NonlinearIOSystem with single input and single output
+        sys: NonlinearIOSystem
         input_name: str
         output_name: str
         """

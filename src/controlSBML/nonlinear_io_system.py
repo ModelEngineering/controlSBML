@@ -22,7 +22,7 @@ MIN_ELAPSED_TIME = 1e-2
 class NonlinearIOSystem(control.NonlinearIOSystem):
 
     def __init__(self, name, ctlsb,
-         input_names=None, do_simulate_on_update=False):
+         input_names=None, output_names=None, do_simulate_on_update=False):
         """
         Parameters
         ----------
@@ -46,15 +46,18 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.do_simulate_on_update = do_simulate_on_update
         # Useful properties
         if input_names is None:
-            self.input_names = list(ctlsb.input_names)
-        else:
-            diff = set(input_names).difference(ctlsb.state_names)
-            if len(diff) != 0:
-                raise ValueError("Invalid input names: %s" % diff)
-            self.input_names = [input_names[0]]
+            input_names = list(ctlsb.input_names)
+        # else:
+        #     diff = set(input_names).difference(ctlsb.state_names)
+        #     if len(diff) != 0:
+        #         raise ValueError("Invalid input names: %s" % diff)
+        #     self.input_names = [input_names[0]]
+        if output_names is None:
+            output_names = list(ctlsb.output_names)
+        self.input_names = input_names
+        self.output_names = output_names
         self.state_names = list(ctlsb.species_names)
         self.dstate_names = ["%s'" % n for n in self.state_names]
-        self.output_names = ctlsb.output_names
         self.num_state = len(self.state_names)
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
@@ -87,6 +90,16 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         """
         self.setTime(time)
         return util.makeRoadrunnerSer(self.ctlsb.roadrunner, self.state_names)
+    
+    def getSubsystem(self, name, input_names, output_names):
+        """Creates a subsystem using a subset of the input and output names
+
+        Args:
+            input_names (_type_): _description_
+            output_names (_type_): _description_
+        """
+        return NonlinearIOSystem(name, self.ctlsb,
+              input_names=input_names, output_names=output_names)
 
     def _updfcn(self, time, x_vec, u_vec, _):
         """
@@ -138,7 +151,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         np.array(float): change in state vector
         """
-        out_vec = np.repeat(np.nan, self.ctlsb.num_output)
+        out_vec = np.repeat(np.nan, self.num_output)
         for out_idx, name in enumerate(self.output_names):
             if name in self.state_names:
                 state_idx = self.state_names.index(name)

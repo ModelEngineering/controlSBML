@@ -53,18 +53,15 @@ class MIMOTransferFunctionBuilder(object):
         result_dct = {n: [] for n in self.sys.output_names}
         for output_name in self.sys.output_names:
             for input_name in self.sys.input_names:
-                siso_tfb = tfb.SISOTransferFunctionBuilder(self.sys, input_name=input_name, output_name=output_name)
+                sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
+                siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
                 value = siso_tfb.fitTransferFunction(num_numerator, num_denominator, **kwargs)
                 if is_tf_only:
                     value = value.transfer_function
-                result_dct[output_name] = value
+                result_dct[output_name].append(value)
         # Construct the output
         df = pd.DataFrame(result_dct)
-        df.column.name = "Outputs"
+        df.columns.name = "Outputs"
         df.index = list(self.sys.input_names)
         df.index.name = "Inputs"
         return df
-            
-            
-        
-    def buildMIMOTransferFunction(self, num_numerator)

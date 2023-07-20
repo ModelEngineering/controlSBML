@@ -13,6 +13,8 @@ pip>20
 pylint
 python-libsbml
 seaborn
+sympy
+tabulate
 tellurium
 tomli
 twine
