@@ -39,7 +39,7 @@ In addition to providing a bridge between SBML and the ``control`` package,
 
 4. **Closed loop factories** for building an entire closed loop systems.
 
-4. Convenience methods for control analysis and design.  Typically, these are a simplified way to access capabilities that are provided by the ``control`` pacakge, possibly with some new features.
+5. Convenience methods for control analysis and design.  Typically, these are a simplified way to access capabilities that are provided by the ``control`` pacakge, possibly with some new features.
 
 .. toctree::
    :maxdepth: 3

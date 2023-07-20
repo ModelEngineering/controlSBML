@@ -286,6 +286,37 @@ Below shows how the adder is used in an ``InterconnectedSystem``system and the s
 
 Multiplier
 ^^^^^^^^^^
+A multiplier inputs one signal and outputs the product of this signal with a constant factor. This is illustrated below.
+
+.. code-block:: python
+    
+        # Create a multiplier
+        factory = ctl.IOSystemFactory()
+        multiplier = factory.makeMultiplier("multiplier", factor=3)
+
+.. end-code-block
+
+Below shows how the multiplier is used in an ``InterconnectedSystem``system and the simulation of that ``InterconnectedSystem``.
+
+.. code-block:: python
+
+    ramp = factory.makeArbitrarySignal("ramp", signal_function=lambda t: t)  # Define Ramp with a lambda function
+    # Create an InterconnectedSystem
+    connected_system = control.interconnect(
+    [ramp, multiplier],       # systems
+        connections=[
+            ['multiplier.in', 'ramp.out'],
+    ],
+    outlist=["multiplier.out", "ramp.out"],
+    )
+    # Simulate the system and plot the result.
+    ts = ctl.simulateSystem(connected_system, output_names=["multiplier.out", "ramp.out"])
+    ctl.plotOneTS(ts, figsize=(5,5), )
+
+.. end-code-block
+
+.. image:: images/multiplier_simulation.png
+  :width: 400
 
 Passthru
 ^^^^^^^^

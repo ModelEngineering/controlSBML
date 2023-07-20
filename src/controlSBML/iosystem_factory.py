@@ -352,7 +352,7 @@ class IOSystemFactory(object):
         return control.NonlinearIOSystem(
             None, outfcn, inputs=input_names, outputs=[OUT], name=name)
    
-    def makeFilter(self, filter_name, constant=1):
+    def makeFilter(self, name, constant=1):
         """
         Construct a NonlinearIOSystem for x' = -a*x + a*u, where u is the
         filter input and -a is the pole of the filer.
@@ -367,7 +367,7 @@ class IOSystemFactory(object):
         -------
         NonlinearIOSystem
         """
-        logger = self._registerLogger(filter_name, [IN, STATE, OUT])
+        logger = self._registerLogger(name, [IN, STATE, OUT])
         def updfcn(_, x_vec, u_vec, __):
             """
             Returns the derivative of the state.
@@ -395,7 +395,7 @@ class IOSystemFactory(object):
         #
         return control.NonlinearIOSystem(
             updfcn, outfcn, outputs=[OUT], inputs=[IN], states=[STATE],
-            name=filter_name)
+            name=name)
 
     def makeStateFilter(self, filter_name, kf, input_system_name,
           output_system_name, state_names):
@@ -510,7 +510,7 @@ class IOSystemFactory(object):
         #
         return sys, connections
 
-    def makePassthru(self, name, input_name=None, output_name=None):
+    def makePassthru(self, name):
         """
         Makes a pass through system that outputs its input.
 
@@ -525,10 +525,8 @@ class IOSystemFactory(object):
         NonlinearIOSystem
         """
         logger = self._registerLogger(name, [IN, OUT])
-        if input_name is None:
-            input_name = IN
-        if output_name is None:
-            output_name = OUT
+        input_name = IN
+        output_name = OUT
         def outfcn(time, _, u_vec, __):
             u_val = self._array2scalar(u_vec)
             output = u_val
@@ -538,7 +536,7 @@ class IOSystemFactory(object):
         return control.NonlinearIOSystem(
             None, outfcn, outputs=[output_name], inputs=[input_name], name=name)
 
-    def makeMultiplier(self, name, factor):
+    def makeMultiplier(self, name, factor=1):
         """
         Outputs a multiple of the input signal.
 
