@@ -97,7 +97,8 @@ def makeTransferFunction(parameters):
     #
     num_arr = makeVec(NUMERATOR_PREFIX)
     den_arr = makeVec(DENOMINATOR_PREFIX)
-    return control.TransferFunction(num_arr, den_arr)
+    tf = control.TransferFunction(num_arr, den_arr)
+    return util.simplifyTransferFunction(tf)
 
 def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     """
@@ -204,7 +205,7 @@ class SISOTransferFunctionBuilder(object):
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
     def plotStaircaseResponse(self, final_value=0, num_step=5, initial_value=0,
-           ax2=None, **kwargs):
+           ax2=None, initial_x_vec=None, **kwargs):
         """
         Plots the response to a monotonic sequence of step inputs. Assumes a
         single input. Assumes a single output. If there is more than one,
@@ -216,6 +217,7 @@ class SISOTransferFunctionBuilder(object):
         initial_value: float (value for first step)
         final_value: float (value for final step)
         ax2: Matplotlib.Axes (second y axis)
+        initial_x_vec: np.array (initial state vector)
         #@expand
 
         Returns
@@ -235,6 +237,7 @@ class SISOTransferFunctionBuilder(object):
         # Restructure
         result_ts = ss.simulateSystem(self.sys, u_vec=staircase_arr,
                start_time=start_time, output_names=[self.output_name],
+               initial_x_vec=initial_x_vec,
                end_time=end_time, points_per_time=points_per_time)
         staircase_name = "%s_%s" % (self.input_name, STAIRCASE)
         result_ts[staircase_name] = staircase_arr

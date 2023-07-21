@@ -1,3 +1,6 @@
+MIMOTransferFunctionBuiler
+    1. Operating point for sysid is steadyState
+    2. For range, using % range instead of an actual value
 readthedocs
 Herb's request for Bode plots
 Construction of state space representation is done by system identification

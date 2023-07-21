@@ -134,7 +134,19 @@ class TestFunctions(unittest.TestCase):
         with self.assertWarns(Warning):
             util.setRoadrunnerValue(rr, {"TOT": value})
 
-
+    def testSimplifyTransferFunction(self):
+        if IGNORE_TEST:
+            return
+        tf = control.TransferFunction([1], [1, 0.0002, 1])
+        new_tf = util.simplifyTransferFunction(tf)
+        den = new_tf.den[0][0]
+        self.assertTrue(np.isclose(den[1], 0))
+        tf = control.TransferFunction([1, 0.0003], [1, 2, 0.0002])
+        new_tf = util.simplifyTransferFunction(tf)
+        den = new_tf.den[0][0]
+        num = new_tf.num[0][0]
+        self.assertEqual(len(den), 2)
+        self.assertEqual(len(num), 1)
 
 
 if __name__ == '__main__':

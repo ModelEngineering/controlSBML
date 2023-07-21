@@ -1,5 +1,6 @@
 import controlSBML.constants as cn
 import controlSBML as ctl
+import control
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.option_management.options import Options
 from controlSBML import msgs
@@ -295,7 +296,6 @@ def setRoadrunnerValue(roadrunner, name_dct):
         except RuntimeError:
             msgs.warn("Could not set value for %s" % name)
 
-
 def timeresponse2Timeseries(timeresponse, column_names=None):
     """
     Converts a control.Timeresponse object to a time series.
@@ -320,6 +320,43 @@ def timeresponse2Timeseries(timeresponse, column_names=None):
 
 def isNumber(item):
     return isinstance(item, float) or isinstance(item, int)
+
+def simplifyTransferFunction(tf, tol=1e-3):
+    """
+    Simplifies a transfer function by removing terms that are close to 0
+    and reducing the order of the numerator and polynomials.
+
+    Parameters
+    ----------
+    tf: control.TransferFunction
+
+    Returns
+    -------
+    control.TransferFunction
+    """
+    def prune(arr):
+        arr = arr[0][0]
+        arr_max = np.max(np.abs(arr))
+        new_arr = np.array([n if np.abs(n) >= tol*arr_max else 0 for n in arr])
+        return new_arr
+    def isLastZero(arr):
+        if np.isclose(arr[-1], 0):
+            return True
+        return False
+    # Eliminate terms close to 0
+    den = prune(tf.den)
+    num = prune(tf.num)
+    # Reduce the order of the transfer function
+    den_len = len(den)
+    num_len = len(num)
+    min_len = min(den_len, num_len)
+    for pos in range(min_len):
+        if isLastZero(num) and isLastZero(den):
+            num = num[:-1]
+            den = den[:-1]
+        else:
+            break
+    return control.TransferFunction(num, den)
 
 
 ############### CLASSES ################

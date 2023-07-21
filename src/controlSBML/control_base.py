@@ -640,7 +640,7 @@ class ControlBase(object):
         -------
         controlSBML.NonelinearIOSystem
         """
-        return ctl.NonlinearIOSystem(name, self)
+        return ctl.NonlinearIOSystem(name, self, input_names=self.input_names, output_names=self.output_names)
 
     @staticmethod
     def reduceTransferFunction(tf, atol=ATOL):

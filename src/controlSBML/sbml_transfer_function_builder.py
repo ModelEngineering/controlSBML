@@ -1,12 +1,9 @@
 """
-Builds a transfer function for a SISO NonlinearIOSystem
-
-    plotStaircaseResponse: plots response to a staircase input to the transfer function
-
-    TO DO
-    1. Tests for fitting
+Builds transfer functions for an SBML model from all inputs to all outputs.
 """
 
+import controlSBML as ctl
+import controlSBML.constants as cn
 from controlSBML import util
 import controlSBML.siso_transfer_function_builder as tfb
 import controlSBML.simulate_system as ss
@@ -20,13 +17,19 @@ from docstring_expander.expander import Expander
 import numpy as np
 import pandas as pd
 
-class MIMOTransferFunctionBuilder(object):
+
+class SBMLTransferFunctionBuilder(object):
     
-    def __init__(self, sys):
+    def __init__(self, ctlsb):
         """
         Construction of an array of control.TransferFunction
+
+        Parameters
+        ----------
+        ctlsb: ControlSBML
         """
-        self.sys = sys
+        self.ctlsb = ctlsb
+        self.sys = ctlsb.makeNonlinearIOSystem("SBMLTransferFunctionBuilder")
         
     def fitTransferFunction(self, num_numerator, num_denominator, is_tf_only=True, **kwargs):
         """
@@ -65,3 +68,15 @@ class MIMOTransferFunctionBuilder(object):
         df.index = list(self.sys.input_names)
         df.index.name = "Inputs"
         return df
+    
+    @classmethod
+    def makeBuilder(cls, *pargs, **kwargs):
+        """
+        Constructs transfer functions for SBML systems.
+
+        Parameters
+        ----------
+        Same as for constructing ControlSBML
+        """
+        ctlsb = ctl.ControlSBML(*pargs, **kwargs)
+        return cls(ctlsb)
