@@ -79,7 +79,7 @@ import pandas as pd
 
 
 CL_INPUT = "cl_input"
-CL_INPUT_REF = "cl_input.ref"
+CL_INPUT_REF = "cl_input.in"
 CL_INPUT_OUT = "cl_input.out"
 CL_OUTPUT = "cl_output"
 CL_OUTPUT_IN = "cl_output.in"
@@ -485,7 +485,7 @@ class SISOClosedLoopSystem(object):
         ConnectionAssembly
         """
         # Create the elements of the feedback loop
-        self.cl_input = self.factory.makePassthru(CL_INPUT, input_name="ref")
+        self.cl_input = self.factory.makePassthru(CL_INPUT)
         connections = []
         sys_lst = []
         # Noise

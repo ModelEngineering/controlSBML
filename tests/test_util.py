@@ -137,16 +137,33 @@ class TestFunctions(unittest.TestCase):
     def testSimplifyTransferFunction(self):
         if IGNORE_TEST:
             return
+        def test(tf, expected_num, expected_den):
+            new_tf = util.simplifyTransferFunction(tf)
+            den = new_tf.den[0][0]
+            num = new_tf.num[0][0]
+            self.assertTrue(all([v == e for v, e in zip(num, expected_num)]))
+            self.assertTrue(all([v == e for v, e in zip(den, expected_den)]))
+        #
         tf = control.TransferFunction([1], [1, 0.0002, 1])
-        new_tf = util.simplifyTransferFunction(tf)
-        den = new_tf.den[0][0]
-        self.assertTrue(np.isclose(den[1], 0))
-        tf = control.TransferFunction([1, 0.0003], [1, 2, 0.0002])
-        new_tf = util.simplifyTransferFunction(tf)
-        den = new_tf.den[0][0]
-        num = new_tf.num[0][0]
-        self.assertEqual(len(den), 2)
-        self.assertEqual(len(num), 1)
+        test(tf, [1], [1, 0, 1])
+        #
+        tf = control.TransferFunction([1], [1, 1])
+        test(tf, [1], [1, 1])
+        #
+        tf = control.TransferFunction([1], [1, 2, 0.0002])
+        test(tf, [1], [1, 2])
+        #
+        tf = control.TransferFunction([1, 0.00001], [1, 2, 0.0002])
+        test(tf, [1], [1, 2])
+        #
+        tf = control.TransferFunction([1, 0.001, 0.00001], [1, 2, 0.0002])
+        test(tf, [1], [1, 2])
+        #
+        tf = control.TransferFunction([2, 1, 0.001, 0.00001], [4, 1, 0.00002, 0.0002])
+        test(tf, [2, 1], [4, 1])
+        #
+        tf = control.TransferFunction([2, 0.001, 1, 0.00001], [4, 1, 0.00002, 3, 0.0002])
+        test(tf, [2, 0, 1], [4, 1, 0, 3])
 
 
 if __name__ == '__main__':
