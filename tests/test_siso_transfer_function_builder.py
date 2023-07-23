@@ -13,8 +13,12 @@ import tellurium as te
 import tempfile
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+PLOT_PATH = os.path.join(TEST_DIR, "test_siso_transfer_function_builder.pdf")
+cn.DEFAULT_DCTS[1].update({cn.O_WRITEFIG: PLOT_PATH}) 
+cn.FIG_DCT[cn.O_WRITEFIG] = PLOT_PATH
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -32,9 +36,19 @@ S1 = 10
 S2 = 0
 S3 = 0
 """
+LINEAR_MDL = """
+J0:  -> S1; k1
+J1: S1 -> S2; S1
+J2: S2 -> ; S2
+
+k1 = 5
+S1 = 10
+S2 = 0
+"""
+rr = te.loada(LINEAR_MDL)
 INPUT_NAME = "S1"
-OUTPUT_NAME = "S3"
-ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=["S1"], output_names=["S3"])
+OUTPUT_NAME = "S2"
+ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
 LINEAR_SYS = ctlsb.makeNonlinearIOSystem("LINEAR_SYS")
 builder = stb.SISOTransferFunctionBuilder(LINEAR_SYS)
 plot_response = builder.plotStaircaseResponse(final_value=10, is_plot=False)
@@ -72,7 +86,7 @@ class TestFunctions(unittest.TestCase):
             return
         times = LINEAR_TS.times
         data_in = (times, LINEAR_TS["S1_staircase"].values)
-        data_out = LINEAR_TS["S3"].values
+        data_out = LINEAR_TS[OUTPUT_NAME].values
         parameters = stb.makeParameters(3, 3)
         residuals = stb._calculateTransferFunctionResiduals(parameters, data_in,
               data_out)
@@ -141,8 +155,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
         test(91, 15)
 
     def testPlotStaircaseResponse(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         self.init()
         staircase_name = "%s_staircase" % self.builder.input_name
         legend_crd = (.5, 1)
@@ -150,7 +164,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
             plot_result = self.builder.plotStaircaseResponse(
                   final_value, num_step=num_step,
                   initial_value=initial_value, end_time=500, start_time=start_time,
-                  writefig=True, figsize=(5,5), is_plot=IS_PLOT,
+                  figsize=(5,5), is_plot=IS_PLOT,
                   legend_crd=legend_crd)
             arr = plot_result.time_series[staircase_name].values
             num_distinct = len(set(arr))
@@ -159,7 +173,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
             self.assertEqual(arr[-1], final_value)
             return plot_result
         #
-        result = test(4, start_time=20)
+        result = test(14, start_time=20, final_value=400)
+        import pdb; pdb.set_trace()
         result = test(4)
         self.assertEqual(str(result), "")
         result = test(17)

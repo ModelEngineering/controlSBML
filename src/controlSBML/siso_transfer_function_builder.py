@@ -11,7 +11,6 @@ import controlSBML.constants as cn
 from controlSBML import msgs
 from controlSBML import util
 import controlSBML.simulate_system as ss
-import controlSBML.timeseries as ts
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.option_management.options import Options
 
@@ -19,6 +18,7 @@ import collections
 import control
 from docstring_expander.expander import Expander
 import lmfit
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -205,7 +205,7 @@ class SISOTransferFunctionBuilder(object):
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
     def plotStaircaseResponse(self, final_value=0, num_step=5, initial_value=0,
-           ax2=None, initial_x_vec=None, **kwargs):
+           ax2=None, is_steady_state=True, **kwargs):
         """
         Plots the response to a monotonic sequence of step inputs. Assumes a
         single input. Assumes a single output. If there is more than one,
@@ -217,7 +217,7 @@ class SISOTransferFunctionBuilder(object):
         initial_value: float (value for first step)
         final_value: float (value for final step)
         ax2: Matplotlib.Axes (second y axis)
-        initial_x_vec: np.array (initial state vector)
+        is_steady_state: bool (initialize to steady state values)
         #@expand
 
         Returns
@@ -234,10 +234,13 @@ class SISOTransferFunctionBuilder(object):
         num_point = points_per_time*(end_time - start_time) + 1
         staircase_arr = self._makeStaircase(num_point, num_step, initial_value,
                final_value)
-        # Restructure
+        # Do the simulations
+        if is_steady_state:
+            success = self.sys.setSteadyState()
+            if not success:
+                msgs.warn("Could not set steady state.")
         result_ts = ss.simulateSystem(self.sys, u_vec=staircase_arr,
                start_time=start_time, output_names=[self.output_name],
-               initial_x_vec=initial_x_vec,
                end_time=end_time, points_per_time=points_per_time)
         staircase_name = "%s_%s" % (self.input_name, STAIRCASE)
         result_ts[staircase_name] = staircase_arr
@@ -251,7 +254,6 @@ class SISOTransferFunctionBuilder(object):
             del output_ts[staircase_name]
             column_names = list(result_ts)
             revised_opts = Options(plot_opts, cn.DEFAULT_DCTS)
-            revised_opts.set(cn.O_WRITEFIG, False)
             revised_opts.set(cn.O_IS_PLOT,  False)
             plot_result = util.plotOneTS(output_ts, **revised_opts)
             ax = plot_result.ax

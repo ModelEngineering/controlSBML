@@ -2,17 +2,10 @@
 
 import controlSBML.constants as cn
 from controlSBML import logger as lg
-from controlSBML import msgs
 from controlSBML import util
-from controlSBML.simulate_system import simulateSystem
-import controlSBML.timeseries as ts
-from controlSBML.option_management.option_manager import OptionManager
-from controlSBML.option_management.options import Options
 
 import control
 import numpy as np
-import pandas as pd
-import warnings
 
 
 ARG_LST = [cn.TIME, cn.STATE, cn.INPUT, cn.PARAMS]
@@ -94,12 +87,27 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
     def getSubsystem(self, name, input_names, output_names):
         """Creates a subsystem using a subset of the input and output names
 
-        Args:
+        Parameters
+        ----------
             input_names (_type_): _description_
             output_names (_type_): _description_
         """
         return NonlinearIOSystem(name, self.ctlsb,
               input_names=input_names, output_names=output_names)
+    
+    def setSteadyState(self):
+        """
+        Sets the steady state of the system.
+        
+        Returns
+        -------
+            bool (success)
+        """
+        try:
+            self.ctlsb.roadrunner.steadyState()
+        except RuntimeError:
+            return False
+        return True
 
     def _updfcn(self, time, x_vec, u_vec, _):
         """

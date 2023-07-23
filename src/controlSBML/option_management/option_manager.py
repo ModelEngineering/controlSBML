@@ -167,11 +167,10 @@ class OptionManager(object):
             is_write = True
         elif isinstance(writefig, bool):
             if writefig:
-                filepath = None
+                filepath = "figure_%d.pdf" % cls.figure_idx
+                cls.figure_idx  += 1
                 is_write = True
         if is_write:
             if file_path is None:
-                filename = "figure_%d.pdf" % cls.figure_idx
-                cls.figure_idx  += 1
-                file_path = os.path.join(cn.PLOT_DIR, filename)
+                file_path = os.path.join(cn.PLOT_DIR, filepath)
             plt.savefig(file_path)
