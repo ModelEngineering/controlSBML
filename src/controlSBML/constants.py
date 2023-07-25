@@ -7,7 +7,7 @@ import pandas as pd
 import os
 
 
-# Legend specification
+# Classes
 class LegendSpec():
 
     def __init__(self, names, crd=(1.15, 1), loc="upper right"):
@@ -22,6 +22,21 @@ class LegendSpec():
         self.names = list(names)
         self.crd = crd
         self.loc = loc
+
+class StaircaseSpec(object):
+
+    def __init__(self, initial_value=0, num_step=5, final_value=0):
+        """
+        Parameters
+        ----------
+        initial_value: float (value for first step)
+        final_value: float (value for final step)
+        num_step: int (number of steps in staircase)
+        """
+        self.initial_value = initial_value
+        self.num_step = num_step
+        self.final_value = final_value
+        self.num_point = num_step*10 + 1
 
 
 ################ DIRECTORIES #################

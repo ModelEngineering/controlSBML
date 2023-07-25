@@ -39,7 +39,7 @@ def makeStateVector(sys, start_time=0):
 
 @Expander(cn.KWARGS, cn.SIM_KWARGS)
 def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
-      **kwargs):
+                   is_steady_state=True, **kwargs):
     """
     Simulates the system. Provides default values for initial state by
     setting control systems to 0 and setting controlSBML.NonlinearIOSystem
@@ -51,6 +51,7 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
     output:names: list-str (names of the outputs)
     initial_x_vec: np.array or pd.Series
     u_vec: np.array or pd.Series
+    is_steady_state: bool (initialize to steady state values)
     #@expand
 
     Returns
@@ -72,6 +73,8 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
         results = control.input_output_response(sys, times, X0=initial_x_vec,
             U=u_vec)
     else:
+        if is_steady_state:
+            sys.setSteadyState()
         results = control.input_output_response(sys, times, X0=initial_x_vec)
     output_mat = np.transpose(results.y)
     num_column = np.shape(output_mat)[1]

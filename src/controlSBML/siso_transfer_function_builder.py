@@ -151,22 +151,23 @@ class SISOTransferFunctionBuilder(object):
             self.output_name = sys.output_labels[0]
 
     @staticmethod
-    def _makeStaircase(num_point, num_step, initial_value, final_value):
+    def _makeStaircase(staircase_spec):
         """
         A staircase is a sequence of steps of the same magnitude and duration.
 
         Parameters
         ----------
-        num_point: number of points in the staircase
-        num_step: int (number of steps in the stair response.
-        start_value: float (initial values of the inputs)
-        final_value: float (ending values of the inputs)
+        staircase_spec: StaircaseSpec
 
         Returns
         -------
         np.ndarray
         """
         steps = []  # Steps in the staircase
+        num_step = staircase_spec.num_step
+        initial_value = staircase_spec.initial_value
+        final_value = staircase_spec.final_value
+        num_point = staircase_spec.num_point
         num_point_in_step = int(num_point/num_step)
         for num in range(num_step):
             steps.extend(list(np.repeat(num, num_point_in_step)))
@@ -202,20 +203,17 @@ class SISOTransferFunctionBuilder(object):
         column = sel_columns[0]
         return time_series[column].values
 
-
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotStaircaseResponse(self, final_value=0, num_step=5, initial_value=0,
-           ax2=None, is_steady_state=True, **kwargs):
+    def plotStaircaseResponse(self, staircase_spec=cn.StaircaseSpec(),
+           ax2=None, is_steady_state=True, option_mgr=None, **kwargs):
         """
         Plots the response to a monotonic sequence of step inputs. Assumes a
         single input. Assumes a single output. If there is more than one,
-        only the first is plotted.
+        only the first is plotted. The operating point of the system is steady state.
 
         Parameters
         ----------
-        num_step: int (number of steps in staircase)
-        initial_value: float (value for first step)
-        final_value: float (value for final step)
+        staircase_spec: cn.StaircaseSpec (initial_value, final_value, num_step)
         ax2: Matplotlib.Axes (second y axis)
         is_steady_state: bool (initialize to steady state values)
         #@expand
@@ -225,15 +223,15 @@ class SISOTransferFunctionBuilder(object):
         util.PlotResult
         """
         # Handle the options
-        mgr = OptionManager(kwargs)
-        start_time = mgr.options.get(cn.O_START_TIME)
-        end_time = mgr.options.get(cn.O_END_TIME)
-        points_per_time = mgr.options.get(cn.O_POINTS_PER_TIME)
-        is_plot = mgr.options.get(cn.O_IS_PLOT)
+        if option_mgr is None:
+            option_mgr = OptionManager(kwargs)
+        start_time = option_mgr.options.get(cn.O_START_TIME)
+        end_time = option_mgr.options.get(cn.O_END_TIME)
+        points_per_time = option_mgr.options.get(cn.O_POINTS_PER_TIME)
+        staircase_spec.num_point = (end_time-start_time)*points_per_time + 1
+        is_plot = option_mgr.options.get(cn.O_IS_PLOT)
         # Construct the staircase inputs
-        num_point = points_per_time*(end_time - start_time) + 1
-        staircase_arr = self._makeStaircase(num_point, num_step, initial_value,
-               final_value)
+        staircase_arr = self._makeStaircase(staircase_spec)
         # Do the simulations
         if is_steady_state:
             success = self.sys.setSteadyState()
@@ -241,36 +239,36 @@ class SISOTransferFunctionBuilder(object):
                 msgs.warn("Could not set steady state.")
         result_ts = ss.simulateSystem(self.sys, u_vec=staircase_arr,
                start_time=start_time, output_names=[self.output_name],
+               is_steady_state=True,
                end_time=end_time, points_per_time=points_per_time)
         staircase_name = "%s_%s" % (self.input_name, STAIRCASE)
         result_ts[staircase_name] = staircase_arr
         # Do the plots
-        ax = None
         ax2 = None
+        plot_opts = Options(option_mgr.plot_opts, cn.DEFAULT_DCTS)
+        # Plot the output
+        output_ts = result_ts.copy()
+        del output_ts[staircase_name]
+        revised_opts = Options(plot_opts, cn.DEFAULT_DCTS)
+        revised_opts.set(cn.O_IS_PLOT,  False)
+        revised_opts.set(cn.O_FIGURE, option_mgr.fig_opts[cn.O_FIGURE])
+        plot_result = util.plotOneTS(output_ts, **revised_opts)
+        ax = plot_result.ax
+        if ax2 is None:
+            ax2 = ax.twinx()
+        # Plot the staircase
+        times = np.array(result_ts.index)/cn.MS_IN_SEC
+        ax2.plot(times, result_ts[staircase_name], color="red",
+            linestyle="--")
+        ax2.set_ylabel(staircase_name, color="red")
+        ax2.legend([])
         if is_plot:
-            plot_opts = Options(mgr.plot_opts, cn.DEFAULT_DCTS)
-            # Plot the output
-            output_ts = result_ts.copy()
-            del output_ts[staircase_name]
-            column_names = list(result_ts)
-            revised_opts = Options(plot_opts, cn.DEFAULT_DCTS)
-            revised_opts.set(cn.O_IS_PLOT,  False)
-            plot_result = util.plotOneTS(output_ts, **revised_opts)
-            ax = plot_result.ax
-            if ax2 is None:
-                ax2 = ax.twinx()
-            # Plot the staircase
-            times = np.array(result_ts.index)/cn.MS_IN_SEC
-            ax2.plot(times, result_ts[staircase_name], color="red",
-                  linestyle="--")
-            ax2.set_ylabel(staircase_name, color="red")
-            ax2.legend([])
-            mgr.doFigOpts()
+            option_mgr.doFigOpts()
         #
         return util.PlotResult(time_series=result_ts, ax=ax, ax2=ax2)
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def fitTransferFunction(self, num_numerator, num_denominator, **kwargs):
+    def fitTransferFunction(self, num_numerator, num_denominator, staircase_spec=cn.StaircaseSpec(), **kwargs):
         """
         Constructs a transfer function for the NonlinearIOSystem.
 
@@ -279,9 +277,7 @@ class SISOTransferFunctionBuilder(object):
         num_numerator: int (number of numerator terms)
         num_denominator: int (number of denominator terms)
         kwargs: dict
-            num_step: int (number of steps in staircase)
-            initial_value: float (value for first step)
-            final_value: float (value for final step)
+            staircase_spec: cn.StaircaseSpec (initial_value, final_value, num_step)
         #@expand
 
         Returns
@@ -298,13 +294,7 @@ class SISOTransferFunctionBuilder(object):
         FitterResult = collections.namedtuple("FitterResult",
             "transfer_function parameters minimizer_result stderr nfev redchi time_series")
         # Initialize staircase arguments
-        final_value = kwargs.get("final_value", 0)
-        initial_value = kwargs.get("initial_value", 0)
-        num_step = kwargs.get("num_step", 5)
         new_kwargs = dict(kwargs)
-        new_kwargs["final_value"] = final_value
-        new_kwargs["initial_value"] = initial_value
-        new_kwargs["num_step"] = num_step
         # Get the calibration data
         plot_result = self.plotStaircaseResponse(is_plot=False,
               **new_kwargs)

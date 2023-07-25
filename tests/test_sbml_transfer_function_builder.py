@@ -3,17 +3,14 @@ import controlSBML.constants as cn
 import controlSBML.sbml_transfer_function_builder as tfb
 
 import control
-import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
 import unittest
-import shutil
 import tellurium as te
-import tempfile
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = True
 END_TIME = 5
 DT = 0.01
@@ -22,30 +19,35 @@ NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
 
 LINEAR_MDL = """
-J0: $S0 -> S1; k1*S0
+J0:  -> S1; k1
 J1: S1 -> S2; S1
 J2: S2 -> S3; S2
 J3: S3 -> S4; S3
-J4: S4 -> S5; S4
+J4: S4 -> ; S4
 
 k1 = 10
-S0 = 1
 S1 = 10
 S2 = 0
 S3 = 0
+S4 = 0
 """
 INPUT_NAME = "S1"
 OUTPUT_NAME = "S3"
 INPUT_NAMES = ["S1", "S2"]
 OUTPUT_NAMES = ["S3", "S4"]
+#
+TEST_DIR = os.path.dirname(os.path.abspath(__file__))
+PLOT_PATH = os.path.join(TEST_DIR, "test_sbml_transfer_function_builder.pdf")
+cn.DEFAULT_DCTS[1].update({cn.O_WRITEFIG: PLOT_PATH}) 
+cn.FIG_DCT[cn.O_WRITEFIG] = PLOT_PATH
 
 #############################
 # Tests
 #############################
-class TestMIMOTransferFunctionBuilder(unittest.TestCase):
+class TestSBMLTransferFunctionBuilder(unittest.TestCase):
 
     def setUp(self):
-        self.builder = tfb.SBMLTransferFunctionBuilder.makeBuilder(
+        self.builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(
             LINEAR_MDL, input_names=INPUT_NAMES, output_names=OUTPUT_NAMES)
 
     def testConstructor(self):
@@ -73,7 +75,15 @@ class TestMIMOTransferFunctionBuilder(unittest.TestCase):
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         if IS_PLOT:
             ctl.plotOneTS(fitter_result.time_series, writefig=True)
-
+      
+    def testPlotStaircaseResponse(self):
+        #if IGNORE_TEST:
+        #   return
+        #plot_result = self.builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
+        #                                                 staircase_spec=cn.StaircaseSpec(final_value=10))
+        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
+        plot_result = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
+                                                         staircase_spec=cn.StaircaseSpec(final_value=10))
 
 if __name__ == '__main__':
   unittest.main()

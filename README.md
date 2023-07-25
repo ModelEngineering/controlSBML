@@ -1,19 +1,16 @@
-# controlSBML 
- The [Systems Biology Markup Language (SBML)](https://co.mbine.org/standards/sbml) is a community standard for representing
-simulations of biological models, especially chemical reaction networks.
-``controlSBML`` is a package that does control analysis and design of SBML models using
-the [CalTech ``control`` package](http://python-control.sourceforge.net/manual/).
+# controlSBML
+``controlSBML`` is a python packag that assists with control engineering of biological systems that are characterized by models in
+ the [Systems Biology Markup Language (SBML)](https://co.mbine.org/standards/sbml), a community standard for representing
+models of biological models, especially chemical reaction networks.
+``controlSBML`` provides the following:
 
-``controlSBML`` uses the following "systems characterization" of an SBML model:
+* Enalbing the use of
+the [CalTech ``control`` package](http://python-control.sourceforge.net/manual/) on SBML models.
+* System identification of SBML models.
+* Factories that create elements of closed loop systems such as PID controllers, filters, and adders.
+* Simplified construction of entire closed loop systems characterized by SBML models.
 
-* state variables are floating species;
-* inputs are reaction fluxes;
-* outputs are a subset of the state variables.
-
-We note that reaction fluxes cannot be manipulated directly. Thus,implementation requires a mapping from a reaction flux to an *effector*, typically a chemical
-species such as an enzyme that is specific to the reaction.
-The keyword ``effector_dct`` refers to a python dictionary that does this mapping.
-(See the ``makeNonlinearIOSystem`` method of ``ControlSBML``.)
+SBML models are characterized in terms of inputs and outputs. Inputs are anything that can be manipulated directly during a simulation. Examples of inputs are: concentrations of chemical species (floating or fixed), compartment sizes, and parameters. Outputs are anything that can change during a simulation. This includes species concentrations and reaction fluxes.
 
 ``controlSBML`` interfaes to the ``control`` package by creating two kinds of ``control`` objects for an SBML model:
 
@@ -22,9 +19,6 @@ The keyword ``effector_dct`` refers to a python dictionary that does this mappin
 
 These objects can be used in combination with other ``control`` objects to analyze system properties,
 design controllers, and construct closed loop systems.
-
-``controlSBML`` also provides analyses of SBML models as well as a means to manipulate
-elements of the SBML model.
 
 ## Installation
 ``pip install controlSBML``

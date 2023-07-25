@@ -3,6 +3,7 @@
 import controlSBML.constants as cn
 from controlSBML import logger as lg
 from controlSBML import util
+from controlSBML import msgs
 
 import control
 import numpy as np
@@ -103,6 +104,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
             bool (success)
         """
+        if not "roadrunner" in dir(self.ctlsb):
+            return msgs.warn("No roadrunner object.")
         try:
             self.ctlsb.roadrunner.steadyState()
         except RuntimeError:

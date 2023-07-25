@@ -91,7 +91,7 @@ class ControlBase(object):
             self.reaction_names = list(self.reduced_stoichiometry_df.columns)
         # Handle defaults
         if input_names is None:
-            self.input_names = []
+            self.input_names = self.species_names
         else:
             self.input_names = input_names
         #self.input_names = self._sortList(self.reaction_names, self.input_names)

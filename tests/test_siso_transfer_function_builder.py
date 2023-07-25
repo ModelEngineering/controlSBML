@@ -13,8 +13,8 @@ import tellurium as te
 import tempfile
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 PLOT_PATH = os.path.join(TEST_DIR, "test_siso_transfer_function_builder.pdf")
 cn.DEFAULT_DCTS[1].update({cn.O_WRITEFIG: PLOT_PATH}) 
@@ -51,7 +51,7 @@ OUTPUT_NAME = "S2"
 ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
 LINEAR_SYS = ctlsb.makeNonlinearIOSystem("LINEAR_SYS")
 builder = stb.SISOTransferFunctionBuilder(LINEAR_SYS)
-plot_response = builder.plotStaircaseResponse(final_value=10, is_plot=False)
+plot_response = builder.plotStaircaseResponse(staircase_spec=cn.StaircaseSpec(final_value=10), is_plot=False)
 LINEAR_TS = plot_response.time_series
 
 
@@ -141,8 +141,9 @@ class TestNonlinearIOSystem(unittest.TestCase):
             return
         self.init()
         def test(num_point, num_step, initial_value=0, final_value=5):
-            result = self.builder._makeStaircase(num_point,
-                  num_step, initial_value, final_value)
+            staircase_spec = cn.StaircaseSpec(initial_value=initial_value,
+                    num_step=num_step, final_value=final_value)
+            result = self.builder._makeStaircase(staircase_spec)
             self.assertTrue(len(result), num_point)
             num_distinct = len(set(result))
             self.assertEqual(num_distinct, num_step)
@@ -155,15 +156,17 @@ class TestNonlinearIOSystem(unittest.TestCase):
         test(91, 15)
 
     def testPlotStaircaseResponse(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.init()
         staircase_name = "%s_staircase" % self.builder.input_name
         legend_crd = (.5, 1)
         def test(num_step, initial_value=0, final_value=20, start_time=0):
+            staircase_spec = cn.StaircaseSpec(num_step=num_step, initial_value=initial_value,
+                                              final_value=final_value)
             plot_result = self.builder.plotStaircaseResponse(
-                  final_value, num_step=num_step,
-                  initial_value=initial_value, end_time=500, start_time=start_time,
+                  staircase_spec=staircase_spec,
+                  end_time=500, start_time=start_time,
                   figsize=(5,5), is_plot=IS_PLOT,
                   legend_crd=legend_crd)
             arr = plot_result.time_series[staircase_name].values
@@ -174,7 +177,6 @@ class TestNonlinearIOSystem(unittest.TestCase):
             return plot_result
         #
         result = test(14, start_time=20, final_value=400)
-        import pdb; pdb.set_trace()
         result = test(4)
         self.assertEqual(str(result), "")
         result = test(17)
@@ -194,9 +196,10 @@ class TestNonlinearIOSystem(unittest.TestCase):
         builder = ctlsb.makeSISOTransferFunctionBuilder(input_name=name,
               output_name=["S2"])
         def test(num_step, initial_value=0, final_value=11):
-            plot_result = builder.plotStaircaseResponse(num_step=num_step,
-                  initial_value=initial_value,
-                  final_value=final_value, end_time=200,
+            staircase_spec = cn.StaircaseSpec(num_step=num_step, initial_value=initial_value,
+                                              final_value=final_value)
+            plot_result = builder.plotStaircaseResponse(staircase_spec=staircase_spec,
+                  end_time=200,
                   is_plot=False,
                   legend_spec=legend_spec)
             arr = plot_result.time_series[staircase_name].values
@@ -216,7 +219,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        fitter_result = self.builder.fitTransferFunction(4, 4, final_value=10,
+        fitter_result = self.builder.fitTransferFunction(4, 4,
               end_time=100)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         if IS_PLOT:
@@ -228,7 +231,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
         ctlsb = ctl.ControlSBML("https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml",
               input_names=["at"], output_names=["s5"])
         builder = ctlsb.makeSISOTransferFunctionBuilder()
-        fitter_result = builder.fitTransferFunction(1, 2, final_value=10,
+        staircase_spec = cn.StaircaseSpec(initial_value=0, final_value=10)
+        fitter_result = builder.fitTransferFunction(1, 2, staircase_spec=staircase_spec,
               end_time=100)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         if IS_PLOT:

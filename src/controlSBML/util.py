@@ -74,7 +74,7 @@ def getModel(file_name=MODEL_823_FILE):
         model_str = "".join(fd.readlines())
     return model_str
 
-@Expander(cn.KWARGS, cn.PLOT_KWARGS)
+@Expander(cn.KWARGS, cn.ALL_KWARGS)
 def plotOneTS(time_series, ax2=None, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
@@ -92,10 +92,12 @@ def plotOneTS(time_series, ax2=None, **kwargs):
     mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
     ax = mgr.plot_opts.get(cn.O_AX)
-    if (ax is None) and (ax2 is None):
-        fig, ax = plt.subplots(1)
-    elif cn.O_FIGURE in kwargs.keys():
+    if cn.O_FIGURE in kwargs.keys():
         fig = kwargs[cn.O_FIGURE]
+    elif (ax is None) and (ax2 is None):
+        fig, ax = plt.subplots(1)
+    else:
+        raise ValueError("Must provide either ax or ax2")
     if ax2 is not None:
         ax = ax2
     times = np.array(time_series.index)/cn.MS_IN_SEC
