@@ -19,17 +19,21 @@ NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
 
 LINEAR_MDL = """
-J0:  -> S1; k1
-J1: S1 -> S2; S1
-J2: S2 -> S3; S2
-J3: S3 -> S4; S3
-J4: S4 -> ; S4
+J0:  -> S1; k0
+J1: S1 -> S2; k1*S1
+J2: S2 -> S3; k2*S2
+J3: S3 -> S4; k3*S3
+J4: S4 -> ; k4*S4
 
-k1 = 10
-S1 = 10
-S2 = 0
-S3 = 0
-S4 = 0
+k0 = 50
+k1 = 1
+k2 = 2
+k3 = 3
+k4 = 4
+S1 = 1
+S2 = 1
+S3 = 1
+S4 = 1
 """
 INPUT_NAME = "S1"
 OUTPUT_NAME = "S3"
@@ -82,7 +86,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         #plot_result = self.builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
         #                                                 staircase_spec=cn.StaircaseSpec(final_value=10))
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
-        plot_result = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
+        plot_result = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=10000,
                                                          staircase_spec=cn.StaircaseSpec(final_value=10))
 
 if __name__ == '__main__':

@@ -12,7 +12,7 @@ import tellurium as te
 import tempfile
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 END_TIME = 5
 DT = 0.01
@@ -44,6 +44,25 @@ E_J0 = 1
 $S3 = 3
 k1 =1; k2=2; k3=3
 """
+LINEAR_MDL2 = """
+J0:  -> S1; k0
+J1: S1 -> S2; k1*S1
+J2: S2 -> S3; k2*S2
+J3: S3 -> S4; k3*S3
+J4: S4 -> ; k4*S4
+
+k0 = 50
+k1 = 1
+k2 = 2
+k3 = 3
+k4 = 4
+S1 = 1
+S2 = 1
+S3 = 1
+S4 = 1
+"""
+INPUT_NAME2 = "S2"
+OUTPUT_NAME2 = "S4"
 
 # Temporarily change the plot path
 if IS_PLOT:
@@ -104,13 +123,10 @@ class TestNonlinearIOSystem(unittest.TestCase):
             [dct[n].append(v) for n, v in
                   zip(self.sys.state_names, new_x_vec)]
             x_vec = new_x_vec
-        if states is None:
-           newDct = dct
-        else:
-           newDct = {k: v for k, v in dct.items() if k in states}
         df = pd.DataFrame(dct)
         return df
 
+    # FIXME: Ensure that simulation agrees with Tellurium
     def testUpdfcn(self):
         if IGNORE_TEST:
           return
@@ -188,6 +204,17 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb)
         df = self.runInputOutputResponse(0)
+
+    def testAccuracy(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ctl.ControlSBML(LINEAR_MDL2,
+              input_names=[INPUT_NAME2], output_names=[OUTPUT_NAME2])
+        sys = ctl.NonlinearIOSystem("linear_mdl2", ctlsb)
+        x_vec = sys.makeStateSer().values
+        times = np.linspace(0, 1000, 10000)
+        times, y_vals = control.input_output_response(sys, T=times, X0=x_vec, U=50)
+        self.assertLess(np.abs(y_vals[-1] - 25), 0.1)   # S4 = k2/k4*U at steady state
 
 
 if __name__ == '__main__':

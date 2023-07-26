@@ -94,12 +94,11 @@ def plotOneTS(time_series, ax2=None, **kwargs):
     ax = mgr.plot_opts.get(cn.O_AX)
     if cn.O_FIGURE in kwargs.keys():
         fig = kwargs[cn.O_FIGURE]
-    elif (ax is None) and (ax2 is None):
-        fig, ax = plt.subplots(1)
-    else:
-        raise ValueError("Must provide either ax or ax2")
-    if ax2 is not None:
-        ax = ax2
+    if ax is None:
+        if ax2 is not None:
+            ax = ax2
+        else:
+            fig, ax = plt.subplots(1)
     times = np.array(time_series.index)/cn.MS_IN_SEC
     ax.plot(times, time_series)
     legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])

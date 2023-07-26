@@ -73,8 +73,6 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
         results = control.input_output_response(sys, times, X0=initial_x_vec,
             U=u_vec)
     else:
-        if is_steady_state:
-            sys.setSteadyState()
         results = control.input_output_response(sys, times, X0=initial_x_vec)
     output_mat = np.transpose(results.y)
     num_column = np.shape(output_mat)[1]

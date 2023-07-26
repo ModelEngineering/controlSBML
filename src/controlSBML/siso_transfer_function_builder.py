@@ -254,6 +254,7 @@ class SISOTransferFunctionBuilder(object):
         revised_opts.set(cn.O_FIGURE, option_mgr.fig_opts[cn.O_FIGURE])
         plot_result = util.plotOneTS(output_ts, **revised_opts)
         ax = plot_result.ax
+        ax.legend([self.input_name], loc="lower left")
         if ax2 is None:
             ax2 = ax.twinx()
         # Plot the staircase
@@ -261,7 +262,7 @@ class SISOTransferFunctionBuilder(object):
         ax2.plot(times, result_ts[staircase_name], color="red",
             linestyle="--")
         ax2.set_ylabel(staircase_name, color="red")
-        ax2.legend([])
+        ax2.legend([staircase_name], loc="lower right")
         if is_plot:
             option_mgr.doFigOpts()
         #

@@ -57,6 +57,8 @@ Second, the OLS
 must have one or more **control inputs** 
 (e.g., administration of insulin) that effect changes in
 measured outputs to achieve control objectives.
+``controlSBML`` interprets the value of a control input as the value that the input
+will assume in the simulation.
 
 A central part of control engineering is predictive modeling.
 A **system model**

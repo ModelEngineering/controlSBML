@@ -6,11 +6,13 @@ from controlSBML import util
 from controlSBML import msgs
 
 import control
+import pandas as pd
 import numpy as np
 
 
 ARG_LST = [cn.TIME, cn.STATE, cn.INPUT, cn.PARAMS]
 MIN_ELAPSED_TIME = 1e-2
+IS_LOG = False
 
 
 class NonlinearIOSystem(control.NonlinearIOSystem):
@@ -59,6 +61,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self._ignored_inputs = []  # Note setable inputs
         self.logger = lg.Logger(self.name, self.state_names)
         # Initialize the controlNonlinearIOSystem object
+        self.logger_dct = {n: [] for n in self.state_names}
+        derivatives_dct = {n: [] for n in self.dstate_names}
+        self.logger_dct[cn.TIME] = []
+        self.logger_dct.update(derivatives_dct)
         super().__init__(self._updfcn, self._outfcn,
               inputs=self.input_names, outputs=self.output_names,
               states=self.state_names, name=self.name)
@@ -114,12 +120,12 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
 
     def _updfcn(self, time, x_vec, u_vec, _):
         """
-        Computes the change in state by adding the input to its current value.
-        This is done by having roadrunner
-        calculate fluxes. No simulation is run, and so this technique
+        Computes the change in state by controlling a species to a particular concentration.
+        We don't do addition to or subtraction from a species since it's difficult to calculate
+        the impact on rates.
+        Roadrunner computes the derivatives.
+        No simulation is run, and so this technique
         may not always work.
-        Inputs that change floating species are viewed as additions to the species,
-        not setting the level of the species.
 
         Parameters
         ----------
@@ -135,16 +141,24 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             u_vec = [u_vec]
         if self.do_simulate_on_update:
             self.setTime(time)  # Consider time dependent functions
-        # Adust the state
+        # Ensure that the state of the simulation is correct
         state_dct = {n: np.max(x_vec[i], 0)
               for i, n in enumerate(self.state_names)}
         self.ctlsb.set(state_dct)
+        # Set the values of the inputs
+        input_dct = {n: u_vec[i] for i, n in enumerate(self.input_names)}
+        self.ctlsb.set(input_dct)
         # Calculate the derivatives of floating species in state
         derivative_arr = np.array([v for v in self.ctlsb.get(self.dstate_names).values()])
-        # Adjust the derivatives based on the input
-        input_dct = {n: u_vec[i] for i, n in enumerate(self.input_names)}
-        for idx, input_name in enumerate(input_dct.keys()):
-            derivative_arr[idx] += input_dct[input_name]
+        # Update logger
+        if IS_LOG:
+            dstate_dct = {n: derivative_arr[i] for i, n in enumerate(self.dstate_names)}
+            [self.logger_dct[n].append(state_dct[n]) for n in self.state_names]
+            [self.logger_dct[n].append(dstate_dct[n]) for n in self.dstate_names]
+            self.logger_dct[cn.TIME].append(time)
+            df = pd.DataFrame(self.logger_dct)
+            df.set_index(cn.TIME, inplace=True)
+            df.to_csv("log.csv")        #
         return derivative_arr
 
     def _outfcn(self, time, x_vec, _, __):

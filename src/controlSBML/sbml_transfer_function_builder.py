@@ -66,8 +66,8 @@ class SBMLTransferFunctionBuilder(object):
                 if input_name == output_name:
                     continue
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
-                irow = self.sys.input_names.index(input_name)
-                icol = self.sys.output_names.index(output_name)
+                icol = self.sys.input_names.index(input_name)
+                irow = self.sys.output_names.index(output_name)
                 ax = fig.add_subplot(grid_spec[irow, icol])
                 siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
                 mgr.plot_opts[cn.O_AX] = ax
@@ -76,14 +76,14 @@ class SBMLTransferFunctionBuilder(object):
                 plot_result = siso_tfb.plotStaircaseResponse(staircase_spec=staircase_spec, option_mgr=mgr,
                         is_steady_state=is_steady_state)
                 result_dct[(input_name, output_name)] = plot_result
+                plot_result.ax2.set_ylabel("")   # Don't need the staircase label
                 if icol < ncols - 1:
-                    plot_result.ax2.set_ylabel("")
                     plot_result.ax2.set_yticklabels([])
                 if irow < nrows - 1:
                     plot_result.ax.set_xlabel("")
                     plot_result.ax2.set_xticklabels([])
-                if icol > 0:
-                    plot_result.ax.set_yticklabels([])
+                if (icol == 0) or (self.sys.output_names.index(output_name) == 0):
+                    plot_result.ax.set_ylabel(output_name)
                 icol += 1
                 if icol >= ncols:
                     icol = 0
@@ -91,6 +91,7 @@ class SBMLTransferFunctionBuilder(object):
                 mgr.doPlotOpts()
                 plot_result.ax.set_title("")
                 plot_result.ax.set_title(mgr.plot_opts[cn.O_TITLE], y=0.2, pad=-24, fontsize=10)
+                plot_result.ax.legend([])
         mgr.doFigOpts()
         return result_dct
 

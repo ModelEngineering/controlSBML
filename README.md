@@ -10,7 +10,9 @@ the [CalTech ``control`` package](http://python-control.sourceforge.net/manual/)
 * Factories that create elements of closed loop systems such as PID controllers, filters, and adders.
 * Simplified construction of entire closed loop systems characterized by SBML models.
 
-SBML models are characterized in terms of inputs and outputs. Inputs are anything that can be manipulated directly during a simulation. Examples of inputs are: concentrations of chemical species (floating or fixed), compartment sizes, and parameters. Outputs are anything that can change during a simulation. This includes species concentrations and reaction fluxes.
+SBML models are characterized in terms of inputs and outputs. Inputs are anything that can be manipulated directly during a simulation. Examples of inputs are: concentrations of chemical species (floating or fixed), compartment sizes, and parameters. Outputs are anything that can change during a simulation. This includes species concentrations and reaction fluxes. The
+semantics of setting an input to particular value is that this is its value in the simulation from the time until
+it is changed again or the simulation ends.
 
 ``controlSBML`` interfaes to the ``control`` package by creating two kinds of ``control`` objects for an SBML model:
 
