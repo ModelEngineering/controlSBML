@@ -1,6 +1,7 @@
 import controlSBML as ctl
 import controlSBML.constants as cn
 import controlSBML.siso_transfer_function_builder as stb
+import helpers
 
 import control
 import matplotlib.pyplot as plt
@@ -15,10 +16,7 @@ import tempfile
 
 IGNORE_TEST = False
 IS_PLOT = False
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-PLOT_PATH = os.path.join(TEST_DIR, "test_siso_transfer_function_builder.pdf")
-cn.DEFAULT_DCTS[1].update({cn.O_WRITEFIG: PLOT_PATH}) 
-cn.FIG_DCT[cn.O_WRITEFIG] = PLOT_PATH
+PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -129,6 +127,9 @@ class TestNonlinearIOSystem(unittest.TestCase):
         # FIXME: This won't work in windows
         if IS_PLOT and ("var" in cn.PLOT_DIR):
             shutil.rmtree(cn.PLOT_DIR)
+        #
+        if os.path.isfile(PLOT_PATH):
+            os.remove(PLOT_PATH)
 
     def testConstructor(self):
         if IGNORE_TEST:

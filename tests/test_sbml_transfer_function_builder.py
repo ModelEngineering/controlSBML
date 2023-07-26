@@ -1,6 +1,8 @@
 import controlSBML as ctl
 import controlSBML.constants as cn
 import controlSBML.sbml_transfer_function_builder as tfb
+import controlSBML.util as util
+import helpers
 
 import control
 import numpy as np
@@ -40,10 +42,7 @@ OUTPUT_NAME = "S3"
 INPUT_NAMES = ["S1", "S2"]
 OUTPUT_NAMES = ["S3", "S4"]
 #
-TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-PLOT_PATH = os.path.join(TEST_DIR, "test_sbml_transfer_function_builder.pdf")
-cn.DEFAULT_DCTS[1].update({cn.O_WRITEFIG: PLOT_PATH}) 
-cn.FIG_DCT[cn.O_WRITEFIG] = PLOT_PATH
+PLOT_PATH = helpers.setupPlotting(__file__)
 
 #############################
 # Tests
@@ -51,8 +50,16 @@ cn.FIG_DCT[cn.O_WRITEFIG] = PLOT_PATH
 class TestSBMLTransferFunctionBuilder(unittest.TestCase):
 
     def setUp(self):
+        self.remove()
         self.builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(
             LINEAR_MDL, input_names=INPUT_NAMES, output_names=OUTPUT_NAMES)
+        
+    def tearDown(self):
+        self.remove()
+        
+    def remove(self):
+        if os.path.isfile(PLOT_PATH):
+            os.remove(PLOT_PATH)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -81,13 +88,23 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
             ctl.plotOneTS(fitter_result.time_series, writefig=True)
       
     def testPlotStaircaseResponse(self):
+        if IGNORE_TEST:
+           return
+        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
+        plot_result = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
+                                                         staircase_spec=cn.StaircaseSpec(final_value=10))
+        self.assertTrue(isinstance(plot_result, tfb.PlotResult))
+
+    def testPlotStaircaseResponse2(self):
         #if IGNORE_TEST:
         #   return
-        #plot_result = self.builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
-        #                                                 staircase_spec=cn.StaircaseSpec(final_value=10))
-        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
-        plot_result = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=10000,
-                                                         staircase_spec=cn.StaircaseSpec(final_value=10))
+        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
+        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(url, input_names=["at"], output_names=["s5", "s6"])
+        plot_result_dct = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=5,
+                                                         staircase_spec=cn.StaircaseSpec(final_value=3))
+        for plot_result in plot_result_dct.values():
+            self.assertTrue(isinstance(plot_result, util.PlotResult))
+        import pdb; pdb.set_trace()
 
 if __name__ == '__main__':
   unittest.main()

@@ -68,7 +68,14 @@ class SBMLTransferFunctionBuilder(object):
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
                 icol = self.sys.input_names.index(input_name)
                 irow = self.sys.output_names.index(output_name)
-                ax = fig.add_subplot(grid_spec[irow, icol])
+                # Extract the axis
+                if grid_spec.ncols == 1:
+                    ax = fig.add_subplot(grid_spec[irow])
+                elif grid_spec.nrows == 1:
+                    ax = fig.add_subplot(grid_spec[icol])
+                else:
+                    ax = fig.add_subplot(grid_spec[irow, icol])
+                # Plot options
                 siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
                 mgr.plot_opts[cn.O_AX] = ax
                 mgr.plot_opts[cn.O_IS_PLOT] = False
