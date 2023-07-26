@@ -12,7 +12,7 @@ import tellurium as te
 import tempfile
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 END_TIME = 5
 DT = 0.01
@@ -32,15 +32,15 @@ S3 = 0
 """
 NONLINEAR_MDL = """
 species E_J0;
-#J0: ->  S0; 1 + E_J0
-J0: S0 -> S1; k1*S0*E_J0
+J0: ->  S0; 1 + E_J0
+J1: S0 -> S1; k1*S0
 J2: S1 -> S2; k2*S1*S1
 J3: S2 -> $S3; k3*S2*S1
 
 S0 = 10
 S1 = 0
 S2 = 0
-E_J0 = 1
+E_J0 = 0
 $S3 = 3
 k1 =1; k2=2; k3=3
 """
@@ -185,18 +185,21 @@ class TestNonlinearIOSystem(unittest.TestCase):
         u_vecs = np.reshape(u_vecs, (1, NUM_TIME))
         t, y = control.input_output_response(self.sys, TIMES, u_vecs, x_vec)
         df = pd.DataFrame(y, self.sys.output_names)
-        return df.transpose()
+        df = df.transpose()
+        df.index = t
+        return df
 
     def testWithInputOutputResponse(self):
         if IGNORE_TEST:
             return
         self.init()
         df = self.runInputOutputResponse(0)
+        J1_flux_0 = self.ctlsb.roadrunner["J1"]
         self._checkWithSimulation(df)
         # Output increases with inpu
-        df1 = self.runInputOutputResponse(1)
-        df2 = self.runInputOutputResponse(10)
-        self.assertGreater(df2["S1"].values[1], df1["S1"].values[1])
+        df1 = self.runInputOutputResponse(10)
+        J1_flux_10 = self.ctlsb.roadrunner["J1"]
+        self.assertGreater(J1_flux_10, J1_flux_0)
 
     def testWithInputOutputResponseWithoutEffector(self):
         if IGNORE_TEST:

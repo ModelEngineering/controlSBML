@@ -54,27 +54,20 @@ class SBMLTransferFunctionBuilder(object):
         mgr = OptionManager(options)
         nrows = self.sys.num_input
         ncols = self.sys.num_output
-        fig, axes = plt.subplots(nrows, ncols, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         fig = plt.figure(constrained_layout=True)
         grid_spec = gridspec.GridSpec(ncols=ncols, nrows=nrows, figure=fig)
         mgr.setFigure(fig)
         irow = 0
         icol = 0
-        result_dct = {(i, o): [] for i, o in zip(self.ctlsb.input_names, self.sys.ctlsb.output_names)}
+        result_dct = {}
         for output_name in self.sys.output_names:
             for input_name in self.sys.input_names:
                 if input_name == output_name:
                     continue
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
-                icol = self.sys.input_names.index(input_name)
-                irow = self.sys.output_names.index(output_name)
-                # Extract the axis
-                if grid_spec.ncols == 1:
-                    ax = fig.add_subplot(grid_spec[irow])
-                elif grid_spec.nrows == 1:
-                    ax = fig.add_subplot(grid_spec[icol])
-                else:
-                    ax = fig.add_subplot(grid_spec[irow, icol])
+                irow = self.sys.input_names.index(input_name)
+                icol = self.sys.output_names.index(output_name)
+                ax = fig.add_subplot(grid_spec[irow, icol])
                 # Plot options
                 siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
                 mgr.plot_opts[cn.O_AX] = ax

@@ -12,8 +12,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -69,7 +69,8 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
     def testFitTransferFunction(self):
         if IGNORE_TEST:
             return
-        transfer_function_df = self.builder.fitTransferFunction(1, 2, final_value=10,
+        transfer_function_df = self.builder.fitTransferFunction(1, 2,
+                                                                staircase_spec=cn.StaircaseSpec(final_value=10),
               end_time=100)
         self.assertTrue(isinstance(transfer_function_df, pd.DataFrame))
         tfs = transfer_function_df.values.flatten()
@@ -81,7 +82,8 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         ctlsb = ctl.ControlSBML("https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml",
               input_names=["at"], output_names=["s5"])
         builder = ctlsb.makeSISOTransferFunctionBuilder()
-        fitter_result = builder.fitTransferFunction(1, 2, final_value=10,
+        fitter_result = builder.fitTransferFunction(1, 2, 
+                                                    staircase_spec=cn.StaircaseSpec(final_value=10),
               end_time=100)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         if IS_PLOT:
@@ -91,20 +93,25 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         if IGNORE_TEST:
            return
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
-        plot_result = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
+        plot_result_dct = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
                                                          staircase_spec=cn.StaircaseSpec(final_value=10))
-        self.assertTrue(isinstance(plot_result, tfb.PlotResult))
+        self.checkPlotResultDct(plot_result_dct)
+
+    def checkPlotResultDct(self, plot_result_dct):
+        self.assertTrue(isinstance(plot_result_dct, dict))
+        for plot_result in plot_result_dct.values():
+            if not isinstance(plot_result, util.PlotResult):
+                import pdb; pdb.set_trace()
+            self.assertTrue(isinstance(plot_result, util.PlotResult))
 
     def testPlotStaircaseResponse2(self):
-        #if IGNORE_TEST:
-        #   return
+        if IGNORE_TEST:
+           return
         url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
-        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(url, input_names=["at"], output_names=["s5", "s6"])
+        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(url, input_names=["at", "s5"], output_names=["s6"])
         plot_result_dct = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=5,
                                                          staircase_spec=cn.StaircaseSpec(final_value=3))
-        for plot_result in plot_result_dct.values():
-            self.assertTrue(isinstance(plot_result, util.PlotResult))
-        import pdb; pdb.set_trace()
+        self.checkPlotResultDct(plot_result_dct)
 
 if __name__ == '__main__':
   unittest.main()
