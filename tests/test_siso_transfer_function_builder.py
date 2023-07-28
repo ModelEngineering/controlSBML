@@ -1,6 +1,7 @@
 import controlSBML as ctl
 import controlSBML.constants as cn
 import controlSBML.siso_transfer_function_builder as stb
+from controlSBML.staircase import Staircase
 import helpers
 
 import control
@@ -15,7 +16,7 @@ import tempfile
 
 
 IGNORE_TEST = False
-IS_PLOT = False
+IS_PLOT = True
 PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
@@ -49,7 +50,7 @@ OUTPUT_NAME = "S2"
 ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
 LINEAR_SYS = ctlsb.makeNonlinearIOSystem("LINEAR_SYS")
 builder = stb.SISOTransferFunctionBuilder(LINEAR_SYS)
-plot_response = builder.plotStaircaseResponse(staircase_spec=cn.StaircaseSpec(final_value=10), is_plot=False)
+plot_response = builder.plotStaircaseResponse(staircase=Staircase(final_value=10), is_plot=False)
 LINEAR_TS = plot_response.time_series
 
 
@@ -137,85 +138,6 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         self.assertTrue(isinstance(self.builder, stb.SISOTransferFunctionBuilder ))
 
-    def testMakeStaircase(self):
-        if IGNORE_TEST:
-            return
-        self.init()
-        def test(num_point, num_step, initial_value=0, final_value=5):
-            staircase_spec = cn.StaircaseSpec(initial_value=initial_value,
-                    num_step=num_step, final_value=final_value)
-            result = self.builder._makeStaircase(staircase_spec)
-            self.assertTrue(len(result), num_point)
-            num_distinct = len(set(result))
-            self.assertEqual(num_distinct, num_step)
-            self.assertEqual(result[0], initial_value)
-            self.assertEqual(result[-1], final_value)
-        #
-        test, (20, 4)
-        test(19, 4)
-        test(191, 17)
-        test(91, 15)
-
-    def testPlotStaircaseResponse(self):
-        if IGNORE_TEST:
-            return
-        self.init()
-        staircase_name = "%s_staircase" % self.builder.input_name
-        legend_crd = (.5, 1)
-        def test(num_step, initial_value=0, final_value=20, start_time=0):
-            staircase_spec = cn.StaircaseSpec(num_step=num_step, initial_value=initial_value,
-                                              final_value=final_value)
-            plot_result = self.builder.plotStaircaseResponse(
-                  staircase_spec=staircase_spec,
-                  end_time=500, start_time=start_time,
-                  figsize=(5,5), is_plot=IS_PLOT,
-                  legend_crd=legend_crd)
-            arr = plot_result.time_series[staircase_name].values
-            num_distinct = len(set(arr))
-            self.assertEqual(num_distinct, num_step)
-            self.assertEqual(arr[0], initial_value)
-            self.assertEqual(arr[-1], final_value)
-            return plot_result
-        #
-        result = test(14, start_time=20, final_value=400)
-        result = test(4)
-        self.assertEqual(str(result), "")
-        result = test(17)
-        result = test(15)
-        test(4, )
-
-    def testPlotStaircaseResponseWithoutPlot(self):
-        if IGNORE_TEST:
-            return
-        self.init()
-        name = "S1"
-        staircase_name = "%s_staircase" % name
-        output_names = ["S2"]
-        ctlsb = ctl.ControlSBML(LINEAR_MDL,
-              input_names=["S1"], output_names=output_names)
-        legend_spec = cn.LegendSpec(output_names, crd=(.5, 1))
-        builder = ctlsb.makeSISOTransferFunctionBuilder(input_name=name,
-              output_name=["S2"])
-        def test(num_step, initial_value=0, final_value=11):
-            staircase_spec = cn.StaircaseSpec(num_step=num_step, initial_value=initial_value,
-                                              final_value=final_value)
-            plot_result = builder.plotStaircaseResponse(staircase_spec=staircase_spec,
-                  end_time=200,
-                  is_plot=False,
-                  legend_spec=legend_spec)
-            arr = plot_result.time_series[staircase_name].values
-            num_distinct = len(set(arr))
-            self.assertEqual(num_distinct, num_step)
-            self.assertEqual(arr[0], initial_value)
-            self.assertEqual(arr[-1], final_value)
-            return plot_result
-        #
-        result = test(4)
-        self.assertEqual(str(result), "")
-        result = test(17)
-        result = test(15)
-        test(4, )
-
     def testFitTransferFunction(self):
         if IGNORE_TEST:
             return
@@ -224,20 +146,28 @@ class TestNonlinearIOSystem(unittest.TestCase):
               end_time=100)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         if IS_PLOT:
-            ctl.plotOneTS(fitter_result.time_series, writefig=True)
+            fitter_result.time_series["staircase"] = fitter_result.staircase.staircase_arr
+            ctl.plotOneTS(fitter_result.time_series, writefig=PLOT_PATH)
+    
+    def testPlotFit(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        fitter_result = self.builder.fitTransferFunction(4, 4,
+              end_time=50)
+        self.builder.plotFit(fitter_result, is_plot=IS_PLOT)
 
     def testFitTransferFunction2(self):
         if IGNORE_TEST:
             return
         ctlsb = ctl.ControlSBML("https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml",
-              input_names=["at"], output_names=["s5"])
+              input_names=["s5"], output_names=["s6"])
         builder = ctlsb.makeSISOTransferFunctionBuilder()
-        staircase_spec = cn.StaircaseSpec(initial_value=0, final_value=10)
-        fitter_result = builder.fitTransferFunction(1, 2, staircase_spec=staircase_spec,
-              end_time=100)
+        staircase = Staircase(initial_value=0, final_value=10)
+        fitter_result = builder.fitTransferFunction(3, 3, staircase=staircase,
+              end_time=5)
+        builder.plotFit(fitter_result, is_plot=IS_PLOT)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
-        if IS_PLOT:
-            ctl.plotOneTS(fitter_result.time_series, writefig=True)
 
 
 if __name__ == '__main__':

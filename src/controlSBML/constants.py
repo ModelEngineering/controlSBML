@@ -1,11 +1,13 @@
 """Constants for Project."""
-
+import collections
 from docstring_expander.kwarg import Kwarg
 import matplotlib.pyplot
 import numpy as np
 import pandas as pd
 import os
 
+
+DEFAULT_NUM_STEP = 5
 
 # Classes
 class LegendSpec():
@@ -23,20 +25,8 @@ class LegendSpec():
         self.crd = crd
         self.loc = loc
 
-class StaircaseSpec(object):
-
-    def __init__(self, initial_value=0, num_step=5, final_value=0):
-        """
-        Parameters
-        ----------
-        initial_value: float (value for first step)
-        final_value: float (value for final step)
-        num_step: int (number of steps in staircase)
-        """
-        self.initial_value = initial_value
-        self.num_step = num_step
-        self.final_value = final_value
-        self.num_point = num_step*10 + 1
+FitterResult = collections.namedtuple("FitterResult",
+            "transfer_function staircase parameters stderr nfev redchi time_series")
 
 
 ################ DIRECTORIES #################
@@ -79,6 +69,8 @@ O_IS_PLOT = "is_plot"
 O_LEGEND_CRD = "legend_crd"  # Legend coordinate
 O_LEGEND_SPEC = "legend_spec"
 O_POINTS_PER_TIME = "points_per_time"
+O_PREDICTED = "predicted"
+O_STAIRCASE = "staircase"
 O_START_TIME = "start_time"
 O_SUPTITLE = "suptitle"
 O_TITLE = "title"

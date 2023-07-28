@@ -75,7 +75,7 @@ def getModel(file_name=MODEL_823_FILE):
     return model_str
 
 @Expander(cn.KWARGS, cn.ALL_KWARGS)
-def plotOneTS(time_series, ax2=None, **kwargs):
+def plotOneTS(time_series, ax2=None, mgr=None, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
     columns are legends.
@@ -83,13 +83,16 @@ def plotOneTS(time_series, ax2=None, **kwargs):
     Parameters
     ----------
     time_series: TimeSeries
+    mgr: OptionsManager
     #@expand
 
     Returns
     -------
     PlotResult
     """
-    mgr = OptionManager(kwargs)
+    COLORS = ["green", "blue", "orange", "purple", "brown", "black"]
+    if mgr is None:
+        mgr = OptionManager(kwargs)
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
     ax = mgr.plot_opts.get(cn.O_AX)
     if cn.O_FIGURE in kwargs.keys():
@@ -100,7 +103,10 @@ def plotOneTS(time_series, ax2=None, **kwargs):
         else:
             fig, ax = plt.subplots(1)
     times = np.array(time_series.index)/cn.MS_IN_SEC
-    ax.plot(times, time_series)
+    num_col = len(time_series.columns)
+    colors = COLORS[:num_col]
+    for column in time_series.columns:
+        ax.plot(times, time_series[column], color=colors.pop(0))
     legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
@@ -359,6 +365,63 @@ def simplifyTransferFunction(tf, tol=1e-3):
             break
     return control.TransferFunction(num, den)
 
+def latexifyTransferFunction(tf, num_decimal=2):
+    """
+    Generates latex for the transfer function, rounding to the number of decimal digits.
+
+    Args:
+        tf (control.TransferFunction)
+        num_decimal (int, optional): number of decimal digits
+    """
+    tf = simplifyTransferFunction(tf)
+    numr = tf.num[0][0]
+    denr = tf.den[0][0]
+    # Construct the numerator string
+    def latexifyPolynomial(polynomial, variable="s"):
+        """Creates a latex representation of the polynomial in s
+        Args:
+            polynomial (list): high order coefficients first
+        Returns:
+            str
+        """
+        max_power = len(polynomial) - 1
+        result_str = ""
+        for idx, num in enumerate(polynomial):
+            polynomial[idx] = round(num, num_decimal)
+            if len(result_str) > 0:
+                result_str += " + "
+            power = max_power - idx
+            if power == 0:
+                poly_term = ""
+            elif power == 1:
+                poly_term = variable
+            else:
+                poly_term = "%s^{%s}" % (variable, power)
+            if np.isclose(polynomial[idx], 1.0) and (len(poly_term) > 0):
+                coefficient = ""
+            else:
+                coefficient = str(polynomial[idx])
+            if not np.isclose(polynomial[idx], 0.0):
+                result_str += "%s %s" % (coefficient, poly_term)
+        return result_str
+    #
+    numr_str = latexifyPolynomial(tf.num[0][0])
+    denr_str = latexifyPolynomial(tf.den[0][0])
+    latex = r'$\frac{%s}{%s}$' % (numr_str, denr_str)
+    return latex
+
+def setNoPlot(kwargs):
+    """
+    Sets the is_plot option to False.
+
+    Parameters
+    ----------
+    kwargs: dict
+    """
+    new_kwargs = dict(kwargs)
+    new_kwargs[cn.O_IS_PLOT] = False
+    return new_kwargs
+
 
 ############### CLASSES ################
 class PlotResult(object):
@@ -372,7 +435,7 @@ class PlotResult(object):
         ax: Matplotlib.Axes (axis plotted)
     """
 
-    def __init__(self, time_series=None, ax=None, ax2=None, fig=None):
+    def __init__(self, time_series=None, ax=None, ax2=None, fig=None, staircase=None):
         """
         Parameters
         ----------
@@ -385,6 +448,7 @@ class PlotResult(object):
         self.ax = ax
         self.ax2 = ax2
         self.fig = fig
+        self.staircase = staircase
 
     def __repr__(self):
         """Avoid printer this object."""

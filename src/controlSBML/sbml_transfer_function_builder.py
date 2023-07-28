@@ -1,5 +1,7 @@
 """
 Builds transfer functions for an SBML model from all inputs to all outputs.
+
+1. Staircase specification can be relative to steadystate and/or specific to an input.
 """
 
 import controlSBML as ctl
@@ -8,6 +10,7 @@ from controlSBML import util
 import controlSBML.siso_transfer_function_builder as tfb
 import controlSBML.simulate_system as ss
 import controlSBML.timeseries as ts
+from controlSBML.staircase import Staircase
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.option_management.options import Options
 
@@ -32,14 +35,14 @@ class SBMLTransferFunctionBuilder(object):
         self.sys = ctlsb.makeNonlinearIOSystem("SBMLTransferFunctionBuilder")
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotStaircaseResponse(self, staircase_spec=cn.StaircaseSpec(),
+    def plotStaircaseResponse(self, staircase=Staircase(),
            ax2=None, is_steady_state=True, **options):
         """
         Plots the Nonlinear simulation response to a monotonic sequence of step inputs.
 
         Parameters
         ----------
-        staircase_spec: StaircaseSpec
+        staircase: Staircase
         ax2: Matplotlib.Axes (second y axis)
         is_steady_state: bool (initialize to steady state values)
         #@expand
@@ -73,7 +76,7 @@ class SBMLTransferFunctionBuilder(object):
                 mgr.plot_opts[cn.O_AX] = ax
                 mgr.plot_opts[cn.O_IS_PLOT] = False
                 mgr.plot_opts[cn.O_TITLE] = "%s->%s" % (input_name, output_name)
-                plot_result = siso_tfb.plotStaircaseResponse(staircase_spec=staircase_spec, option_mgr=mgr,
+                plot_result = siso_tfb.plotStaircaseResponse(staircase=staircase, option_mgr=mgr,
                         is_steady_state=is_steady_state)
                 result_dct[(input_name, output_name)] = plot_result
                 plot_result.ax2.set_ylabel("")   # Don't need the staircase label

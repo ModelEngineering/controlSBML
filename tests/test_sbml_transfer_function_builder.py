@@ -2,6 +2,7 @@ import controlSBML as ctl
 import controlSBML.constants as cn
 import controlSBML.sbml_transfer_function_builder as tfb
 import controlSBML.util as util
+from controlSBML.staircase import Staircase
 import helpers
 
 import control
@@ -70,7 +71,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         transfer_function_df = self.builder.fitTransferFunction(1, 2,
-                                                                staircase_spec=cn.StaircaseSpec(final_value=10),
+                                                                staircase=cn.Staircase(final_value=10),
               end_time=100)
         self.assertTrue(isinstance(transfer_function_df, pd.DataFrame))
         tfs = transfer_function_df.values.flatten()
@@ -83,7 +84,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
               input_names=["at"], output_names=["s5"])
         builder = ctlsb.makeSISOTransferFunctionBuilder()
         fitter_result = builder.fitTransferFunction(1, 2, 
-                                                    staircase_spec=cn.StaircaseSpec(final_value=10),
+                                                    staircase=cn.Staircase(final_value=10),
               end_time=100)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         if IS_PLOT:
@@ -94,7 +95,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
            return
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
         plot_result_dct = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
-                                                         staircase_spec=cn.StaircaseSpec(final_value=10))
+                                                         staircase=cn.Staircase(final_value=10))
         self.checkPlotResultDct(plot_result_dct)
 
     def checkPlotResultDct(self, plot_result_dct):
@@ -110,7 +111,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(url, input_names=["at", "s5"], output_names=["s6"])
         plot_result_dct = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=5,
-                                                         staircase_spec=cn.StaircaseSpec(final_value=3))
+                                                         staircase=cn.Staircase(final_value=3))
         self.checkPlotResultDct(plot_result_dct)
 
 if __name__ == '__main__':
