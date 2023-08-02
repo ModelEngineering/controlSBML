@@ -85,12 +85,6 @@ class Options(dict):
         Parses options in to lists coresponding to the dictionaries provided.
         All options from each dictionary are included in the results.
 
-        Parameters
-        ----------
-        kwargs: dict
-        dcts: list-dict
-            dictionaries to be parsed
-        
         Returns
         -------
         list-opts

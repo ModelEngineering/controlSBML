@@ -12,8 +12,8 @@ import tellurium as te
 IGNORE_TEST = False
 IS_PLOT = False
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-BIOMD1015 = os.path.join(TEST_DIR, "Jarrah2014.xml")
 MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
+BIOMD1015 = os.path.join(TEST_DIR, "Jarrah2014.xml")
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 REACTION_NAMES = ["J1"]
 OUTPUT_NAMES = ["S3", "S2"]
@@ -424,13 +424,6 @@ class TestControlBase(unittest.TestCase):
         with self.assertRaises(ValueError):
             _ = ControlBase(LINEAR_MDL, output_names=["S1", "SS2"])
 
-    def testMakeNonlinearIOSystem(self):
-        if IGNORE_TEST:
-            return
-        ctlsb = ControlBase(LINEAR_MDL, input_names=["S1"])
-        non_sys = ctlsb.makeNonlinearIOSystem("tst")
-        self.assertTrue("NonlinearIOSystem" in str(type(non_sys)))
-
     def testMakeTransferFunction(self):
         if IGNORE_TEST:
             return
@@ -488,15 +481,6 @@ class TestControlBase(unittest.TestCase):
         df = df.applymap(lambda v: np.abs(v))
         max_val = df.max().max()
         self.assertGreater(max_val, 0.5)
-
-    def testMakeSISOTransferFunctionBuilder(self):
-        if IGNORE_TEST:
-            return
-        ctlsb = ControlBase(MODEL_FILE,
-            input_names=["IR"], output_names=["mTORC1_DEPTOR"])
-        builder = ctlsb.makeSISOTransferFunctionBuilder()
-        self.assertTrue("Builder" in str(type(builder)))
-
 
 if __name__ == '__main__':
   unittest.main()

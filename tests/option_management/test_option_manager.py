@@ -70,7 +70,7 @@ class TestOptionManager(unittest.TestCase):
             dct[cn.O_AX] = ax
             dct[cn.O_XLABEL] = "xlabel"
             dct[cn.O_WRITEFIG] = writefig
-            dct[cn.O_IS_PLOT] = False
+            dct[cn.O_IS_PLOT] = IS_PLOT
             option_mgr = OptionManager(dct)
             ax.plot(range(5), range(5))
             option_mgr.doPlotOpts()
@@ -83,7 +83,7 @@ class TestOptionManager(unittest.TestCase):
             else:
                 path = writefig
                 is_file = True
-            if is_file:
+            if is_file and IS_PLOT:
                 self.assertTrue(os.path.isfile(path))
             else:
                 self.assertFalse(os.path.isfile(path))

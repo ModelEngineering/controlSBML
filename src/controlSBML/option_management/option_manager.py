@@ -21,12 +21,18 @@ class OptionManager(object):
         default_dcts: list-dict
             dictionaries to parse
         """
-        self.options = Options(kwargs, cn.DEFAULT_DCTS)
-        self.plot_opts, self.fig_opts, self.sim_opts = self.options.parse()
+        options = Options(kwargs, cn.DEFAULT_DCTS)
+        self.plot_opts, self.fig_opts, self.sim_opts = options.parse()
+
+    @property
+    def options(self):
+        options = dict(self.plot_opts)
+        options.update(self.fig_opts)
+        options.update(self.sim_opts)
+        return options
 
     def copy(self):
         new_mgr = self.__class__({})
-        new_mgr.options = Options(self.options, cn.DEFAULT_DCTS)
         new_mgr.plot_opts = Options(self.plot_opts, [cn.PLOT_DCT])
         new_mgr.fig_opts = Options(self.fig_opts, [cn.FIG_DCT])
         new_mgr.sim_opts = Options(self.sim_opts, [cn.SIM_DCT])
@@ -153,7 +159,7 @@ class OptionManager(object):
         fig.set_size_inches(fig_width, fig_length)
         if new_kwargs[cn.O_IS_PLOT]:
             plt.show()
-        self.writeFigure(new_kwargs[cn.O_WRITEFIG])
+            self.writeFigure(new_kwargs[cn.O_WRITEFIG])
 
     @classmethod
     def writeFigure(cls, writefig):

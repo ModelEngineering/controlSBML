@@ -8,11 +8,9 @@ import controlSBML as ctl
 import controlSBML.constants as cn
 from controlSBML import util
 import controlSBML.siso_transfer_function_builder as tfb
-import controlSBML.simulate_system as ss
 import controlSBML.timeseries as ts
 from controlSBML.staircase import Staircase
 from controlSBML.option_management.option_manager import OptionManager
-from controlSBML.option_management.options import Options
 
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
@@ -23,83 +21,157 @@ import pandas as pd
 
 class SBMLTransferFunctionBuilder(object):
     
-    def __init__(self, ctlsb):
+    def __init__(self, ctlsb, is_fixed_input_species=True, do_simulate_on_update=False):
         """
         Construction of an array of control.TransferFunction
 
         Parameters
         ----------
         ctlsb: ControlSBML
+        is_fixed_input_species: bool/dict (see NonlinearIOSystem)
         """
         self.ctlsb = ctlsb
-        self.sys = ctlsb.makeNonlinearIOSystem("SBMLTransferFunctionBuilder")
+        self.sys = ctlsb.makeNonlinearIOSystem("SBMLTransferFunctionBuilder", is_fixed_input_species=is_fixed_input_species,
+                                               do_simulate_on_update=do_simulate_on_update)
 
-    @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotStaircaseResponse(self, staircase=Staircase(),
-           ax2=None, is_steady_state=True, **options):
+    @classmethod 
+    def _makeResultDF(cls, result_dct, input_names):
+        df = pd.DataFrame(result_dct)
+        df.columns.name = "Outputs"
+        df.index = list(input_names)
+        df.index.name = "Inputs"
+        return df
+
+    @Expander(cn.KWARGS, cn.SIM_KWARGS)
+    def makeStaircaseResponse(self, staircase=Staircase(), is_steady_state=True, **kwargs):
         """
         Plots the Nonlinear simulation response to a monotonic sequence of step inputs.
 
         Parameters
         ----------
         staircase: Staircase
-        ax2: Matplotlib.Axes (second y axis)
         is_steady_state: bool (initialize to steady state values)
         #@expand
 
         Returns
         -------
-        dict
-            key: str, str (input name, output name)
-            value: PlotResult
+        Dataframe
+            column names: str (output)
+            index: str (input)
+            values: Timeseries
 
         """
-        mgr = OptionManager(options)
-        nrows = self.sys.num_input
-        ncols = self.sys.num_output
-        fig = plt.figure(constrained_layout=True)
-        grid_spec = gridspec.GridSpec(ncols=ncols, nrows=nrows, figure=fig)
-        mgr.setFigure(fig)
-        irow = 0
-        icol = 0
-        result_dct = {}
+        mgr = OptionManager(kwargs)
+        result_dct = {n: [] for n in self.sys.output_names}
         for output_name in self.sys.output_names:
             for input_name in self.sys.input_names:
                 if input_name == output_name:
-                    continue
-                sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
-                irow = self.sys.input_names.index(input_name)
-                icol = self.sys.output_names.index(output_name)
-                ax = fig.add_subplot(grid_spec[irow, icol])
-                # Plot options
-                siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
-                mgr.plot_opts[cn.O_AX] = ax
-                mgr.plot_opts[cn.O_IS_PLOT] = False
-                mgr.plot_opts[cn.O_TITLE] = "%s->%s" % (input_name, output_name)
-                plot_result = siso_tfb.plotStaircaseResponse(staircase=staircase, option_mgr=mgr,
-                        is_steady_state=is_steady_state)
-                result_dct[(input_name, output_name)] = plot_result
-                plot_result.ax2.set_ylabel("")   # Don't need the staircase label
-                if icol < ncols - 1:
-                    plot_result.ax2.set_yticklabels([])
-                if irow < nrows - 1:
-                    plot_result.ax.set_xlabel("")
-                    plot_result.ax2.set_xticklabels([])
-                if (icol == 0) or (self.sys.output_names.index(output_name) == 0):
-                    plot_result.ax.set_ylabel(output_name)
-                icol += 1
-                if icol >= ncols:
-                    icol = 0
-                    irow += 1
-                mgr.doPlotOpts()
-                plot_result.ax.set_title("")
-                plot_result.ax.set_title(mgr.plot_opts[cn.O_TITLE], y=0.2, pad=-24, fontsize=10)
-                plot_result.ax.legend([])
-        mgr.doFigOpts()
-        return result_dct
+                    response_df = None
+                else:
+                    # Adjust the staircase as required
+                    sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
+                    builder = tfb.SISOTransferFunctionBuilder(sys)
+                    response_df = builder.makeStaircaseResponse(staircase=staircase, is_steady_state=is_steady_state, **kwargs)
+                result_dct[output_name].append(response_df)
+        result_df = self._makeResultDF(result_dct, self.sys.input_names)
+        return result_df
+    
+    @classmethod
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
+    def _plotMIMO(cls, dataframe, plotFunc, **options):
+        """
+        Plots the Nonlinear simulation response to a monotonic sequence of step inputs.
 
-    @Expander(cn.KWARGS, cn.ALL_KWARGS)    
-    def fitTransferFunction(self, num_numerator, num_denominator, is_tf_only=True, **kwargs):
+        Parameters
+        ----------
+        dataframe: Dataframe (rows are inputs; columns are outputs)
+        plotFunc: function with the signature
+            ARGUMENTS
+                object in dataframe
+                OptionManger (or None)
+                Plot keyword arguments
+            RETURNS
+                PlotResult
+        #@expand
+
+        Returns
+        -------
+        Dataframe
+            column names: str (output)
+            index: str (input)
+            values: PlotResult
+        """
+        mgr = OptionManager(options)
+        input_names = list(dataframe.index)
+        output_names = list(dataframe.columns)
+        nrow = len(input_names)
+        ncol = len(output_names)
+        fig = plt.figure(constrained_layout=True)
+        grid_spec = gridspec.GridSpec(ncols=ncol, nrows=nrow, figure=fig)
+        mgr.setFigure(fig)
+        irow = 0
+        icol = 0
+        result_dct = {n: [] for n in output_names} 
+        for input_name in input_names:
+            done_first_plot = False
+            for output_name in output_names:
+                entry = dataframe.loc[input_name, output_name]
+                if entry is None:
+                    plot_result = None
+                else:
+                    entry = dataframe.loc[input_name, output_name]
+                    irow = input_names.index(input_name)
+                    icol = output_names.index(output_name)
+                    ax = fig.add_subplot(grid_spec[irow, icol])
+                    ax2 = ax.twinx()
+                    # Plot options
+                    mgr.plot_opts[cn.O_AX] = ax
+                    mgr.plot_opts[cn.O_AX2] = ax2
+                    mgr.plot_opts[cn.O_XLABEL] = "time"
+                    plot_result = plotFunc(entry, mgr=mgr, ax2=ax2)
+                    icol += 1
+                    if done_first_plot:
+                        ax.set_ylabel("")
+                        ax2.set_ylabel("")
+                    else:
+                        done_first_plot = True
+                    if icol >= ncol:
+                        icol = 0
+                        irow += 1
+                    mgr.doPlotOpts()
+                    if irow < nrow - 1:
+                        ax.set_xlabel("")
+                        ax2.set_xlabel("")
+                    else:
+                        ax.set_xlabel("time")
+                    plot_result.ax.legend([output_name])
+                result_dct[output_name].append(plot_result)
+        mgr.doFigOpts()
+        result_df = cls._makeResultDF(result_dct, input_names)
+        return result_df
+    
+    @classmethod
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
+    def plotStaircaseResponse(cls, response_df, **options):
+        """
+        Plots the Nonlinear simulation response to a monotonic sequence of step inputs.
+
+        Parameters
+        ----------
+        response_df: Dataframe (see makeStaircaseResponse)
+        #@expand
+
+        Returns
+        -------
+        Dataframe
+            column names: str (output)
+            index: str (input)
+            values: PlotResult
+        """
+        return cls._plotMIMO(response_df, tfb.SISOTransferFunctionBuilder.plotStaircaseResponse, **options)
+    
+    @Expander(cn.KWARGS, cn.SIM_KWARGS)
+    def fitTransferFunction(self, num_numerator, num_denominator, staircase=Staircase(), **sim_kwargs):
         """
         Constructs transfer functions for the NonlinearIOSystem.
 
@@ -107,11 +179,7 @@ class SBMLTransferFunctionBuilder(object):
         ----------
         num_numerator: int (number of numerator terms)
         num_denominator: int (number of denominator terms)
-        is_tf_only: bool (Values are control.TransferFunction)
-        kwargs: dict
-            num_step: int (number of steps in staircase)
-            initial_value: float (value for first step)
-            final_value: float (value for final step)
+        staircase: Staircase
         #@expand
 
         Returns
@@ -119,28 +187,42 @@ class SBMLTransferFunctionBuilder(object):
         DataFrame: 
             column names: str (output)
             index: str (input)
-            values: tfb.FitterResult or control.TransferFunction
+            values: tfb.FitterResult
         """
-        result_dct = {n: [] for n in self.sys.output_names}
+        fitter_dct = {n: [] for n in self.sys.output_names}
         for output_name in self.sys.output_names:
             for input_name in self.sys.input_names:
-                if input_name == output_name:
-                    continue
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
                 siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
-                value = siso_tfb.fitTransferFunction(num_numerator, num_denominator, **kwargs)
-                if is_tf_only:
-                    value = value.transfer_function
-                result_dct[output_name].append(value)
+                fitter_result = siso_tfb.fitTransferFunction(num_numerator, num_denominator, staircase=staircase, **sim_kwargs)
+                fitter_dct[output_name].append(fitter_result)
         # Construct the output
-        df = pd.DataFrame(result_dct)
-        df.columns.name = "Outputs"
-        df.index = list(self.sys.input_names)
-        df.index.name = "Inputs"
-        return df
+        fitter_df = self._makeResultDF(fitter_dct, self.sys.input_names)
+        return fitter_df
     
     @classmethod
-    def makeTransferFunctionBuilder(cls, *pargs, **kwargs):
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
+    def plotFitTransferFunction(cls, fitter_df, **options):
+        """
+        Plots the results of fitting a transfer function.
+
+        Parameters
+        ----------
+        fitter_df: Dataframe (see fitTransferFunction)
+        #@expand
+
+        Returns
+        -------
+        Dataframe
+            column names: str (output)
+            index: str (input)
+            values: PlotResult
+        """
+        return cls._plotMIMO(fitter_df, tfb.SISOTransferFunctionBuilder.plotFitTransferFunction, **options)
+    
+    @classmethod
+    def makeTransferFunctionBuilder(cls, *pargs, is_fixed_input_species=True, 
+                                    do_simulate_on_update=False, **kwargs):
         """
         Constructs transfer functions for SBML systems.
 
@@ -149,4 +231,4 @@ class SBMLTransferFunctionBuilder(object):
         Same as for constructing ControlSBML
         """
         ctlsb = ctl.ControlSBML(*pargs, **kwargs)
-        return cls(ctlsb)
+        return cls(ctlsb, is_fixed_input_species=is_fixed_input_species, do_simulate_on_update=do_simulate_on_update)

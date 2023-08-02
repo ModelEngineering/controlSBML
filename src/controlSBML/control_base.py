@@ -12,10 +12,8 @@ Notes:
 
 
 from controlSBML.make_roadrunner import makeRoadrunner
-import controlSBML as ctl
 from controlSBML import util
 from controlSBML import msgs
-import controlSBML.siso_transfer_function_builder as stb
 
 import control
 import numpy as np
@@ -627,21 +625,6 @@ class ControlBase(object):
         ss = control.StateSpace(A_mat, B_mat, C_mat, D_mat)
         return ss
 
-    def makeNonlinearIOSystem(self, name):
-        """
-        Creates an object that can be used in connections with the
-        control package.
-
-        Parameters
-        ----------
-        name: str (name of the system)
-
-        Returns
-        -------
-        controlSBML.NonelinearIOSystem
-        """
-        return ctl.NonlinearIOSystem(name, self, input_names=self.input_names, output_names=self.output_names)
-
     @staticmethod
     def reduceTransferFunction(tf, atol=ATOL):
         """
@@ -674,37 +657,6 @@ class ControlBase(object):
         new_denominator = reduceOrder(denominator, lowest_order)
         new_tf = control.TransferFunction(new_numerator, new_denominator)
         return new_tf
-
-    def makeSISOTransferFunctionBuilder(self, system_name="sys",
-          input_name=None, output_name=None):
-        """
-        Creates a SISOTransferFunctionBuilder to construct a SISO transfer function.
-        The default input and output names are the first input and output names.
-
-        Parameters
-        ----------
-        system_name: str
-        input_name: str
-        output_name: str
-
-        Returns
-        -------
-        SISOTransferFunctionBuilder
-        """
-        def getName(specified_name, names):
-            if specified_name is None:
-                if len(names) < 1:
-                    raise ValueError("Must specify at least one name")
-                name = names[0]
-            else:
-                name = specified_name
-            return name
-        #
-        input_name = getName(input_name, self.input_names)
-        output_name = getName(output_name, self.output_names)
-        sys = self.makeNonlinearIOSystem(system_name)
-        return stb.SISOTransferFunctionBuilder(sys, input_name=input_name,
-              output_name=output_name)
 
     def makeTransferFunction(self, time=None, atol=ATOL):
         """

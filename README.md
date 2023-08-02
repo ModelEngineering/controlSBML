@@ -112,6 +112,7 @@ _version.py.
     * Improved consistency of API for element factories
     * Added ``makeAribtrarySignal``
     * ``makeAdder`` handles minus signs
+    * NonlinearIOSystem inputs can be constant value (fixed species) or constant rate (add a boundary synthesis reaction)
 * 1.0.11 3/1/2023
     * Ensure that state variables are never negative.
 * 1.0.10

@@ -13,12 +13,14 @@ import numpy as np
 ARG_LST = [cn.TIME, cn.STATE, cn.INPUT, cn.PARAMS]
 MIN_ELAPSED_TIME = 1e-2
 IS_LOG = False
+DEFAULT_INPUT_SPECIES_DESCRIPTOR = True
 
 
 class NonlinearIOSystem(control.NonlinearIOSystem):
 
     def __init__(self, name, ctlsb,
-         input_names=None, output_names=None, do_simulate_on_update=False):
+         input_names=None, output_names=None, do_simulate_on_update=False,
+           is_fixed_input_species=DEFAULT_INPUT_SPECIES_DESCRIPTOR):
         """
         Parameters
         ----------
@@ -27,6 +29,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         input_names: list-str (names of inputs to system)
         do_simulate_on_update: bool
             simulate to the current time before each state update
+        is_fixed_input_species: bool/dict (key: str (species name), value: bool (is fixed input species))
 
         Usage:
             sys = NonlinearIOSystem(func, None,
@@ -40,9 +43,19 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.name = name
         self.ctlsb = ctlsb
         self.do_simulate_on_update = do_simulate_on_update
-        # Useful properties
+        self.is_fixed_input_species = is_fixed_input_species
         if input_names is None:
             input_names = list(ctlsb.input_names)
+        self.input_species = set(input_names).intersection(ctlsb.species_names)
+        if isinstance(is_fixed_input_species, bool):
+            self.input_species_dct = {n: is_fixed_input_species for n in self.input_species}
+        else:
+            if not isinstance(is_fixed_input_species, dict):
+                msgs.error("Invalid type of is_fixed_input_species: %s" % type(is_fixed_input_species))
+            self.input_species_dct = dict(is_fixed_input_species)
+        missing_input_species = self.input_species.difference(self.input_species_dct.keys())
+        for species in missing_input_species:
+            self.input_species_dct[species] = DEFAULT_INPUT_SPECIES_DESCRIPTOR
         # else:
         #     diff = set(input_names).difference(ctlsb.state_names)
         #     if len(diff) != 0:
@@ -53,12 +66,11 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.input_names = input_names
         self.output_names = output_names
         self.state_names = list(ctlsb.species_names)
-        self.dstate_names = ["%s'" % n for n in self.state_names]
+        self.dstate_names = [self._makeDstateName(n) for n in self.state_names]
         self.num_state = len(self.state_names)
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         #
-        self._ignored_inputs = []  # Note setable inputs
         self.logger = lg.Logger(self.name, self.state_names)
         # Initialize the controlNonlinearIOSystem object
         self.logger_dct = {n: [] for n in self.state_names}
@@ -75,6 +87,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
 
     def setTime(self, time):
         self.ctlsb.setTime(time)
+
+    @staticmethod
+    def _makeDstateName(name):
+        return "%s'" % name
 
     def makeStateSer(self, time=0):
         """
@@ -100,7 +116,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             output_names (_type_): _description_
         """
         return NonlinearIOSystem(name, self.ctlsb,
-              input_names=input_names, output_names=output_names)
+              input_names=input_names, output_names=output_names,
+              do_simulate_on_update=self.do_simulate_on_update,
+              is_fixed_input_species=self.is_fixed_input_species 
+              )
     
     def setSteadyState(self):
         """
@@ -111,12 +130,15 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             bool (success)
         """
         if not "roadrunner" in dir(self.ctlsb):
-            return msgs.warn("No roadrunner object.")
-        try:
-            self.ctlsb.roadrunner.steadyState()
-        except RuntimeError:
-            return False
-        return True
+            return msgs.error("No roadrunner object.")
+        # Try to find the steady state
+        for _ in range(3):
+            try:
+                self.ctlsb.roadrunner.steadyState()
+                return True
+            except RuntimeError:
+                pass
+        return False
 
     def _updfcn(self, time, x_vec, u_vec, _):
         """
@@ -147,9 +169,20 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.ctlsb.set(state_dct)
         # Set the values of the inputs
         input_dct = {n: u_vec[i] for i, n in enumerate(self.input_names)}
-        self.ctlsb.set(input_dct)
+        set_dct = dict(state_dct)
+        # Handle fixed concentration species
+        for name, is_fixed in self.input_species_dct.items():
+            if is_fixed:
+                set_dct[name] = input_dct[name]
+        self.ctlsb.set(set_dct)
         # Calculate the derivatives of floating species in state
-        derivative_arr = np.array([v for v in self.ctlsb.get(self.dstate_names).values()])
+        derivative_dct = {n: v for n, v in self.ctlsb.get(self.dstate_names).items()}
+        # Handle input species for which an additional rate is specified
+        for name, is_fixed in self.input_species_dct.items():
+            if not is_fixed:
+                dname = self._makeDstateName(name)
+                derivative_dct[dname] += input_dct[name]
+        derivative_arr = np.array(list(derivative_dct.values()))
         # Update logger
         if IS_LOG:
             dstate_dct = {n: derivative_arr[i] for i, n in enumerate(self.dstate_names)}
@@ -186,34 +219,3 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         #self.logger.add(time, self.ctlsb.get(self.state_names).values())
         out_vec = np.array([np.max(v, 0) for v in out_vec])
         return out_vec
-
-    def _makeStaircase(self, num_point, num_step, initial_value, final_value):
-        """
-        A staircase is a sequence of steps of the same magnitude and duration.
-
-        Parameters
-        ----------
-        num_point: number of points in the staircase
-        num_step: int (number of steps in the stair response.
-        start_value: float (initial values of the inputs)
-        final_value: float (ending values of the inputs)
-
-        Returns
-        -------
-        np.ndarray
-        """
-        steps = []  # Steps in the staircase
-        num_point_in_step = int(num_point/num_step)
-        for num in range(num_step):
-            steps.extend(list(np.repeat(num, num_point_in_step)))
-        num_added_point = num_point - len(steps)
-        if num_added_point < 0:
-            raise RuntimeError("Negative residual count")
-        elif num_added_point > 0:
-            steps.extend(list(np.repeat(num_step - 1, num_added_point)))
-        staircase_arr = np.array(steps)
-        # Rescale
-        staircase_arr = staircase_arr*(final_value - initial_value)/(num_step - 1)
-        staircase_arr += initial_value
-        #
-        return staircase_arr

@@ -75,10 +75,11 @@ def getModel(file_name=MODEL_823_FILE):
     return model_str
 
 @Expander(cn.KWARGS, cn.ALL_KWARGS)
-def plotOneTS(time_series, ax2=None, mgr=None, **kwargs):
+def plotOneTS(time_series, mgr=None, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
-    columns are legends.
+    columns are legends. If an OptionManger is provided,
+    the caller must invoke doFig.
 
     Parameters
     ----------
@@ -97,11 +98,16 @@ def plotOneTS(time_series, ax2=None, mgr=None, **kwargs):
     ax = mgr.plot_opts.get(cn.O_AX)
     if cn.O_FIGURE in kwargs.keys():
         fig = kwargs[cn.O_FIGURE]
+    else:
+        fig = None
     if ax is None:
-        if ax2 is not None:
-            ax = ax2
-        else:
-            fig, ax = plt.subplots(1)
+        fig, ax = plt.subplots(1)
+        mgr.plot_opts.set(cn.O_AX, ax)
+    if mgr.plot_opts[cn.O_AX2] is None:
+        ax2 = ax.twinx()
+        mgr.plot_opts[cn.O_AX2] = ax2
+    else:
+        ax2 = None
     times = np.array(time_series.index)/cn.MS_IN_SEC
     num_col = len(time_series.columns)
     colors = COLORS[:num_col]
@@ -388,8 +394,6 @@ def latexifyTransferFunction(tf, num_decimal=2):
         result_str = ""
         for idx, num in enumerate(polynomial):
             polynomial[idx] = round(num, num_decimal)
-            if len(result_str) > 0:
-                result_str += " + "
             power = max_power - idx
             if power == 0:
                 poly_term = ""
@@ -402,12 +406,17 @@ def latexifyTransferFunction(tf, num_decimal=2):
             else:
                 coefficient = str(polynomial[idx])
             if not np.isclose(polynomial[idx], 0.0):
+                if len(result_str) > 0:
+                    result_str += " + "
                 result_str += "%s %s" % (coefficient, poly_term)
         return result_str
     #
     numr_str = latexifyPolynomial(tf.num[0][0])
     denr_str = latexifyPolynomial(tf.den[0][0])
-    latex = r'$\frac{%s}{%s}$' % (numr_str, denr_str)
+    if len(numr_str) > 0:
+        latex = r'$\frac{%s}{%s}$' % (numr_str, denr_str)
+    else:
+        latex = r'$0$'
     return latex
 
 def setNoPlot(kwargs):
@@ -422,8 +431,8 @@ def setNoPlot(kwargs):
     new_kwargs[cn.O_IS_PLOT] = False
     return new_kwargs
 
-
 ############### CLASSES ################
+
 class PlotResult(object):
     """
     Contains data returned from a plot method.
@@ -435,7 +444,7 @@ class PlotResult(object):
         ax: Matplotlib.Axes (axis plotted)
     """
 
-    def __init__(self, time_series=None, ax=None, ax2=None, fig=None, staircase=None):
+    def __init__(self, time_series=None, ax=None, ax2=None, fig=None):
         """
         Parameters
         ----------
@@ -448,7 +457,6 @@ class PlotResult(object):
         self.ax = ax
         self.ax2 = ax2
         self.fig = fig
-        self.staircase = staircase
 
     def __repr__(self):
         """Avoid printer this object."""

@@ -8,7 +8,7 @@ import pandas as pd
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 INITIAL_VALUE = 5
 FINAL_VALUE = 10
@@ -59,7 +59,6 @@ class TestStaircase(unittest.TestCase):
         #    return
         staircase = Staircase.makeRelativeStaircase(5, 1.0)
         self.assertTrue(isinstance(staircase, Staircase))
-        import pdb; pdb.set_trace()
 
     def testMakeRealtive(self):
         if IGNORE_TEST:

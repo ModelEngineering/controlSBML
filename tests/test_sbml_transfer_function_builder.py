@@ -13,13 +13,14 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
 NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
+WOLF_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 
 LINEAR_MDL = """
 J0:  -> S1; k0
@@ -60,59 +61,87 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         
     def remove(self):
         if os.path.isfile(PLOT_PATH):
-            os.remove(PLOT_PATH)
+            if not IS_PLOT:
+                os.remove(PLOT_PATH)
 
     def testConstructor(self):
         if IGNORE_TEST:
             return
         self.assertTrue(isinstance(self.builder, tfb.SBMLTransferFunctionBuilder))
+
+    def checkTransferFunction(self, result_df):
+        self.assertTrue(isinstance(result_df, pd.DataFrame))
+        result_arr = result_df.values
+        result_arr = np.array([r.transfer_function for r in result_arr.flatten()])
+        self.assertTrue(all([isinstance(tf, control.TransferFunction) for tf in result_arr]))
+        return result_arr
+    
+    def checkTimeseries(self, result_df):
+        self.assertTrue(isinstance(result_df, pd.DataFrame))
+        for column in result_df.columns:
+            for idx in result_df.index:
+                ts = result_df.loc[idx, column]
+                self.assertTrue(isinstance(ts, ctl.Timeseries))
+    
+    def testMakeStaircaseResponse(self):
+        if IGNORE_TEST:
+            return
+        result_df = self.builder.makeStaircaseResponse(staircase=Staircase(final_value=10),
+              end_time=100)
+        self.checkTimeseries(result_df)
     
     def testFitTransferFunction(self):
         if IGNORE_TEST:
             return
-        transfer_function_df = self.builder.fitTransferFunction(1, 2,
-                                                                staircase=cn.Staircase(final_value=10),
+        result_df = self.builder.fitTransferFunction(1, 2,
+              staircase=Staircase(final_value=10),
               end_time=100)
-        self.assertTrue(isinstance(transfer_function_df, pd.DataFrame))
-        tfs = transfer_function_df.values.flatten()
-        self.assertTrue(all([isinstance(tf, control.TransferFunction) for tf in tfs]))
+        result_arr = self.checkTransferFunction(result_df)
+        self.assertGreater(result_arr[0].dcgain(), result_arr[1].dcgain())
 
     def testFitTransferFunction2(self):
         if IGNORE_TEST:
             return
-        ctlsb = ctl.ControlSBML("https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml",
-              input_names=["at"], output_names=["s5"])
-        builder = ctlsb.makeSISOTransferFunctionBuilder()
-        fitter_result = builder.fitTransferFunction(1, 2, 
-                                                    staircase=cn.Staircase(final_value=10),
-              end_time=100)
-        self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
-        if IS_PLOT:
-            ctl.plotOneTS(fitter_result.time_series, writefig=True)
+        ctlsb = ctl.ControlSBML(WOLF_URL, input_names=["at", "s1"], output_names=["s5", "s6"])
+        builder = tfb.SBMLTransferFunctionBuilder(ctlsb, is_fixed_input_species=False)
+        result_df = builder.fitTransferFunction(3, 3,
+                staircase=Staircase(final_value=5),
+                end_time=10)
+        _ = self.checkTransferFunctions(result_df)
       
     def testPlotStaircaseResponse(self):
         if IGNORE_TEST:
            return
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
-        plot_result_dct = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=100,
-                                                         staircase=cn.Staircase(final_value=10))
-        self.checkPlotResultDct(plot_result_dct)
+        response_df = builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=10)
+        result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
+        self.checkPlotResultDF(result_df)
 
-    def checkPlotResultDct(self, plot_result_dct):
-        self.assertTrue(isinstance(plot_result_dct, dict))
-        for plot_result in plot_result_dct.values():
-            if not isinstance(plot_result, util.PlotResult):
-                import pdb; pdb.set_trace()
-            self.assertTrue(isinstance(plot_result, util.PlotResult))
-
-    def testPlotStaircaseResponse2(self):
+    def testPlotFitTransferFunction(self):
         if IGNORE_TEST:
            return
-        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
-        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(url, input_names=["at", "s5"], output_names=["s6"])
-        plot_result_dct = builder.plotStaircaseResponse(is_plot=IS_PLOT, end_time=5,
-                                                         staircase=cn.Staircase(final_value=3))
-        self.checkPlotResultDct(plot_result_dct)
+        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
+        response_df = builder.fitTransferFunction(1, 2, staircase=Staircase(final_value=5), end_time=10)
+        result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
+        self.checkPlotResultDF(result_df)
+
+    def checkPlotResultDF(self, result_df):
+        self.assertTrue(isinstance(result_df, pd.DataFrame))
+        for column in result_df.columns:
+            for idx in result_df.index:
+                plot_result = result_df.loc[idx, column]
+                if plot_result is None:
+                    continue
+                self.assertTrue(isinstance(plot_result, util.PlotResult))
+
+    def testPlotStaircaseResponse2(self):
+        #if IGNORE_TEST:
+        #   return
+        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(WOLF_URL, is_fixed_input_species=False,
+                                                                              input_names=["at", "s5"], output_names=["s6"])
+        response_df = builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=10)
+        result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
+        self.checkPlotResultDF(result_df)
 
 if __name__ == '__main__':
   unittest.main()

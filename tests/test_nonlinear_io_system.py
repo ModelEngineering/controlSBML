@@ -1,5 +1,8 @@
 import controlSBML as ctl
 import controlSBML.constants as cn
+import controlSBML.util as util
+import helpers
+from controlSBML.option_management.option_manager import OptionManager
 
 import control
 import matplotlib.pyplot as plt
@@ -19,6 +22,7 @@ DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
 NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
+helpers.setupPlotting(__file__)
 
 LINEAR_MDL = """
 J0: $S0 -> S1; $S0
@@ -46,11 +50,14 @@ k1 =1; k2=2; k3=3
 """
 LINEAR_MDL2 = """
 J0:  -> S1; k0
+J0a: -> S1; S0
+J0b: S0 ->; S0
 J1: S1 -> S2; k1*S1
 J2: S2 -> S3; k2*S2
 J3: S3 -> S4; k3*S3
 J4: S4 -> ; k4*S4
 
+S0 = 0
 k0 = 50
 k1 = 1
 k2 = 2
@@ -183,7 +190,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         u_vec = np.repeat(u_val, self.sys.num_input)
         u_vecs = np.array([np.array(u_vec) for _ in range(NUM_TIME)])
         u_vecs = np.reshape(u_vecs, (1, NUM_TIME))
-        t, y = control.input_output_response(self.sys, TIMES, u_vecs, x_vec)
+        t, y = control.input_output_response(self.sys, TIMES, U=u_vecs, X0=x_vec)
         df = pd.DataFrame(y, self.sys.output_names)
         df = df.transpose()
         df.index = t
@@ -216,8 +223,79 @@ class TestNonlinearIOSystem(unittest.TestCase):
         sys = ctl.NonlinearIOSystem("linear_mdl2", ctlsb)
         x_vec = sys.makeStateSer().values
         times = np.linspace(0, 1000, 10000)
-        times, y_vals = control.input_output_response(sys, T=times, X0=x_vec, U=50)
+        times, y_vals = util.control.input_output_response(sys, T=times, X0=x_vec, U=50)
         self.assertLess(np.abs(y_vals[-1] - 25), 0.1)   # S4 = k2/k4*U at steady state
+
+    def testFixedRateInput(self):
+        # Simulating with roadrunner should produce the same results as simulating with controlSBML
+        if IGNORE_TEST:
+            return
+        mgr = OptionManager({})
+        times = np.linspace(0, 5, 50)
+        # Simulate in road runner
+        rr = te.loada(LINEAR_MDL2)
+        data = rr.simulate(times[0], times[-1], len(times))
+        rr_vals = np.array(data["[S3]"])
+        # Simulate in controlSBML
+        ctlsb = ctl.ControlSBML(LINEAR_MDL2,
+              input_names=["S1"], output_names=["S3"])
+        U = ctlsb.get("k0")
+        ctlsb.set({"k0": 0})
+        dct = {"S1": False}
+        sys = ctl.NonlinearIOSystem("linear_mdl2", ctlsb,
+                                    is_fixed_input_species=dct)
+        x_vec = sys.makeStateSer().values
+        times, y_vals = util.control.input_output_response(sys, T=times, X0=x_vec, U=U)
+        rms = (np.sum((rr_vals - y_vals)**2)/len(rr_vals))**0.5
+        self.assertLess(rms, 1e-2)
+        if IS_PLOT:
+            plt.scatter(rr_vals, y_vals)
+            plt.xlabel("Roadrunner")
+            plt.ylabel("controlSBML")
+            plt.plot([0, max(y_vals)], [0, max(y_vals)], color="red", linestyle="--")
+            mgr.doPlotOpts()
+            mgr.doFigOpts()
+
+    def testFixedConcentrationInput(self):
+        # Simulating with roadrunner should produce the same results as simulating with controlSBML
+        if IGNORE_TEST:
+            return
+        mgr = OptionManager({})
+        times = np.linspace(0, 5, 50)
+        # Simulate in road runner
+        rr = te.loada(LINEAR_MDL2)
+        data = rr.simulate(times[0], times[-1], len(times))
+        rr_vals = np.array(data["[S3]"])
+        # Simulate in controlSBML
+        ctlsb = ctl.ControlSBML(LINEAR_MDL2,
+              input_names=["S0"], output_names=["S3"])
+        U = ctlsb.get("k0")
+        ctlsb.set({"k0": 0})
+        dct = {"S0": True}
+        sys = ctl.NonlinearIOSystem("linear_mdl2", ctlsb,
+                                    is_fixed_input_species=dct)
+        x_vec = sys.makeStateSer().values
+        times, y_vals = util.control.input_output_response(sys, T=times, X0=x_vec, U=U)
+        if IS_PLOT:
+            plt.scatter(rr_vals, y_vals)
+            plt.xlabel("Roadrunner")
+            plt.ylabel("controlSBML")
+            plt.plot([0, max(y_vals)], [0, max(y_vals)], color="red", linestyle="--")
+            mgr.doPlotOpts()
+            mgr.doFigOpts()
+        rms = (np.sum((rr_vals - y_vals)**2)/len(rr_vals))**0.5
+        self.assertLess(rms, 1e-2)
+
+    def testSetSteadyState(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ctl.ControlSBML(LINEAR_MDL2,
+              input_names=["S1"], output_names=["S3"])
+        sys = ctl.NonlinearIOSystem("test_sys", ctlsb)
+        initial_value = ctlsb.get("S3")
+        sys.setSteadyState()
+        final_value = ctlsb.get("S3")
+        self.assertGreater(final_value, initial_value)
 
 
 if __name__ == '__main__':

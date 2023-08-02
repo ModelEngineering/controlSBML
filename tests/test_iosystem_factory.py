@@ -2,6 +2,7 @@ from controlSBML.iosystem_factory import IOSystemFactory
 from controlSBML import *
 import controlSBML as ctl
 import controlSBML.constants as cn
+import controlSBML.util as util
 
 import control
 import matplotlib.pyplot as plt
@@ -148,8 +149,8 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertEqual(np.var(outputs), 0)
 
     def testMakeArbitrarySignal(self):
-        if IGNORE_TEST:
-          return
+        #if IGNORE_TEST:
+        #  return
         sys = self.factory.makeArbitrarySignal("arbitrary", signal_function=lambda t: t)
         result = control.input_output_response(sys, T=TIMES)
         self.assertTrue(len(result.y) > 0)

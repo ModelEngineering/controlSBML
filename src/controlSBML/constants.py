@@ -26,7 +26,7 @@ class LegendSpec():
         self.loc = loc
 
 FitterResult = collections.namedtuple("FitterResult",
-            "transfer_function staircase parameters stderr nfev redchi time_series")
+            "transfer_function staircase parameters rms_residuals stderr nfev redchi time_series input_name output_name")
 
 
 ################ DIRECTORIES #################
@@ -59,6 +59,7 @@ TIME = "time"
 # Keyword options
 O_A_DF = "A_df"
 O_AX = "ax"
+O_AX2 = "ax2"
 O_B_DF = "B_df"
 O_C_DF = "C_df"
 O_END_TIME = "end_time"
@@ -102,6 +103,7 @@ PLOT_DCT = dict(
       ylabel="",
       title="",
       ax=None,
+      ax2=None,
       xticklabels=None,
       yticklabels=None,
       )
@@ -122,6 +124,7 @@ KWARGS = [
     #SIMULATION OPTIONS
     Kwarg(O_A_DF, default=10, dtype=pd.DataFrame, doc="Linear system A matrix"),
     Kwarg(O_AX, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting axis"),
+    Kwarg(O_AX2, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting 2nd axis"),
     Kwarg(O_B_DF, default=10, dtype=pd.DataFrame, doc="Linear system B matrix"),
     Kwarg(O_C_DF, default=10, dtype=pd.DataFrame, doc="Linear system C matrix"),
     Kwarg(O_END_TIME, default=10, dtype=float, doc="end time of simulation"),
@@ -160,3 +163,6 @@ MS_IN_SEC = 1000
 SEC_IN_MS = 1.0/MS_IN_SEC
 TIMESERIES_INDEX_NAME = "miliseconds"
 TIMES = np.linspace(0, 5, 1000)
+
+# URLs
+WOLF_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml" 

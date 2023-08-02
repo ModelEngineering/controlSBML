@@ -10,7 +10,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 SIZE = 10
 if IS_PLOT:
@@ -166,12 +166,20 @@ class TestFunctions(unittest.TestCase):
         test(tf, [2, 0, 1], [4, 1, 0, 3])
 
     def testLatexifyTransferFunction(self):
-        #if IGNORE_TEST:
-        #   return
+        if IGNORE_TEST:
+           return
         tf = control.TransferFunction([1], [1, 0.0002, 1])
         latex = util.latexifyTransferFunction(tf)
         self.assertTrue(latex.count("$"))
         self.assertTrue(latex.count("frac"))
+        #
+        tf = control.TransferFunction([0], [1, 0.0002, 1])
+        latex = util.latexifyTransferFunction(tf)
+        self.assertFalse("frac" in latex)
+        #
+        tf = control.TransferFunction([1, 0, 0], [1, 0.0002, 1])
+        latex = util.latexifyTransferFunction(tf)
+
 
 if __name__ == '__main__':
   unittest.main()

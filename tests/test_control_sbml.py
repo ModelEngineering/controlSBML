@@ -14,6 +14,20 @@ IS_PLOT = False
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
+MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")
+LINEAR_MDL = """
+J0: $S0 -> S1; k0*$S0
+J1: S1 -> S2; k1*S1
+J2: S2 -> S3; k2*S2
+
+S0 = 1
+S1 = 10
+S2 = 0
+S3 = 0
+k0 = 1
+k1 = 1
+k2 = 1
+"""
 
 
 #############################
@@ -39,6 +53,21 @@ class TestControlSBML(unittest.TestCase):
         diff = set(ctlsb1.get().values()).symmetric_difference(
               ctlsb2.get().values())
         self.assertEqual(len(diff), 0)
+
+    def testMakeSISOTransferFunctionBuilder(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(MODEL_FILE,
+            input_names=["IR"], output_names=["mTORC1_DEPTOR"])
+        builder = ctlsb.makeSISOTransferFunctionBuilder()
+        self.assertTrue("Builder" in str(type(builder)))
+    
+    def testMakeNonlinearIOSystem(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MDL, input_names=["S1"])
+        non_sys = ctlsb.makeNonlinearIOSystem("tst")
+        self.assertTrue("NonlinearIOSystem" in str(type(non_sys)))
 
 
 if __name__ == '__main__':
