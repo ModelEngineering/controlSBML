@@ -138,8 +138,8 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         #if IGNORE_TEST:
         #   return
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(WOLF_URL, is_fixed_input_species=False,
-                                                                              input_names=["at", "s5"], output_names=["s6"])
-        response_df = builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=10)
+                                                                              input_names=["at", "na"], output_names=["s6", "s5"])
+        response_df = builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=5)
         result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 

@@ -237,6 +237,14 @@ class SISOTransferFunctionBuilder(object):
         -------
         util.PlotResult
         """
+        # Set the colors of the labels, axes, and spines
+        def setYAxColor(ax, position, color):
+            ax.tick_params(axis='y', labelcolor=color)
+            ax.spines[position].set_color(color)
+            ax.yaxis.label.set_color(color)
+        #
+        AX_COLOR = "green"
+        AX2_COLOR = "red"
         # Handle the options. If an option manager is specified, then caller handles figure generation.
         if mgr is None:
             mgr = OptionManager(kwargs)
@@ -248,7 +256,7 @@ class SISOTransferFunctionBuilder(object):
         staircase_ts = response_ts[staircase_name]
         response_ts = new_response_ts
         # Do the plots
-        plot_result = util.plotOneTS(response_ts, mgr=mgr)
+        plot_result = util.plotOneTS(response_ts, mgr=mgr, color=AX_COLOR)
         ax = plot_result.ax
         mgr.plot_opts.set(cn.O_AX, ax)
         mgr.plot_opts.set(cn.O_YLABEL, output_name)
@@ -259,12 +267,10 @@ class SISOTransferFunctionBuilder(object):
             ax2 = mgr.plot_opts[cn.O_AX2]
         # Plot the staircase
         times = np.array(response_ts.index)/cn.MS_IN_SEC
-        ax2.plot(times, staircase_ts, color="red",
+        ax2.plot(times, staircase_ts, color=AX2_COLOR,
             linestyle="--")
-        ytick_labels = ax2.get_yticklabels()
-        ax2.set_yticklabels(ytick_labels, color="red")
-        ax2.spines['right'].set_color('red')
-        ax2.yaxis.label.set_color('red')
+        setYAxColor(ax, "left", AX_COLOR)
+        setYAxColor(ax2, "right", AX2_COLOR)
         mgr.doPlotOpts()
         ax.legend([])
         if is_fig:

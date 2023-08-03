@@ -119,7 +119,6 @@ class SBMLTransferFunctionBuilder(object):
                 if entry is None:
                     plot_result = None
                 else:
-                    entry = dataframe.loc[input_name, output_name]
                     irow = input_names.index(input_name)
                     icol = output_names.index(output_name)
                     ax = fig.add_subplot(grid_spec[irow, icol])
@@ -134,17 +133,16 @@ class SBMLTransferFunctionBuilder(object):
                         ax.set_ylabel("")
                         ax2.set_ylabel("")
                     else:
+                        ax2.set_ylabel(input_name, color="red")
                         done_first_plot = True
-                    if icol >= ncol:
-                        icol = 0
-                        irow += 1
                     mgr.doPlotOpts()
-                    if irow < nrow - 1:
+                    if irow < nrow:
                         ax.set_xlabel("")
                         ax2.set_xlabel("")
                     else:
                         ax.set_xlabel("time")
                     plot_result.ax.legend([output_name])
+                    ax.get_legend().set_visible(False)
                 result_dct[output_name].append(plot_result)
         mgr.doFigOpts()
         result_df = cls._makeResultDF(result_dct, input_names)
