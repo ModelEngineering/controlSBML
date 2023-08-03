@@ -13,8 +13,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT =  False
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -135,8 +135,8 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
                 self.assertTrue(isinstance(plot_result, util.PlotResult))
 
     def testPlotStaircaseResponse2(self):
-        #if IGNORE_TEST:
-        #   return
+        if IGNORE_TEST:
+           return
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(WOLF_URL, is_fixed_input_species=False,
                                                                               input_names=["at", "na"], output_names=["s6", "s5"])
         response_df = builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=5)
