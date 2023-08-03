@@ -65,13 +65,11 @@ class SBMLTransferFunctionBuilder(object):
         result_dct = {n: [] for n in self.sys.output_names}
         for output_name in self.sys.output_names:
             for input_name in self.sys.input_names:
-                if input_name == output_name:
-                    response_df = None
-                else:
-                    # Adjust the staircase as required
-                    sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
-                    builder = tfb.SISOTransferFunctionBuilder(sys)
-                    response_df = builder.makeStaircaseResponse(staircase=staircase, is_steady_state=is_steady_state, **kwargs)
+                # Adjust the staircase as required
+                sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
+                builder = tfb.SISOTransferFunctionBuilder(sys)
+                response_df = builder.makeStaircaseResponse(staircase=staircase, is_steady_state=is_steady_state,
+                                                             **kwargs)
                 result_dct[output_name].append(response_df)
         result_df = self._makeResultDF(result_dct, self.sys.input_names)
         return result_df
@@ -128,21 +126,22 @@ class SBMLTransferFunctionBuilder(object):
                     mgr.plot_opts[cn.O_AX2] = ax2
                     mgr.plot_opts[cn.O_XLABEL] = "time"
                     plot_result = plotFunc(entry, mgr=mgr, ax2=ax2)
-                    icol += 1
-                    if done_first_plot:
-                        ax.set_ylabel("")
-                        ax2.set_ylabel("")
-                    else:
-                        ax2.set_ylabel(input_name, color="red")
-                        done_first_plot = True
-                    mgr.doPlotOpts()
-                    if irow < nrow:
-                        ax.set_xlabel("")
-                        ax2.set_xlabel("")
-                    else:
-                        ax.set_xlabel("time")
-                    plot_result.ax.legend([output_name])
-                    ax.get_legend().set_visible(False)
+                    if plot_result is not None:
+                        icol += 1
+                        if done_first_plot:
+                            ax.set_ylabel("")
+                            ax2.set_ylabel("")
+                        else:
+                            ax2.set_ylabel(input_name, color="red")
+                            done_first_plot = True
+                        mgr.doPlotOpts()
+                        if irow < nrow:
+                            ax.set_xlabel("")
+                            ax2.set_xlabel("")
+                        else:
+                            ax.set_xlabel("time")
+                        plot_result.ax.legend([output_name])
+                        ax.get_legend().set_visible(False)
                 result_dct[output_name].append(plot_result)
         mgr.doFigOpts()
         result_df = cls._makeResultDF(result_dct, input_names)

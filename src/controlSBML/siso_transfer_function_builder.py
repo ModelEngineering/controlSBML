@@ -400,10 +400,11 @@ class SISOTransferFunctionBuilder(object):
         ax2.plot(times, staircase_arr, color="red", linestyle="--")
         latex = util.latexifyTransferFunction(transfer_function)
         if len(mgr.plot_opts[cn.O_TITLE]) == 0:
-            title = "%s->%s;  %s   " % (input_name, output_name, latex)
+            #title = "%s->%s;  %s   " % (input_name, output_name, latex)
+            title = latex
         else:
             title = mgr.plot_opts[cn.O_TITLE]
-        ax.set_title(title, y=0.2, pad=-24, fontsize=14, loc="right")
+        ax.set_title(title, y=0.2, pad=-14, fontsize=14, loc="right")
         mgr.doPlotOpts()
         ax.legend([output_name, cn.O_PREDICTED], loc="upper left")
         mgr.doFigOpts()

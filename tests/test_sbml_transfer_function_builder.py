@@ -69,7 +69,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
             return
         self.assertTrue(isinstance(self.builder, tfb.SBMLTransferFunctionBuilder))
 
-    def checkTransferFunction(self, result_df):
+    def checkTransferFunctions(self, result_df):
         self.assertTrue(isinstance(result_df, pd.DataFrame))
         result_arr = result_df.values
         result_arr = np.array([r.transfer_function for r in result_arr.flatten()])
@@ -96,7 +96,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         result_df = self.builder.fitTransferFunction(1, 2,
               staircase=Staircase(final_value=10),
               end_time=100)
-        result_arr = self.checkTransferFunction(result_df)
+        result_arr = self.checkTransferFunctions(result_df)
         self.assertGreater(result_arr[0].dcgain(), result_arr[1].dcgain())
 
     def testFitTransferFunction2(self):
@@ -122,7 +122,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
            return
         builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
         response_df = builder.fitTransferFunction(1, 2, staircase=Staircase(final_value=5), end_time=10)
-        result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
+        result_df = builder.plotFitTransferFunction(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 
     def checkPlotResultDF(self, result_df):
