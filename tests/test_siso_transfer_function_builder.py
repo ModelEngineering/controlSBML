@@ -149,7 +149,9 @@ class TestNonlinearIOSystem(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        fitter_result = self.builder.fitTransferFunction(4, 4,
+        sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb, is_fixed_input_species=True)
+        builder = stb.SISOTransferFunctionBuilder(sys)
+        fitter_result = builder.fitTransferFunction(4, 4,
               end_time=100)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         self.assertLess(fitter_result.rms_residuals, 0.1)

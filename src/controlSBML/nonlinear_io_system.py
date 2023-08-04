@@ -1,4 +1,11 @@
-"""Extends control.NonlinearIOSystem for ControlSBML objects."""
+"""Extends control.NonlinearIOSystem for ControlSBML objects.
+1. Inputs can be species, parameters, compartments.
+2. Ouputs can be floating species, fluxes
+3. If a floating species is an input, it can be manipulated in two ways:
+   a. Set to a fixed value, which must be non-negative
+   b. Specify an input rate, which can be positive or negative
+   The choice here is indicated by the parameter is_fixed_input_species
+"""
 
 import controlSBML.constants as cn
 from controlSBML import logger as lg
@@ -13,7 +20,7 @@ import numpy as np
 ARG_LST = [cn.TIME, cn.STATE, cn.INPUT, cn.PARAMS]
 MIN_ELAPSED_TIME = 1e-2
 IS_LOG = False
-DEFAULT_INPUT_SPECIES_DESCRIPTOR = True
+DEFAULT_INPUT_SPECIES_DESCRIPTOR = False # True: fixed concentration, False: rate
 
 
 class NonlinearIOSystem(control.NonlinearIOSystem):
@@ -46,21 +53,6 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.is_fixed_input_species = is_fixed_input_species
         if input_names is None:
             input_names = list(ctlsb.input_names)
-        self.input_species = set(input_names).intersection(ctlsb.species_names)
-        if isinstance(is_fixed_input_species, bool):
-            self.input_species_dct = {n: is_fixed_input_species for n in self.input_species}
-        else:
-            if not isinstance(is_fixed_input_species, dict):
-                msgs.error("Invalid type of is_fixed_input_species: %s" % type(is_fixed_input_species))
-            self.input_species_dct = dict(is_fixed_input_species)
-        missing_input_species = self.input_species.difference(self.input_species_dct.keys())
-        for species in missing_input_species:
-            self.input_species_dct[species] = DEFAULT_INPUT_SPECIES_DESCRIPTOR
-        # else:
-        #     diff = set(input_names).difference(ctlsb.state_names)
-        #     if len(diff) != 0:
-        #         raise ValueError("Invalid input names: %s" % diff)
-        #     self.input_names = [input_names[0]]
         if output_names is None:
             output_names = list(ctlsb.output_names)
         self.input_names = input_names
@@ -70,7 +62,20 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.num_state = len(self.state_names)
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
-        #
+        # self.input_dct indicates if an input is held at a fixed at a value (True) or the input is a rate of change
+        # FIXME: Only look at floating species
+        input_species = set(self.input_names).intersection(ctlsb.species_names)
+        self.input_dct = {n: True for n in self.input_names}
+        self.input_dct.update(
+              {n: DEFAULT_INPUT_SPECIES_DESCRIPTOR for n in self.input_names})
+        if isinstance(is_fixed_input_species, bool):
+            self.input_dct.update(
+                  {n: is_fixed_input_species for n in input_species})
+        else:
+            if not isinstance(is_fixed_input_species, dict):
+                msgs.error("Invalid type of is_fixed_input_species: %s" % type(is_fixed_input_species))
+            self.input_dct.update((is_fixed_input_species))
+        # Logging
         self.logger = lg.Logger(self.name, self.state_names)
         # Initialize the controlNonlinearIOSystem object
         self.logger_dct = {n: [] for n in self.state_names}
@@ -171,14 +176,14 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         input_dct = {n: u_vec[i] for i, n in enumerate(self.input_names)}
         set_dct = dict(state_dct)
         # Handle fixed concentration species
-        for name, is_fixed in self.input_species_dct.items():
+        for name, is_fixed in self.input_dct.items():
             if is_fixed:
                 set_dct[name] = input_dct[name]
         self.ctlsb.set(set_dct)
         # Calculate the derivatives of floating species in state
         derivative_dct = {n: v for n, v in self.ctlsb.get(self.dstate_names).items()}
         # Handle input species for which an additional rate is specified
-        for name, is_fixed in self.input_species_dct.items():
+        for name, is_fixed in self.input_dct.items():
             if not is_fixed:
                 dname = self._makeDstateName(name)
                 derivative_dct[dname] += input_dct[name]

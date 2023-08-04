@@ -11,6 +11,7 @@ import controlSBML.siso_transfer_function_builder as tfb
 import controlSBML.timeseries as ts
 from controlSBML.staircase import Staircase
 from controlSBML.option_management.option_manager import OptionManager
+from controlSBML import msgs
 
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
@@ -21,18 +22,17 @@ import pandas as pd
 
 class SBMLTransferFunctionBuilder(object):
     
-    def __init__(self, ctlsb, is_fixed_input_species=True, do_simulate_on_update=False):
+    def __init__(self, ctlsb, **kwargs):
         """
         Construction of an array of control.TransferFunction
 
         Parameters
         ----------
         ctlsb: ControlSBML
-        is_fixed_input_species: bool/dict (see NonlinearIOSystem)
+        kwargs: dict (options for ctl.NonlinearIOSystem)
         """
         self.ctlsb = ctlsb
-        self.sys = ctlsb.makeNonlinearIOSystem("SBMLTransferFunctionBuilder", is_fixed_input_species=is_fixed_input_species,
-                                               do_simulate_on_update=do_simulate_on_update)
+        self.sys = ctlsb.makeNonlinearIOSystem("SBMLTransferFunctionBuilder", **kwargs)
 
     @classmethod 
     def _makeResultDF(cls, result_dct, input_names):
@@ -41,6 +41,18 @@ class SBMLTransferFunctionBuilder(object):
         df.index = list(input_names)
         df.index.name = "Inputs"
         return df
+    
+    def _makeStaircaseDct(self, staircase):
+        if isinstance(staircase, dict):
+            names = set(staircase.keys())
+            diff = names.difference(self.sys.input_names)
+            if len(diff) > 0:
+                msg = f"Input names {diff} not in know system inputs: {self.sys.input_names}"
+                msgs.error(msg)
+            staircase_dct = staircase
+        else:
+            staircase_dct = {n: staircase for n in self.sys.input_names}
+        return staircase_dct
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def makeStaircaseResponse(self, staircase=Staircase(), is_steady_state=True, **kwargs):
@@ -49,7 +61,7 @@ class SBMLTransferFunctionBuilder(object):
 
         Parameters
         ----------
-        staircase: Staircase
+        staircase: Staircase or dict (key: str (input name), value: Staircase)
         is_steady_state: bool (initialize to steady state values)
         #@expand
 
@@ -63,12 +75,14 @@ class SBMLTransferFunctionBuilder(object):
         """
         mgr = OptionManager(kwargs)
         result_dct = {n: [] for n in self.sys.output_names}
+        staircase_dct = self._makeStaircaseDct(staircase)
         for output_name in self.sys.output_names:
             for input_name in self.sys.input_names:
                 # Adjust the staircase as required
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
                 builder = tfb.SISOTransferFunctionBuilder(sys)
-                response_df = builder.makeStaircaseResponse(staircase=staircase, is_steady_state=is_steady_state,
+                response_df = builder.makeStaircaseResponse(staircase=staircase_dct[input_name],
+                                                            is_steady_state=is_steady_state,
                                                              **kwargs)
                 result_dct[output_name].append(response_df)
         result_df = self._makeResultDF(result_dct, self.sys.input_names)
@@ -176,7 +190,7 @@ class SBMLTransferFunctionBuilder(object):
         ----------
         num_numerator: int (number of numerator terms)
         num_denominator: int (number of denominator terms)
-        staircase: Staircase
+        staircase: Staircase or dict (key: input name, value: Staircase)
         #@expand
 
         Returns
@@ -187,11 +201,13 @@ class SBMLTransferFunctionBuilder(object):
             values: tfb.FitterResult
         """
         fitter_dct = {n: [] for n in self.sys.output_names}
+        staircase_dct = self._makeStaircaseDct(staircase)
         for output_name in self.sys.output_names:
             for input_name in self.sys.input_names:
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
                 siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
-                fitter_result = siso_tfb.fitTransferFunction(num_numerator, num_denominator, staircase=staircase, **sim_kwargs)
+                fitter_result = siso_tfb.fitTransferFunction(num_numerator, num_denominator,
+                                                             staircase=staircase_dct[input_name], **sim_kwargs)
                 fitter_dct[output_name].append(fitter_result)
         # Construct the output
         fitter_df = self._makeResultDF(fitter_dct, self.sys.input_names)
@@ -218,7 +234,7 @@ class SBMLTransferFunctionBuilder(object):
         return cls._plotMIMO(fitter_df, tfb.SISOTransferFunctionBuilder.plotFitTransferFunction, **options)
     
     @classmethod
-    def makeTransferFunctionBuilder(cls, *pargs, is_fixed_input_species=True, 
+    def makeTransferFunctionBuilder(cls, *pargs, is_fixed_input_species=False, 
                                     do_simulate_on_update=False, **kwargs):
         """
         Constructs transfer functions for SBML systems.

@@ -4,12 +4,11 @@ import helpers
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 INITIAL_VALUE = 5
 FINAL_VALUE = 10
 NUM_STEP = 5
@@ -30,7 +29,8 @@ class TestStaircase(unittest.TestCase):
          
     def remove(self):
         if os.path.isfile(PLOT_PATH):
-            os.remove(PLOT_PATH)
+            if not IS_PLOT: 
+                os.remove(PLOT_PATH)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -57,13 +57,24 @@ class TestStaircase(unittest.TestCase):
     def testMakeRealtive(self):
         #if IGNORE_TEST:
         #    return
-        staircase = Staircase.makeRelativeStaircase(5, 1.0)
+        center = 5
+        fractional_deviation = 2.0
+        num_point = 100
+        deviation = center*fractional_deviation
+        staircase = Staircase.makeRelativeStaircase(center=center,
+                                                    fractional_deviation=fractional_deviation,
+                                                    num_step=10, num_point=num_point)
+        self.assertEqual(len(staircase.staircase_arr), num_point)
+        self.assertTrue(np.isclose(staircase.staircase_arr[-1], center + deviation))
+        self.assertTrue(np.isclose(staircase.staircase_arr[0], center - deviation))
         self.assertTrue(isinstance(staircase, Staircase))
 
-    def testMakeRealtive(self):
+    def testPlot(self):
         if IGNORE_TEST:
             return
-        pass
+        staircase = Staircase.makeRelativeStaircase(5, 2)
+        staircase.plot()
+        plt.savefig(PLOT_PATH)
 
 
 if __name__ == '__main__':

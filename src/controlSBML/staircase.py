@@ -1,5 +1,4 @@
 """Create a staircase of values. Build multiple staircases."""
-
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -89,7 +88,7 @@ class Staircase(object):
         Staircase
         """
         max_deviation = center*fractional_deviation
-        cls(initial_value=center - max_deviation,
+        return cls(initial_value=center - max_deviation,
             final_value=center + max_deviation,
             num_step=num_step, num_point=num_point)
         
@@ -101,63 +100,3 @@ class Staircase(object):
         fig, ax = plt.subplots()
         staircase_ser.plot(ax=ax)
         return fig
-
-
-class MultiStaircase(object):
-    """
-    Builds and provides access to multiple staircases with the same number of steps and points.
-
-    Usage:
-        multi_starcases = MultiStaircase(num_point=20, num_step=3)
-        multi_starcases.buildAbsolute(["S1", "S2"], initial_value=0, final_value=10)
-        multi_starcases.buildRelative(["S4", "S5"], 5, 0.1)
-        S1_staircase = multi_starcases.get("S1")
-    """
-
-    def __init__(self, **kwargs):
-        """
-        Args:
-            kwargs: dict (default arguments for Staircase)
-        """
-        self.kwargs = kwargs
-        #
-        self.staircase_dct = {}  # key is name; value is Staircase
-
-    def _makeKwargs(self, kwargs):
-        new_kwargs = dict(kwargs)
-        for key, value in self.kwargs.items():
-            if not key in new_kwargs:
-                new_kwargs[key] = value
-        return new_kwargs
-
-    def buildAbsolute(self, names, **kwargs):
-        """
-        Creates a staircase for all of the names.
-        Args:
-            names: list-str
-            kwargs: keyword arguments for Staircase constructor
-        """
-        new_kwargs = self._makeKwargs(kwargs)
-        for name in names:
-            self.staircase_dct[name] = Staircase(**new_kwargs)
-
-    def buildRelative(self, names, **kwargs):
-        """
-        Args:
-            names: list-str
-            kwargs: keyword arguments for makeRelativeStaircase 
-        """
-        new_kwargs = self._makeKwargs(kwargs)
-        for name in names:
-            self.staircase_dct[name] = Staircase.makeRelativeStaircase(**new_kwargs)
-
-    def get(self, name):
-        """
-        Gets the staircase for the name.
-
-        Args:
-            name: str
-        Returns:
-            Staircase
-        """
-        return self.staircase_dct[name] 
