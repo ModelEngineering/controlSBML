@@ -1,6 +1,7 @@
 import controlSBML as ctl
+from controlSBML.control_sbml import ControlSBML
 import controlSBML.constants as cn
-import controlSBML.sbml_transfer_function_builder as tfb
+import controlSBML.mimo_transfer_function_builder as tfb
 import controlSBML.util as util
 from controlSBML.staircase import Staircase
 import helpers
@@ -13,8 +14,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT =  True
+IGNORE_TEST = False
+IS_PLOT =  False
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -53,8 +54,9 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
 
     def setUp(self):
         self.remove()
-        self.builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(
-            LINEAR_MDL, input_names=INPUT_NAMES, output_names=OUTPUT_NAMES)
+        self.ctlsb = ControlSBML(LINEAR_MDL, input_names=INPUT_NAMES, output_names=OUTPUT_NAMES)
+        self.builder = self.ctlsb.makeMIMOTransferFunctionBuilder(
+            input_names=INPUT_NAMES, output_names=OUTPUT_NAMES)
         
     def tearDown(self):
         self.remove()
@@ -67,7 +69,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        self.assertTrue(isinstance(self.builder, tfb.SBMLTransferFunctionBuilder))
+        self.assertTrue(isinstance(self.builder, tfb.MIMOTransferFunctionBuilder))
 
     def checkTransferFunctions(self, result_df):
         self.assertTrue(isinstance(result_df, pd.DataFrame))
@@ -103,7 +105,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         ctlsb = ctl.ControlSBML(WOLF_URL, input_names=["at", "s1"], output_names=["s5", "s6"])
-        builder = tfb.SBMLTransferFunctionBuilder(ctlsb, is_fixed_input_species=False)
+        builder = tfb.MIMOTransferFunctionBuilder(ctlsb, is_fixed_input_species=False)
         result_df = builder.fitTransferFunction(3, 3,
                 staircase=Staircase(final_value=5),
                 end_time=10)
@@ -112,17 +114,15 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
     def testPlotStaircaseResponse(self):
         if IGNORE_TEST:
            return
-        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
-        response_df = builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=10)
-        result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
+        response_df = self.builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=10)
+        result_df = self.builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 
     def testPlotFitTransferFunction(self):
         if IGNORE_TEST:
            return
-        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(LINEAR_MDL)
-        response_df = builder.fitTransferFunction(1, 2, staircase=Staircase(final_value=5), end_time=10)
-        result_df = builder.plotFitTransferFunction(response_df, is_plot=IS_PLOT)
+        response_df = self.builder.fitTransferFunction(1, 2, staircase=Staircase(final_value=5), end_time=10)
+        result_df = self.builder.plotFitTransferFunction(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 
     def checkPlotResultDF(self, result_df):
@@ -135,12 +135,12 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
                 self.assertTrue(isinstance(plot_result, util.PlotResult))
 
     def testPlotStaircaseResponse2(self):
-        #if IGNORE_TEST:
-        #   return
+        if IGNORE_TEST:
+           return
         staircase_dct = {"at": Staircase(initial_value=-5, final_value=5),
                          "na": Staircase(initial_value=-10, final_value=10)}
-        builder = tfb.SBMLTransferFunctionBuilder.makeTransferFunctionBuilder(WOLF_URL, is_fixed_input_species=False,
-                                                                              input_names=["at", "na"], output_names=["s6", "s5"])
+        ctlsb = ControlSBML(WOLF_URL, input_names=["at", "na"], output_names=["s6", "s5"])
+        builder = ctlsb.makeMIMOTransferFunctionBuilder()
         response_df = builder.makeStaircaseResponse(staircase=staircase_dct)
         result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)

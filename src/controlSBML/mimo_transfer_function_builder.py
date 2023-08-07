@@ -20,7 +20,7 @@ import numpy as np
 import pandas as pd
 
 
-class SBMLTransferFunctionBuilder(object):
+class MIMOTransferFunctionBuilder(object):
     
     def __init__(self, ctlsb, **kwargs):
         """
@@ -139,9 +139,8 @@ class SBMLTransferFunctionBuilder(object):
                     mgr.plot_opts[cn.O_AX] = ax
                     mgr.plot_opts[cn.O_AX2] = ax2
                     mgr.plot_opts[cn.O_XLABEL] = "time"
-                    plot_result = plotFunc(entry, mgr=mgr, ax2=ax2)
+                    plot_result = plotFunc(entry, mgr=mgr)
                     if plot_result is not None:
-                        icol += 1
                         if done_first_plot:
                             ax.set_ylabel("")
                             ax2.set_ylabel("")
@@ -232,16 +231,3 @@ class SBMLTransferFunctionBuilder(object):
             values: PlotResult
         """
         return cls._plotMIMO(fitter_df, tfb.SISOTransferFunctionBuilder.plotFitTransferFunction, **options)
-    
-    @classmethod
-    def makeTransferFunctionBuilder(cls, *pargs, is_fixed_input_species=False, 
-                                    do_simulate_on_update=False, **kwargs):
-        """
-        Constructs transfer functions for SBML systems.
-
-        Parameters
-        ----------
-        Same as for constructing ControlSBML
-        """
-        ctlsb = ctl.ControlSBML(*pargs, **kwargs)
-        return cls(ctlsb, is_fixed_input_species=is_fixed_input_species, do_simulate_on_update=do_simulate_on_update)

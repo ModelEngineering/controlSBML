@@ -12,6 +12,7 @@ pandas
 pip>20
 pylint
 python-libsbml
+SBMLDiagrams
 seaborn
 sympy
 tabulate

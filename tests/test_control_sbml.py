@@ -62,6 +62,14 @@ class TestControlSBML(unittest.TestCase):
         builder = ctlsb.makeSISOTransferFunctionBuilder()
         self.assertTrue("Builder" in str(type(builder)))
     
+    def testMakeMIMOTransferFunctionBuilder(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(MODEL_FILE,
+            input_names=["IR", "mTORC2_DEPTOR"], output_names=["mTORC1_DEPTOR"])
+        builder = ctlsb.makeMIMOTransferFunctionBuilder()
+        self.assertTrue("Builder" in str(type(builder)))
+    
     def testMakeNonlinearIOSystem(self):
         if IGNORE_TEST:
             return

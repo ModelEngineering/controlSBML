@@ -271,6 +271,7 @@ class SISOTransferFunctionBuilder(object):
             linestyle="--")
         setYAxColor(ax, "left", AX_COLOR)
         setYAxColor(ax2, "right", AX2_COLOR)
+        ax2.set_label(staircase_name)
         mgr.doPlotOpts()
         ax.legend([])
         if is_fig:
@@ -331,7 +332,7 @@ class SISOTransferFunctionBuilder(object):
         # Get the calibration data
         new_staircase = staircase.copy()
         data_ts = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
-        time_series, staircase_column_name, _ = self._extractStaircaseResponseInformation(data_ts)
+        output_ts, staircase_column_name, _ = self._extractStaircaseResponseInformation(data_ts)
         new_staircase.name = staircase_column_name
         times = data_ts.times
         times_diff = np.diff(times)
@@ -351,9 +352,8 @@ class SISOTransferFunctionBuilder(object):
         stderr_dct = {k: v.stderr for k,v in minimizer_result.params.items()}
         transfer_function = makeTransferFunction(minimizer_result.params)
         #
-        _, y_arr = control.forced_response(transfer_function,
-              T=times, U=staircase_arr)
-        time_series[cn.O_PREDICTED] = y_arr
+        _, y_arr = control.forced_response(transfer_function, T=times, U=staircase_arr, X0=0)
+        output_ts[cn.O_PREDICTED] = y_arr
         fitter_result = cn.FitterResult(
               input_name=self.input_name,
               output_name=self.output_name,
@@ -362,7 +362,7 @@ class SISOTransferFunctionBuilder(object):
               nfev=minimizer_result.nfev,
               rms_residuals = rms_residuals,
               redchi=minimizer_result.redchi,
-              time_series=time_series,
+              time_series=output_ts,
               staircase=new_staircase,
               parameters=minimizer_result.params)
         return fitter_result
@@ -372,17 +372,21 @@ class SISOTransferFunctionBuilder(object):
     def plotFitTransferFunction(cls, fitter_result, mgr=None, **kwargs):
         """
         Plots the results of fitting a transfer function for the NonlinearIOSystem.
+        If an option manager is specified, then the caller handles figure generation.
 
         Parameters
         ----------
         fitter_result: FitterResult
+        mgr: OptionManager
         kwargs: dict
         #@expand
         """
         # Initializations
         if mgr is None:
+            is_fig = True
             mgr = OptionManager(kwargs)
-        input_name = fitter_result.input_name
+        else:
+            is_fig = False
         output_name = fitter_result.output_name
         staircase = fitter_result.staircase
         staircase_arr = staircase.staircase_arr
@@ -407,4 +411,5 @@ class SISOTransferFunctionBuilder(object):
         ax.set_title(title, y=0.2, pad=-14, fontsize=14, loc="right")
         mgr.doPlotOpts()
         ax.legend([output_name, cn.O_PREDICTED], loc="upper left")
-        mgr.doFigOpts()
+        if is_fig:
+            mgr.doFigOpts()

@@ -37,8 +37,7 @@ rr = te.loada(LINEAR_MDL)
 INPUT_NAME = "S1"
 OUTPUT_NAME = "S2"
 ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
-LINEAR_SYS = ctlsb.makeNonlinearIOSystem("LINEAR_SYS")
-builder = stb.SISOTransferFunctionBuilder(LINEAR_SYS)
+builder = ctlsb.makeSISOTransferFunctionBuilder()
 LINEAR_TS = builder.makeStaircaseResponse(staircase=Staircase(final_value=10), is_plot=False)
 
 

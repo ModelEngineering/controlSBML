@@ -94,6 +94,9 @@ def plotOneTS(time_series, mgr=None, **kwargs):
     COLORS = ["green", "blue", "orange", "purple", "brown", "black"]
     if mgr is None:
         mgr = OptionManager(kwargs)
+        is_fig = True
+    else:
+        is_fig = False
     mgr.plot_opts.set(cn.O_XLABEL, default="time")
     ax = mgr.plot_opts.get(cn.O_AX)
     if cn.O_FIGURE in kwargs.keys():
@@ -116,7 +119,8 @@ def plotOneTS(time_series, mgr=None, **kwargs):
     legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
-    mgr.doFigOpts()
+    if is_fig:
+        mgr.doFigOpts()
     return PlotResult(ax=ax, ax2=ax2, fig=fig, time_series=time_series)
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
