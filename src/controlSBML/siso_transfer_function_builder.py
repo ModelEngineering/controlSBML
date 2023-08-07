@@ -15,14 +15,10 @@ from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.option_management.options import Options
 from controlSBML.staircase import Staircase
 
-import collections
 import control
 from docstring_expander.expander import Expander
 import lmfit
-import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import sympy
 
 
 MIN_ELAPSED_TIME = 1e-2
