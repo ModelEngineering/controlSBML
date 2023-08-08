@@ -12,7 +12,6 @@ This module exists to avoid circular imports so that objects that depend on Cont
 from controlSBML.control_plot import ControlPlot
 import controlSBML.siso_transfer_function_builder as stb
 from controlSBML.mimo_transfer_function_builder import MIMOTransferFunctionBuilder
-from controlSBML.nonlinear_io_system import NonlinearIOSystem
 
 
 class ControlSBML(ControlPlot):
@@ -74,23 +73,3 @@ class ControlSBML(ControlPlot):
         kwargs: dict (additional arguments for TransferFunctionBuilder)
         """
         return MIMOTransferFunctionBuilder(self, **kwargs)
-    
-    def makeNonlinearIOSystem(self, name, **kwargs):
-        """
-        Creates an object that can be used in connections with the
-        control package.
-
-        Parameters
-        ----------
-        name: str (name of the system)
-        kwargs: dict (additional arguments for NonlinearIOSystem)
-
-        Returns
-        -------
-        controlSBML.NonelinearIOSystem
-        """
-        if "input_names" not in kwargs:
-            kwargs["input_names"] = self.input_names
-        if "output_names" not in kwargs:
-            kwargs["output_names"] = self.output_names
-        return NonlinearIOSystem(name, self, **kwargs)

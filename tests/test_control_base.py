@@ -222,6 +222,18 @@ class TestControlBase(unittest.TestCase):
         ctlsb.antimony = ""
         self.assertFalse(ctlsb.equals(self.ctlsb, is_quick_check=True))
 
+    def testSetSteadyState(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlBase(NONLINEAR1_MDL)
+        ser1 = ctlsb.state_ser
+        ctlsb.setSteadyState()
+        ser2 = ctlsb.state_ser
+        ctlsb.setSteadyState()
+        ser3 = ctlsb.state_ser
+        self.assertFalse(ser1.equals(ser2))
+        self.assertFalse(ser2.equals(ser3))
+
     # FIXME: Eliminate state space construction?
     def testMakeStateSpace1(self):
         if IGNORE_TEST:

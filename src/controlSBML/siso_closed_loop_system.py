@@ -584,4 +584,3 @@ class SISOClosedLoopSystem(object):
         ts = ctl.Timeseries(df)
         ts[COL_REF] = np.repeat(step_size, len(times))
         return ts
-

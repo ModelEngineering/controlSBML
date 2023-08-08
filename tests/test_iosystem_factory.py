@@ -149,8 +149,8 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertEqual(np.var(outputs), 0)
 
     def testMakeArbitrarySignal(self):
-        #if IGNORE_TEST:
-        #  return
+        if IGNORE_TEST:
+          return
         sys = self.factory.makeArbitrarySignal("arbitrary", signal_function=lambda t: t)
         result = control.input_output_response(sys, T=TIMES)
         self.assertTrue(len(result.y) > 0)

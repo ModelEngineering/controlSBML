@@ -7,8 +7,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 INITIAL_VALUE = 5
 FINAL_VALUE = 10
 NUM_STEP = 5
@@ -55,8 +55,8 @@ class TestStaircase(unittest.TestCase):
         test(91, 15)
 
     def testMakeRealtive(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         center = 5
         fractional_deviation = 2.0
         num_point = 100

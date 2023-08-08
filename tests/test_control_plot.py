@@ -10,9 +10,7 @@ import tellurium as te
 
 IGNORE_TEST = False
 IS_PLOT = False
-if IS_PLOT:
-    import matplotlib
-    matplotlib.use('TkAgg')
+helpers.setupPlotting(__file__)
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
@@ -103,8 +101,8 @@ class TestControlPlot(unittest.TestCase):
 
     def testPlotBode(self):
         if IGNORE_TEST:
-          return
-        ctlsb = ControlPlot(NONLINEAR_MDL, input_names=["S1"],
+            return
+        ctlsb = ControlPlot(NONLINEAR_MDL, input_names=["S1", "S2"],
               output_names=["S0", "S2"])
         ctlsb.plotBode(is_plot=IS_PLOT)
 

@@ -136,14 +136,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         """
         if not "roadrunner" in dir(self.ctlsb):
             return msgs.error("No roadrunner object.")
-        # Try to find the steady state
-        for _ in range(3):
-            try:
-                self.ctlsb.roadrunner.steadyState()
-                return True
-            except RuntimeError:
-                pass
-        return False
+        return self.ctlsb.setSteadyState()
 
     def _updfcn(self, time, x_vec, u_vec, _):
         """

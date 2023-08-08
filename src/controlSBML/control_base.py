@@ -230,11 +230,11 @@ class ControlBase(object):
     @property
     def state_ser(self):
         """
-        Contructs vector of current state values.
+        Contructs Series of current state values.
 
         Returns
         -------
-        np.ndarray: N X 1
+        pd.Series
         """
         ser = util.makeRoadrunnerSer(self.roadrunner, self.state_names)
         return ser
@@ -474,6 +474,23 @@ class ControlBase(object):
         species_inputs = [n for n in self.input_names if n in self.species_names]
         reaction_inputs = [n for n in self.input_names if n in self.reaction_names]
         return species_inputs, reaction_inputs
+    
+    def setSteadyState(self):
+        """
+        Sets the steady state of the system.
+        
+        Returns
+        -------
+            bool (success)
+        """
+        # Try to find the steady state
+        for _ in range(3):
+            try:
+                self.roadrunner.steadyState()
+                return True
+            except RuntimeError:
+                pass
+        return False
 
     def _makeBDF_deprecated(self, time=None):
         """
