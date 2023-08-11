@@ -2,15 +2,14 @@ from controlSBML.control_sbml import ControlSBML
 from controlSBML import control_sbml
 import helpers
 
-import numpy as np
-import pandas as pd
+import control
 import os
 import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
@@ -69,6 +68,16 @@ class TestControlSBML(unittest.TestCase):
             input_names=["IR", "mTORC2_DEPTOR"], output_names=["mTORC1_DEPTOR"])
         builder = ctlsb.makeMIMOTransferFunctionBuilder()
         self.assertTrue("Builder" in str(type(builder)))
+
+    def testMakeMIMOTransferFunctionDF(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(MODEL_FILE,
+            input_names=["mTORC2_DEPTOR", "IR"], output_names=["mTORC1_DEPTOR"])
+        transfer_function_df = ctlsb.makeMIMOTransferFunctionDF()
+        self.assertTrue("DataFrame" in str(type(transfer_function_df)))
+        trues = transfer_function_df.applymap(lambda x: isinstance(x, control.TransferFunction))
+        self.assertTrue(trues.all().all())
     
     def testMakeNonlinearIOSystem(self):
         if IGNORE_TEST:

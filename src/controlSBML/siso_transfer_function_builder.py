@@ -31,7 +31,7 @@ DENOMINATOR_PREFIX = "d"
 
 
 ################## FUNCTIONS ####################
-def makeParameters(num_numerator, num_denominator):
+def _makeParameters(num_numerator, num_denominator):
     """
     Makes the parameters used to construct a transfer function.
 
@@ -57,7 +57,7 @@ def makeParameters(num_numerator, num_denominator):
               max=MAX_PARAMETER_VALUE)
     return pfit
 
-def makeTransferFunction(parameters):
+def _makeTransferFunction(parameters):
     """
     Constructs a transfer function from a dictionary representation.
 
@@ -114,7 +114,7 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     float
     """
     times, inputs = data_in
-    tf = makeTransferFunction(parameters)
+    tf = _makeTransferFunction(parameters)
     times, y_arr = control.forced_response(tf, T=times, U=inputs)
     residuals = data_out - y_arr
     is_bads = [np.isnan(v) or np.isinf(v) or (v is None) for v in residuals]
@@ -301,7 +301,8 @@ class SISOTransferFunctionBuilder(object):
         return staircase_column, other_columns
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def fitTransferFunction(self, num_numerator, num_denominator, staircase=Staircase(), 
+    def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR,
+                            num_denominator=cn.DEFAULT_NUM_DENOMINATOR, staircase=Staircase(), 
                             **kwargs):
         """
         Constructs a transfer function for the NonlinearIOSystem.
@@ -339,14 +340,14 @@ class SISOTransferFunctionBuilder(object):
         data_in = (times, staircase_arr)
         data_out = data_ts[self.output_name]
         # Do the fit
-        parameters = makeParameters(num_numerator, num_denominator)
+        parameters = _makeParameters(num_numerator, num_denominator)
         mini = lmfit.Minimizer(_calculateTransferFunctionResiduals,
                                parameters, fcn_args=(data_in, data_out))
         minimizer_result = mini.leastsq()
         residuals = _calculateTransferFunctionResiduals(minimizer_result.params, data_in, data_out)
         rms_residuals = np.sqrt(np.mean(residuals**2))
         stderr_dct = {k: v.stderr for k,v in minimizer_result.params.items()}
-        transfer_function = makeTransferFunction(minimizer_result.params)
+        transfer_function = _makeTransferFunction(minimizer_result.params)
         #
         _, y_arr = control.forced_response(transfer_function, T=times, U=staircase_arr, X0=0)
         output_ts[cn.O_PREDICTED] = y_arr

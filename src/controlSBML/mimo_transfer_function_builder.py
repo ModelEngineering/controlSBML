@@ -181,7 +181,8 @@ class MIMOTransferFunctionBuilder(object):
         return cls._plotMIMO(response_df, tfb.SISOTransferFunctionBuilder.plotStaircaseResponse, **options)
     
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def fitTransferFunction(self, num_numerator, num_denominator, staircase=Staircase(), **sim_kwargs):
+    def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR, 
+                            num_denominator=cn.DEFAULT_NUM_DENOMINATOR, staircase=Staircase(), **sim_kwargs):
         """
         Constructs transfer functions for the NonlinearIOSystem.
 
@@ -205,6 +206,7 @@ class MIMOTransferFunctionBuilder(object):
             for input_name in self.sys.input_names:
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
                 siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
+                # FIXME: Always getting the same transfer function
                 fitter_result = siso_tfb.fitTransferFunction(num_numerator, num_denominator,
                                                              staircase=staircase_dct[input_name], **sim_kwargs)
                 fitter_dct[output_name].append(fitter_result)

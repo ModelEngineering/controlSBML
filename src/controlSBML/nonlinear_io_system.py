@@ -64,10 +64,9 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.num_output = len(self.output_names)
         # self.input_dct indicates if an input is held at a fixed at a value (True) or the input is a rate of change
         # FIXME: Only look at floating species
-        input_species = set(self.input_names).intersection(ctlsb.species_names)
-        self.input_dct = {n: True for n in self.input_names}
-        self.input_dct.update(
-              {n: DEFAULT_INPUT_SPECIES_DESCRIPTOR for n in self.input_names})
+        species_names = set(ctlsb.species_names).union(ctlsb.roadrunner.getBoundarySpeciesIds())
+        input_species = set(self.input_names).intersection(species_names)
+        self.input_dct = {n: DEFAULT_INPUT_SPECIES_DESCRIPTOR for n in self.input_names}
         if isinstance(is_fixed_input_species, bool):
             self.input_dct.update(
                   {n: is_fixed_input_species for n in input_species})

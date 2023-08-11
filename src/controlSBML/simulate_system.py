@@ -69,11 +69,14 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
     #
     times = util.makeSimulationTimes(start_time=start_time,
           end_time=end_time, points_per_time=points_per_time)
+    conserved_moiety_analysis = sys.ctlsb.roadrunner.conservedMoietyAnalysis
+    sys.ctlsb.roadrunner.conservedMoietyAnalysis = False
     if u_vec is not None:
         results = control.input_output_response(sys, times, X0=initial_x_vec,
             U=u_vec)
     else:
         results = control.input_output_response(sys, times, X0=initial_x_vec)
+    sys.ctlsb.roadrunner.conservedMoietyAnalysis = conserved_moiety_analysis
     output_mat = np.transpose(results.y)
     num_column = np.shape(output_mat)[1]
     is_int_columns = False

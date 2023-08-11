@@ -1,4 +1,5 @@
 from controlSBML.control_plot import ControlPlot
+from controlSBML.control_sbml import ControlSBML
 import helpers
 
 import numpy as np
@@ -102,7 +103,7 @@ class TestControlPlot(unittest.TestCase):
     def testPlotBode(self):
         if IGNORE_TEST:
             return
-        ctlsb = ControlPlot(NONLINEAR_MDL, input_names=["S1", "S2"],
+        ctlsb = ControlSBML(NONLINEAR_MDL, input_names=["S1", "S2"],
               output_names=["S0", "S2"])
         ctlsb.plotBode(is_plot=IS_PLOT)
 

@@ -54,7 +54,7 @@ class TestFunctions(unittest.TestCase):
                   if n[0] == prefix]
             self.assertEqual(len(names), expected_count)
         #
-        parameters = stb.makeParameters(3, 4)
+        parameters = stb._makeParameters(3, 4)
         test(parameters, stb.NUMERATOR_PREFIX, 3)
         test(parameters, stb.DENOMINATOR_PREFIX, 4)
         self.assertTrue(len(parameters.valuesdict()) == 7)
@@ -62,8 +62,8 @@ class TestFunctions(unittest.TestCase):
     def testMakeTransferFunction(self):
         if IGNORE_TEST:
             return
-        parameters = stb.makeParameters(2, 2)
-        tf = stb.makeTransferFunction(parameters)
+        parameters = stb._makeParameters(2, 2)
+        tf = stb._makeTransferFunction(parameters)
         self.assertTrue(tf.poles()[0] == -1)
         self.assertTrue(tf.dcgain() == 1)
 
@@ -73,7 +73,7 @@ class TestFunctions(unittest.TestCase):
         times = LINEAR_TS.times
         data_in = (times, LINEAR_TS["S1_staircase"].values)
         data_out = LINEAR_TS[OUTPUT_NAME].values
-        parameters = stb.makeParameters(3, 3)
+        parameters = stb._makeParameters(3, 3)
         residuals = stb._calculateTransferFunctionResiduals(parameters, data_in,
               data_out)
         self.assertEqual(len(residuals), len(times))

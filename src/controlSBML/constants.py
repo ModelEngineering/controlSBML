@@ -166,3 +166,8 @@ TIMES = np.linspace(0, 5, 1000)
 
 # URLs
 WOLF_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml" 
+
+# Transfer function building
+DEFAULT_NUM_NUMERATOR = 2
+DEFAULT_NUM_DENOMINATOR = 3
+DEFAULT_DEVIATION = 0.5

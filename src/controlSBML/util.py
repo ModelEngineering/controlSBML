@@ -184,13 +184,12 @@ def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
     -------
     np.ndarray
     """
-    MSEC = 1000
     dt = 1.0/points_per_time
-    dt_ms = int(MSEC*dt)
-    start_ms = int(start_time*MSEC)
-    end_ms = int(end_time*MSEC)
+    dt_ms = int(cn.MS_IN_SEC*dt)
+    start_ms = int(start_time*cn.MS_IN_SEC)
+    end_ms = int(end_time*cn.MS_IN_SEC)
     times = np.arange(start_ms, end_ms + dt_ms, dt_ms)
-    times = times/MSEC
+    times = times/cn.MS_IN_SEC
     return np.array(times)
 
 def mat2DF(mat, column_names=None, row_names=None):
@@ -411,7 +410,8 @@ def latexifyTransferFunction(tf, num_decimal=2):
                 coefficient = str(polynomial[idx])
             if not np.isclose(polynomial[idx], 0.0):
                 if len(result_str) > 0:
-                    result_str += " + "
+                    if not "-" in coefficient:
+                        result_str += " + "
                 result_str += "%s %s" % (coefficient, poly_term)
         return result_str
     #

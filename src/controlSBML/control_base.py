@@ -113,7 +113,7 @@ class ControlBase(object):
             text += "The following outputs are invalid: %s" % str(diff)
             raise ValueError(text)
         #
-        possible_names = self.species_names
+        possible_names = set(self.species_names).union(self.roadrunner.getBoundarySpeciesIds())
         if not set(self.input_names) <= set(possible_names):
             diff = list(set(self.input_names).difference(possible_names))
             text = "Inputs must be a species."
