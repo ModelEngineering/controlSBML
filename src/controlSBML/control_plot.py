@@ -6,7 +6,6 @@ from controlSBML.control_analysis import ControlAnalysis
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.util import PlotResult
 from controlSBML import util
-from controlSBML.nonlinear_io_system import NonlinearIOSystem
 
 import control
 from docstring_expander.expander import Expander
@@ -52,154 +51,67 @@ class ControlPlot(ControlAnalysis):
         for col in ts.columns:
             ax.plot(ts.times, ts[col])
         mgr.plot_opts.set(cn.O_AX, ax)
-        mgr.doPlotOpts()  # Recover lost plot options
+        mgr.doPlotOpts()
         # Finalize the figure
         mgr.doFigOpts()
         return PlotResult(ax=ax)
     
-    def makeNonlinearIOSystem(self, name="", **kwargs):
-        """
-        Creates an object that can be used in connections with the
-        control package.
-
-        Parameters
-        ----------
-        name: str (name of the system)
-        kwargs: dict (additional arguments for NonlinearIOSystem)
-
-        Returns
-        -------
-        controlSBML.NonelinearIOSystem
-        """
-        if "input_names" not in kwargs:
-            kwargs["input_names"] = self.input_names
-        if "output_names" not in kwargs:
-            kwargs["output_names"] = self.output_names
-        return NonlinearIOSystem(name, self, **kwargs)
-
-    # TODO: Deprecate plotLinearApproximation. Use plotAccuracy instead.
-    @Expander(cn.KWARGS, cn.PLOT_KWARGS)
-    def plotLinearApproximation(self, transfer_function_df, **kwargs):
-        """
-        Creates a plot that compares the linear approximation with the true model.
-
-        Parameters
-        ----------
-        transfer_function_df: pd.DataFrame
-            Transfer functions
-        #@expand
-
-        Returns
-        ------
-        PlotResult
-        """
-        mgr = OptionManager(kwargs)
-        start_time = mgr.sim_opts[cn.O_START_TIME]
-        rr_ts = self.simulateRoadrunner(**mgr.sim_opts)
-        nrow = 1
-        ncol = len(self.output_names)
-        fig, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
-        axes = np.reshape(axes, (nrow, ncol))
-        linear_ts = self.simulateLinearSystem(op_time=start_time,
-              **mgr.sim_opts)
-        y_min = min(linear_ts.min().min(), rr_ts.min().min())
-        y_max = max(linear_ts.max().max(), rr_ts.max().max())
-        mgr.plot_opts[cn.O_YLIM] = [y_min, y_max]
-        irow = 0
-        for icol, column in enumerate(linear_ts.columns):
-            new_mgr = mgr.copy()
-            plot_opts = new_mgr.plot_opts
-            ax = axes[irow, icol]
-            ax.plot(linear_ts.times, linear_ts[column], color="red")
-            ax.plot(rr_ts.times, rr_ts[column], color="blue")
-            if irow < nrow - 1:
-                plot_opts[cn.O_XTICKLABELS] = []
-            if irow == 0:
-                ax.set_title(column, rotation=45)
-                if icol == 0:
-                    names = ["approximation", "true"]
-                    if cn.O_LEGEND_CRD in plot_opts.keys():
-                        legend_spec = cn.LegendSpec(
-                              names, crd=plot_opts[cn.O_LEGEND_CRD])
-                    else:
-                        legend_spec =cn.LegendSpec(names)
-                    plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
-                else:
-                    plot_opts[cn.O_LEGEND_SPEC] = None
-            if icol > 0:
-                ax.set_yticklabels([])
-            new_mgr.doPlotOpts()
-        mgr.doFigOpts()
-        return PlotResult(ax=axes, fig=fig, time_series=linear_ts)
-
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotAccuracy(self, model_reference=None, times=0, **kwargs):
+    def plotAccuracy(self, transfer_function_df, op_time=None, times=None, **kwargs):
         """
         Creates a plot that evaluates the
-        accouract of a linear model where the Jacobian is calculated
-        at multiple times. X0 is taken at the start of the simulation.
+        accouract of a set of linear models described by transfer functions. The transfer function
+        input should be a species with a fixed value.
 
         Parameters
         ----------
-        model_reference: as required by constructor
-            default: current model
-        times: list-float
-            Time at which Jacobian is calculated
-            default: [0]
-        #@expand
-
-        Returns
-        ------
-        PlotResult
+        transfer_function_df: pd.DataFrame / control.TransferFunction
+            columns: output species
+            index: input species
+            values: control.TransferFunction
+        op_time: float (time at which operating point values are obtained); if None, use steady state
+        times: np.array (times for simulation)
+        #@expand                     
         """
-        if times == 0:
-            times = [0]
         mgr = OptionManager(kwargs)
-        if isinstance(times, float) or isinstance(times, int):
-            times = [times]
-        if model_reference is not None:
-            ctlsb = self.__class__(model_reference)
-        else:
-            ctlsb = self
-        rr_ts = ctlsb.simulateRoadrunner(**mgr.sim_opts)
-        nrow = len(times)
-        ncol = len(self.output_names)
+        rr_ts = self.simulateRoadrunner(**mgr.sim_opts)
+        times = np.array(rr_ts.index)/cn.MS_IN_SEC
+        input_names = list(transfer_function_df.index)
+        output_names = list(transfer_function_df.columns)
+        nrow = len(input_names)
+        ncol = len(output_names)
         fig, axes = plt.subplots(nrow, ncol, figsize=mgr.fig_opts[cn.O_FIGSIZE])
         axes = np.reshape(axes, (nrow, ncol))
-        for irow, time in enumerate(times):
-            linear_ts = ctlsb.simulateLinearSystem(op_time=time,
-                  **mgr.sim_opts)
-            #
-            for icol, column in enumerate(self.output_names):
-                start_time = mgr.sim_opts[cn.O_START_TIME]
-                y_min = min(linear_ts.min().min(), rr_ts.min().min())
-                y_max = max(linear_ts.max().max(), rr_ts.max().max())
+        for irow, input_name in enumerate(input_names):
+            for icol, output_name in enumerate(output_names):
+                tf = transfer_function_df.loc[input_name, output_name]
+                linear_ts = self.simulateLinearSystem(tf, input_name, output_name,
+                    op_time=op_time, U=self.get(input_name), times=times,
+                    **mgr.sim_opts)
+                predicted_ts = linear_ts[output_name]
+                simulated_ts = rr_ts[output_name]
+                x_min = min(predicted_ts.min(), simulated_ts.min())
+                x_max = max(predicted_ts.max(), simulated_ts.max())
+                mgr.plot_opts.set(cn.O_XLIM, default=[x_min, x_max])
+                y_min = min(predicted_ts.min(), simulated_ts.min())
+                y_max = max(predicted_ts.max(), simulated_ts.max())
                 mgr.plot_opts.set(cn.O_YLIM, default=[y_min, y_max])
-                y_min, y_max = mgr.plot_opts[cn.O_YLIM]
-                x_min = start_time
-                x_max = mgr.sim_opts[cn.O_END_TIME]
-                mgr.plot_opts.set(cn.O_XLIM, [x_min, x_max])
-                x_min, x_max = mgr.plot_opts[cn.O_XLIM]
-                new_mgr = mgr.copy()
                 ax = axes[irow, icol]
-                new_mgr.plot_opts[cn.O_AX] = ax
-                ax.plot(linear_ts.times, linear_ts[column], color="red")
-                ax.plot(rr_ts.times, rr_ts[column], color="blue")
-                ax.scatter(time, y_min, s=40,
-                       marker="o", color="g")
+                mgr.plot_opts[cn.O_AX] = ax
+                ax.scatter(rr_ts[output_name], linear_ts[output_name])
+                ax.plot([x_min, x_max], [y_min, y_max], color='red')
                 if irow < nrow - 1:
-                    new_mgr.plot_opts[cn.O_XTICKLABELS] = []
-                if irow == 0:
-                    ax.set_title(column, rotation=45)
-                    if icol == 0:
-                        #ax.text(start_time-3, 0.75*y_max, "Jacobian Time")
-                        ax.legend(["linear", "nonlinear"])
+                    ax.set_xticklabels([])
+                else:
+                    ax.set_xlabel("simulated")
+                ax.set_title("%s->%s" % (input_name, output_name))
                 if icol > 0:
                     ax.set_yticklabels([])
                 else:
-                    pass
-                    #ax.text(-2, y_max/2, "%2.1f" % time)
-                new_mgr.doPlotOpts()
+                    ax.set_ylabel("predicted")
+                if (irow == 0) and (icol == 0):
+                    ax.legend(["actual", "ideal"])
+                mgr.doPlotOpts()
         mgr.doFigOpts()
         return PlotResult(ax=axes, fig=fig, time_series=rr_ts)
 

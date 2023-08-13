@@ -15,6 +15,7 @@ import controlSBML.siso_transfer_function_builder as stb
 from controlSBML.mimo_transfer_function_builder import MIMOTransferFunctionBuilder
 from controlSBML.staircase import Staircase
 from controlSBML.option_management.option_manager import OptionManager
+from controlSBML.nonlinear_io_system import NonlinearIOSystem
 
 from docstring_expander.expander import Expander
 
@@ -78,6 +79,26 @@ class ControlSBML(ControlPlot):
         kwargs: dict (additional arguments for TransferFunctionBuilder)
         """
         return MIMOTransferFunctionBuilder(self, **kwargs)
+    
+    def makeNonlinearIOSystem(self, name="", **kwargs):
+        """
+        Creates an object that can be used in connections with the
+        control package.
+
+        Parameters
+        ----------
+        name: str (name of the system)
+        kwargs: dict (additional arguments for NonlinearIOSystem)
+
+        Returns
+        -------
+        controlSBML.NonlinearIOSystem
+        """
+        if "input_names" not in kwargs:
+            kwargs["input_names"] = self.input_names
+        if "output_names" not in kwargs:
+            kwargs["output_names"] = self.output_names
+        return NonlinearIOSystem(name, self, **kwargs)
     
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def makeMIMOTransferFunctionDF(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,

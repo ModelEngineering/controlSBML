@@ -104,6 +104,7 @@ class TestTimeseries(unittest.TestCase):
         if IGNORE_TEST:
           return
         ts = Timeseries(MAT, times=TIMES, columns=COLUMNS)
+        # FIXME: Multiplcation fails
         ts["c"] = 10*ts["a"]
         ts["d"] = range(SIZE)
         self._validate(ts)

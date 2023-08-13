@@ -8,8 +8,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")

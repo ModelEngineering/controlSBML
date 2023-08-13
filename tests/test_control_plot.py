@@ -2,6 +2,7 @@ from controlSBML.control_plot import ControlPlot
 from controlSBML.control_sbml import ControlSBML
 import helpers
 
+import control
 import numpy as np
 import pandas as pd
 import os
@@ -53,6 +54,25 @@ S1 = 10
 S2 = 0
 S3 = 0
 """
+#
+LINEAR3_MDL = """
+species $S0, S1, S2, S3
+
+  -> S1; S0
+J1a: S2 -> S1; k2*S2
+J1b: S1 -> S2; S1
+J2: S2 -> S3; S2
+
+k = 10
+k2 = 2
+S1 = 5
+S2 = 5
+S3 = 5
+S0 = k
+"""
+LINEAR3_MDL_S0 = 10
+LINEAR3_MDL_k2 = 2
+LINEAR3_MDL_S1 = 5
 
 
 #############################
@@ -64,28 +84,6 @@ class TestControlPlot(unittest.TestCase):
       # Cannot modify self.control
       self.ctlsb = ControlPlot(ANTIMONY_FILE)
 
-    def testPlotLinearApproximationNonzeroInput(self):
-        if IGNORE_TEST:
-          return
-        step_val = 2
-        ctlsb = ControlPlot(LINEAR_MDL, input_names=["S1"])
-        ctlsb.setTime(2)
-        ctlsb.set({"S0": step_val})
-        A_df = ctlsb.jacobian_df
-        ctlsb.plotLinearApproximation(A_mat=A_df, step_val=2,
-              suptitle="Test",
-              is_plot=IS_PLOT, figsize=(15,5))
-
-    def testPlotLinearApproximationNonlinearZeroInput(self):
-        if IGNORE_TEST:
-            return
-        ctlsb = ControlPlot(NONLINEAR_MDL)
-        ctlsb.setTime(2)
-        A_df = ctlsb.jacobian_df
-        ctlsb.plotLinearApproximation(A_mat=A_df, step_val=0,
-              suptitle="Test",
-              is_plot=IS_PLOT, figsize=(15,5))
-
     def testPlotTrueModel(self):
         if IGNORE_TEST:
           return
@@ -93,12 +91,13 @@ class TestControlPlot(unittest.TestCase):
               end_time=10, title="title", figsize=(5, 10))
 
     def testPlotAccuracy(self):
-        if IGNORE_TEST:
-          return
-        ctlsb = ControlPlot(NONLINEAR_MDL)
-        self.ctlsb.plotAccuracy(NONLINEAR_MDL,
-              [0, 1, 2, 3], suptitle="Test", is_plot=IS_PLOT)
-        ctlsb.plotAccuracy(figsize=(5, 5), is_plot=IS_PLOT)
+        #if IGNORE_TEST:
+        #  return
+        ctlsb = ControlPlot(LINEAR3_MDL, input_names=["S0", "S2"], output_names=["S1", "S3"])
+        tf = control.TransferFunction([1, 1+ LINEAR3_MDL_k2], [1, 2 + LINEAR3_MDL_k2, 1])
+        transfer_function_df = pd.DataFrame({"S1": [tf, tf], "S3": [tf, tf]})
+        transfer_function_df.index = ["S0", "S2"]
+        ctlsb.plotAccuracy(transfer_function_df, suptitle="Test", is_plot=IS_PLOT, figsize=(5,5))
 
     def testPlotBode(self):
         if IGNORE_TEST:
