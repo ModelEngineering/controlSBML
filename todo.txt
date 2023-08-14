@@ -1,3 +1,8 @@
+Convenience methods in ControlSBML
+  1. Build linear transfer functions. Problem with MIMO.
+  2. Plot accuracy
+Not building reasonable transfer functions for simple linear systems
+
 readthedocs
 Herb's request for Bode plots
 Construction of state space representation is done by system identification

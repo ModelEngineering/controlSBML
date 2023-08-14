@@ -5,11 +5,8 @@ from controlSBML.staircase import Staircase
 import controlSBML.util as util
 import helpers
 
-import control
 import matplotlib.pyplot as plt
-import numpy as np
 import os
-import pandas as pd
 import unittest
 import shutil
 import tellurium as te

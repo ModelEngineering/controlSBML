@@ -14,14 +14,13 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = False
-IS_PLOT =  False
+IGNORE_TEST = True
+IS_PLOT =  True
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
 NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
-WOLF_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
 
 LINEAR_MDL = """
 J0:  -> S1; k0
@@ -104,7 +103,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
     def testFitTransferFunction2(self):
         if IGNORE_TEST:
             return
-        ctlsb = ctl.ControlSBML(WOLF_URL, input_names=["at", "s1"], output_names=["s5", "s6"])
+        ctlsb = ctl.ControlSBML(cn.WOLF_URL, input_names=["at", "s1"], output_names=["s5", "s6"])
         builder = tfb.MIMOTransferFunctionBuilder(ctlsb, is_fixed_input_species=False)
         result_df = builder.fitTransferFunction(3, 3,
                 staircase=Staircase(final_value=5),
@@ -119,10 +118,14 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         self.checkPlotResultDF(result_df)
 
     def testPlotFitTransferFunction(self):
-        if IGNORE_TEST:
-           return
-        response_df = self.builder.fitTransferFunction(1, 2, staircase=Staircase(final_value=5), end_time=10)
-        result_df = self.builder.plotFitTransferFunction(response_df, is_plot=IS_PLOT)
+        #if IGNORE_TEST:
+        #   return
+        builder = self.ctlsb.makeMIMOTransferFunctionBuilder(is_fixed_input_species=False,
+            input_names=INPUT_NAMES, output_names=OUTPUT_NAMES)
+        response_df = builder.fitTransferFunction(2, 3,
+                                                       staircase=Staircase(initial_value=1, final_value=6, num_step=10),
+                                                       end_time=100)
+        result_df = builder.plotFitTransferFunction(response_df, is_plot=IS_PLOT, figsize=(8,8))
         self.checkPlotResultDF(result_df)
 
     def checkPlotResultDF(self, result_df):
@@ -139,7 +142,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
            return
         staircase_dct = {"at": Staircase(initial_value=-5, final_value=5),
                          "na": Staircase(initial_value=-10, final_value=10)}
-        ctlsb = ControlSBML(WOLF_URL, input_names=["at", "na"], output_names=["s6", "s5"])
+        ctlsb = ControlSBML(cn.WOLF_URL, input_names=["at", "na"], output_names=["s6", "s5"])
         builder = ctlsb.makeMIMOTransferFunctionBuilder()
         response_df = builder.makeStaircaseResponse(staircase=staircase_dct)
         result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)

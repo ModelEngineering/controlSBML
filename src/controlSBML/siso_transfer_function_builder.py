@@ -28,6 +28,7 @@ MAX_PARAMETER_VALUE = 10
 INITIAL_PARAMETER_VALUE = 0.1
 NUMERATOR_PREFIX = "n"
 DENOMINATOR_PREFIX = "d"
+MAX_ABS_RESIDUAL = 10
 
 
 ################## FUNCTIONS ####################
@@ -345,6 +346,9 @@ class SISOTransferFunctionBuilder(object):
                                parameters, fcn_args=(data_in, data_out))
         minimizer_result = mini.leastsq()
         residuals = _calculateTransferFunctionResiduals(minimizer_result.params, data_in, data_out)
+        max_abs_residual = np.max(np.abs(residuals))
+        if max_abs_residual > MAX_ABS_RESIDUAL:
+            msgs.warn("Possible numerical instability: max abs residual is %f" % max_abs_residual)
         rms_residuals = np.sqrt(np.mean(residuals**2))
         stderr_dct = {k: v.stderr for k,v in minimizer_result.params.items()}
         transfer_function = _makeTransferFunction(minimizer_result.params)
