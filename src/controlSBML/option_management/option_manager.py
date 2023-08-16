@@ -30,6 +30,12 @@ class OptionManager(object):
         options.update(self.fig_opts)
         options.update(self.sim_opts)
         return options
+    
+    @property
+    def plot_fig_options(self):
+        options = dict(self.plot_opts)
+        options.update(self.fig_opts)
+        return options
 
     def copy(self):
         new_mgr = self.__class__({})

@@ -95,46 +95,6 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
           return
         self.assertTrue("Factory" in str(type(self.siso.factory)))
 
-    def testEvaluateControllability1(self):
-        if IGNORE_TEST:
-          return
-        ctlsb = ctl.ControlSBML(MODEL2A, input_names=["S0", "S2"],
-              output_names=["S1", "S3"])
-        siso = SISOClosedLoopSystem(ctlsb)
-        times = [0, 1]
-        dct = siso.evaluateControllability(times)
-        self.assertEqual(len(times), len(dct))
-        df = dct[times[0]]
-        self.assertTrue(df.loc["S0", :].equals(df.loc["S2", :]))
-
-    def testEvaluateControllability2(self):
-        if IGNORE_TEST:
-          return
-        times = [0, 1, 2, 3]
-        dct = self.siso.evaluateControllability(times)
-        self.assertEqual(len(dct), len(times))
-
-    def testEvaluateControllability3(self):
-        if IGNORE_TEST:
-          return
-        ctlsb = ctl.ControlSBML(BIOMD823)
-        state_names = ctlsb.state_names
-        ctlsb = ctl.ControlSBML(BIOMD823, input_names=state_names[0:3],
-              output_names=state_names[-3:])
-        siso = SISOClosedLoopSystem(ctlsb)
-        times = [0, 1, 2, 3]
-        dct = siso.evaluateControllability(times)
-        self.assertEqual(len(times), len(dct))
-
-    def testEvaluateControllability4(self):
-        if IGNORE_TEST:
-          return
-        ctlsb = ctl.ControlSBML(BIOMD1015, input_names=["C"],
-              output_names=["D"])
-        siso = SISOClosedLoopSystem(ctlsb)
-        times = [0, 1]
-        dct = siso.evaluateControllability(times)
-
     def testMakeClosedLoopSystem1(self):
         # FIXME: check that outputs are correct
         if IGNORE_TEST:

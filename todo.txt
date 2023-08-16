@@ -1,6 +1,7 @@
 Convenience methods in ControlSBML
-  1. Build linear transfer functions. Problem with MIMO.
-  2. Plot accuracy
+  1. Eliminate Jacobian based state model: delete makeTransferFunction and then state construtions
+  3. Document use of convenience methods: plotMIMOStaircaseResponse,
+      fitMIMOTransferFunction, plotFitMIMOTransferFunction
 Not building reasonable transfer functions for simple linear systems
 
 readthedocs

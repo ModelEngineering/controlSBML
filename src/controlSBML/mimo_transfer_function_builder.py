@@ -4,11 +4,8 @@ Builds transfer functions for an SBML model from all inputs to all outputs.
 1. Staircase specification can be relative to steadystate and/or specific to an input.
 """
 
-import controlSBML as ctl
 import controlSBML.constants as cn
-from controlSBML import util
 import controlSBML.siso_transfer_function_builder as tfb
-import controlSBML.timeseries as ts
 from controlSBML.staircase import Staircase
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML import msgs
@@ -16,7 +13,6 @@ from controlSBML import msgs
 from docstring_expander.expander import Expander
 import matplotlib.pyplot as plt
 import matplotlib.gridspec as gridspec
-import numpy as np
 import pandas as pd
 
 
@@ -145,7 +141,7 @@ class MIMOTransferFunctionBuilder(object):
                             ax.set_ylabel("")
                             ax2.set_ylabel("")
                         else:
-                            ax2.set_ylabel(input_name, color="red")
+                            ax2.set_ylabel(input_name, color=cn.INPUT_COLOR)
                             done_first_plot = True
                         mgr.doPlotOpts()
                         if irow < nrow:
@@ -162,7 +158,7 @@ class MIMOTransferFunctionBuilder(object):
     
     @classmethod
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotStaircaseResponse(cls, response_df, **options):
+    def plotMIMOStaircaseResponse(cls, response_df, **options):
         """
         Plots the Nonlinear simulation response to a monotonic sequence of step inputs.
 
@@ -198,7 +194,7 @@ class MIMOTransferFunctionBuilder(object):
         DataFrame: 
             column names: str (output)
             index: str (input)
-            values: tfb.FitterResult
+            values: cn.FitterResult
         """
         fitter_dct = {n: [] for n in self.sys.output_names}
         staircase_dct = self._makeStaircaseDct(staircase)
@@ -216,7 +212,7 @@ class MIMOTransferFunctionBuilder(object):
     
     @classmethod
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotFitTransferFunction(cls, fitter_df, **options):
+    def plotFitTransferFunction(cls, fitter_result_df, **kwargs):
         """
         Plots the results of fitting a transfer function.
 
@@ -232,4 +228,4 @@ class MIMOTransferFunctionBuilder(object):
             index: str (input)
             values: PlotResult
         """
-        return cls._plotMIMO(fitter_df, tfb.SISOTransferFunctionBuilder.plotFitTransferFunction, **options)
+        return cls._plotMIMO(fitter_result_df, tfb.SISOTransferFunctionBuilder.plotFitTransferFunction, **kwargs)

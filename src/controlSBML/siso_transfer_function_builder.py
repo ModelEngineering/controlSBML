@@ -97,7 +97,11 @@ def _makeTransferFunction(parameters):
     num_arr = makeVec(NUMERATOR_PREFIX)
     den_arr = makeVec(DENOMINATOR_PREFIX)
     tf = control.TransferFunction(num_arr, den_arr)
-    return util.simplifyTransferFunction(tf)
+    new_tf = util.simplifyTransferFunction(tf)
+    if len(new_tf.num[0][0]) > len(new_tf.den[0][0]):
+        # Avoid improper transfer function
+        new_tf = tf
+    return new_tf
 
 def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     """
@@ -240,8 +244,6 @@ class SISOTransferFunctionBuilder(object):
             ax.spines[position].set_color(color)
             ax.yaxis.label.set_color(color)
         #
-        AX_COLOR = "green"
-        AX2_COLOR = "red"
         # Handle the options. If an option manager is specified, then caller handles figure generation.
         if mgr is None:
             mgr = OptionManager(kwargs)
@@ -253,7 +255,7 @@ class SISOTransferFunctionBuilder(object):
         staircase_ts = response_ts[staircase_name]
         response_ts = new_response_ts
         # Do the plots
-        plot_result = util.plotOneTS(response_ts, mgr=mgr, color=AX_COLOR)
+        plot_result = util.plotOneTS(response_ts, mgr=mgr, color=cn.PREDICTED_COLOR)
         ax = plot_result.ax
         mgr.plot_opts.set(cn.O_AX, ax)
         mgr.plot_opts.set(cn.O_YLABEL, output_name)
@@ -264,10 +266,10 @@ class SISOTransferFunctionBuilder(object):
             ax2 = mgr.plot_opts[cn.O_AX2]
         # Plot the staircase
         times = np.array(response_ts.index)/cn.MS_IN_SEC
-        ax2.plot(times, staircase_ts, color=AX2_COLOR,
+        ax2.plot(times, staircase_ts, color=cn.SIMULATED_COLOR,
             linestyle="--")
-        setYAxColor(ax, "left", AX_COLOR)
-        setYAxColor(ax2, "right", AX2_COLOR)
+        setYAxColor(ax, "left", cn.PREDICTED_COLOR)
+        setYAxColor(ax2, "right", cn.SIMULATED_COLOR)
         ax2.set_label(staircase_name)
         mgr.doPlotOpts()
         ax.legend([])
@@ -394,15 +396,17 @@ class SISOTransferFunctionBuilder(object):
         transfer_function = fitter_result.transfer_function
         times = fitter_result.time_series.times
         #
-        util.plotOneTS(fitter_result.time_series, mgr=mgr)
+        util.plotOneTS(fitter_result.time_series, mgr=mgr,
+                       colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
+                       markers=["o", ""])
         ax = mgr.plot_opts[cn.O_AX]
         if mgr.plot_opts[cn.O_AX2] is None:
             ax2 = ax.twinx()
             mgr.plot_opts[cn.O_AX2] = ax2
         else:
             ax2 = mgr.plot_opts[cn.O_AX2]
-        ax2.set_ylabel(staircase.name, color="red")
-        ax2.plot(times, staircase_arr, color="red", linestyle="--")
+        ax2.set_ylabel(staircase.name, color=cn.INPUT_COLOR)
+        ax2.plot(times, staircase_arr, color=cn.INPUT_COLOR, linestyle="--")
         latex = util.latexifyTransferFunction(transfer_function)
         if len(mgr.plot_opts[cn.O_TITLE]) == 0:
             #title = "%s->%s;  %s   " % (input_name, output_name, latex)
@@ -414,3 +418,4 @@ class SISOTransferFunctionBuilder(object):
         ax.legend([output_name, cn.O_PREDICTED], loc="upper left")
         if is_fig:
             mgr.doFigOpts()
+        return util.PlotResult(time_series=fitter_result.time_series, ax=ax, ax2=ax2)

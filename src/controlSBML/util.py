@@ -75,7 +75,7 @@ def getModel(file_name=MODEL_823_FILE):
     return model_str
 
 @Expander(cn.KWARGS, cn.ALL_KWARGS)
-def plotOneTS(time_series, mgr=None, **kwargs):
+def plotOneTS(time_series, colors=None, markers=None, mgr=None, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
     columns are legends. If an OptionManger is provided,
@@ -85,13 +85,18 @@ def plotOneTS(time_series, mgr=None, **kwargs):
     ----------
     time_series: TimeSeries
     mgr: OptionsManager
+    colors: list-str
+    markers: list-str
     #@expand
 
     Returns
     -------
     PlotResult
     """
-    COLORS = ["green", "blue", "orange", "purple", "brown", "black"]
+    if colors is None:
+        colors = ["green", "blue", "orange", "purple", "brown", "black"]
+    if markers is None:
+        markers = ["o", "s", "v", "^", "x", "+"]
     if mgr is None:
         mgr = OptionManager(kwargs)
         is_fig = True
@@ -113,9 +118,10 @@ def plotOneTS(time_series, mgr=None, **kwargs):
         ax2 = None
     times = np.array(time_series.index)/cn.MS_IN_SEC
     num_col = len(time_series.columns)
-    colors = COLORS[:num_col]
+    sel_colors = colors[:num_col]
+    sel_markers = markers[:num_col]
     for column in time_series.columns:
-        ax.plot(times, time_series[column], color=colors.pop(0))
+        ax.plot(times, time_series[column], color=sel_colors.pop(0), marker=sel_markers.pop(0))
     legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()

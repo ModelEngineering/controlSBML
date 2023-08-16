@@ -181,3 +181,122 @@ class ControlSBML(ControlPlot):
                                                                num_denominator=num_denominator,
                                                                staircase=staircase, **kwargs)
         self.plotBodeTF(transfer_function_df, is_magnitude=is_magnitude, is_phase=is_phase, **kwargs)
+
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
+    def plotMIMOStaircaseResponse(self, 
+            input_names=None, output_names=None, staircase=None,
+            **kwargs):
+        """
+        Constructs a the simulation response to a staircase input as a set of SISO models.
+
+        Parameters
+        ----------
+        input_names: list-str (use ControlSBML input names)
+        output_names: list-str (use ControlSBML output names)
+        staircase:
+            None: use default relative staircase (steadystate +/ 0.5)
+            float: use relative staircase (steadystate +/- staircase)
+            Staircase: use staircase
+            kwargs: dict (simulation and plotting options)
+        kwargs: dict (simulation and plotting options)
+        #@expand
+
+        Returns
+        ------
+        PlotResult
+        """
+        mgr = OptionManager(kwargs)
+        builder = self.makeMIMOTransferFunctionBuilder(
+            input_names=input_names, output_names=output_names)
+        if not "is_steady_state" in kwargs:
+            kwargs["is_steady_state"] = True
+        response_df = builder.makeStaircaseResponse(staircase=staircase, **kwargs)
+        return builder.plotMIMOStaircaseResponse(response_df, **mgr.plot_fig_options)
+    
+    @Expander(cn.KWARGS, cn.SIM_KWARGS)
+    def fitMIMOTransferFunction(self,
+            input_names=None, output_names=None, staircase=None,
+            num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
+            is_fixed_input_species=False,
+            do_simulate_on_update=False,
+            **kwargs):
+        """
+        Constructs transfer functions for a MIMO system whose tansfer functions are obtained by system identification.
+
+        Parameters
+        ----------
+        input_names: list-str (use ControlSBML input names)
+        output_names: list-str (use ControlSBML output names)
+        is_fixed_input_species: bool (input species are fixed)
+        num_numerator: int (number of numerator coefficients)
+        num_denominator: int (number of denominator coefficients)
+        staircase:
+            None: use default relative staircase (steadystate +/ 0.5)
+            float: use relative staircase (steadystate +/- staircase)
+            Staircase: use staircase
+            kwargs: dict (simulation and plotting options)
+        do_simulate_on_update: bool
+        kwargs: dict (simulation options)
+        #@expand
+
+        Returns
+        ------
+        PlotResult
+        """
+        mgr = OptionManager(kwargs)
+        new_kwargs = mgr.sim_opts.copy()
+        if not "is_steady_state" in new_kwargs:
+            new_kwargs.update({"is_steady_state": True})
+        builder = self.makeMIMOTransferFunctionBuilder(
+            is_fixed_input_species=is_fixed_input_species, do_simulate_on_update=do_simulate_on_update,
+            input_names=input_names, output_names=output_names)
+        fitter_result_df = builder.fitTransferFunction(num_numerator=num_numerator,
+                                                               num_denominator=num_denominator,
+                                                               staircase=staircase, **new_kwargs)
+        return fitter_result_df
+
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
+    def plotMIMOTransferFunction(self,
+            input_names=None, output_names=None, staircase=None,
+            num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
+            is_fixed_input_species=False,
+            do_simulate_on_update=False,
+            **kwargs):
+        """
+        Constructs transfer functions for a MIMO system whose tansfer functions are obtained by system identification.
+
+        Parameters
+        ----------
+        input_names: list-str (use ControlSBML input names)
+        output_names: list-str (use ControlSBML output names)
+        is_fixed_input_species: bool (input species are fixed)
+        num_numerator: int (number of numerator coefficients)
+        num_denominator: int (number of denominator coefficients)
+        staircase:
+            None: use default relative staircase (steadystate +/ 0.5)
+            float: use relative staircase (steadystate +/- staircase)
+            Staircase: use staircase
+            kwargs: dict (simulation and plotting options)
+        do_simulate_on_update: bool
+        kwargs: dict (simulation and plotting options)
+        #@expand
+
+        Returns
+        ------
+        PlotResult
+        """
+        mgr = OptionManager(kwargs)
+        make_kwargs = dict(kwargs)
+        if not "is_steady_state" in make_kwargs:
+            make_kwargs.update({"is_steady_state": True})
+        for key in mgr.plot_fig_options.keys():
+            if key in make_kwargs:
+                del make_kwargs[key]
+        #
+        builder = self.makeMIMOTransferFunctionBuilder(
+            is_fixed_input_species=is_fixed_input_species, do_simulate_on_update=do_simulate_on_update,
+            input_names=input_names, output_names=output_names)
+        fitter_result_df = builder.fitTransferFunction(num_numerator=num_numerator,
+                                                               num_denominator=num_denominator,
+                                                               staircase=staircase, **make_kwargs)
+        return builder.plotFitTransferFunction(fitter_result_df, **mgr.plot_fig_options)

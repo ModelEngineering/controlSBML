@@ -492,46 +492,6 @@ class ControlBase(object):
                 pass
         return False
 
-    def _makeBDF_deprecated(self, time=None):
-        """
-        Constructs a dataframe for the B matrix.
-        The columns must be in the same order as the input_names.
-        This version changed the A matrix.
-
-        Parameters
-        ---------
-        time: float
-
-        Returns
-        -------
-        np.ndarray (n X p), where p = len(input_names)
-        """
-        if len(self.input_names) > 0:
-            # Determine which inputs are reactions and which inputs are species
-            species_inputs, reaction_inputs = self.separateSpeciesReactionInputs()
-            # Construct the matrix for species inputs
-            if len(species_inputs) > 0:
-                jacobian_df = self.getJacobian(time=time)
-                # Don't include states that are input species
-                df = jacobian_df.drop(species_inputs, axis=0)
-                B_species_df = df[species_inputs]
-                B_df = B_species_df
-            if len(reaction_inputs) > 0:
-                B_reaction_df = self.full_stoichiometry_df[reaction_inputs]
-                B_df = B_reaction_df
-            # Select the columns needed from the stoichiometry matrix
-            # Merge the two
-            if (len(species_inputs) > 0) and (len(reaction_inputs) > 0):
-                B_df = pd.concat([B_species_df, B_reaction_df], axis=1)
-            B_df = B_df[self.input_names]
-        else:
-            ncol = 1
-            B_mat = np.repeat(0, self.num_state)
-            B_mat = np.reshape(B_mat, (self.num_state, ncol))
-            B_df = pd.DataFrame(B_mat, index=self.state_names)
-        #
-        return B_df
-
     # TODO: Use input_name as an optional argument?
     def _makeBDF(self):
         """

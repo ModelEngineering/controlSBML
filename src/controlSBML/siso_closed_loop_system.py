@@ -154,7 +154,8 @@ class SISOClosedLoopSystem(object):
         """
         return self.factory.report()
 
-    def evaluateControllability(self, times, input_names=None,
+    #FIXME: Either do a staircase plot or fit a transfer function and evaluate DC gain    
+    def deprecatedEvaluateControllability(self, times, input_names=None,
            output_names=None):
         """
         Evaluates the controllability of the inputs on the outputs.

@@ -14,8 +14,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT =  True
+IGNORE_TEST = False
+IS_PLOT = False
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -114,19 +114,28 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         if IGNORE_TEST:
            return
         response_df = self.builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=10)
-        result_df = self.builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
+        result_df = self.builder.plotMIMOStaircaseResponse(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 
-    def testPlotFitTransferFunction(self):
-        #if IGNORE_TEST:
-        #   return
-        builder = self.ctlsb.makeMIMOTransferFunctionBuilder(is_fixed_input_species=False,
+    def plotLinearTransferFunction(self, is_fixed_input_species):
+        builder = self.ctlsb.makeMIMOTransferFunctionBuilder(
+            is_fixed_input_species=is_fixed_input_species,
             input_names=INPUT_NAMES, output_names=OUTPUT_NAMES)
-        response_df = builder.fitTransferFunction(2, 3,
+        response_df = builder.fitTransferFunction(4, 4,
                                                        staircase=Staircase(initial_value=1, final_value=6, num_step=10),
                                                        end_time=100)
         result_df = builder.plotFitTransferFunction(response_df, is_plot=IS_PLOT, figsize=(8,8))
         self.checkPlotResultDF(result_df)
+
+    def testPlotFitTransferFunctionFixed(self):
+        if IGNORE_TEST:
+           return
+        self.plotLinearTransferFunction(True)
+
+    def testPlotFitTransferFunctionNotFixed(self):
+        if IGNORE_TEST:
+           return
+        self.plotLinearTransferFunction(False)
 
     def checkPlotResultDF(self, result_df):
         self.assertTrue(isinstance(result_df, pd.DataFrame))
@@ -145,7 +154,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         ctlsb = ControlSBML(cn.WOLF_URL, input_names=["at", "na"], output_names=["s6", "s5"])
         builder = ctlsb.makeMIMOTransferFunctionBuilder()
         response_df = builder.makeStaircaseResponse(staircase=staircase_dct)
-        result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
+        result_df = builder.plotMIMOStaircaseResponse(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 
 if __name__ == '__main__':

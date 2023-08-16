@@ -1,11 +1,14 @@
 from controlSBML.control_sbml import ControlSBML
-from controlSBML import control_sbml
+from controlSBML.staircase import Staircase
+from controlSBML import util
+import controlSBML.constants as cn
 import helpers
 
 import control
 import os
-import unittest
+import pandas as pd
 import tellurium as te
+import unittest
 
 
 IGNORE_TEST = False
@@ -27,6 +30,7 @@ k0 = 1
 k1 = 1
 k2 = 1
 """
+helpers.setupPlotting(__file__)
 
 
 #############################
@@ -85,6 +89,48 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = ControlSBML(LINEAR_MDL, input_names=["S1"])
         non_sys = ctlsb.makeNonlinearIOSystem("tst")
         self.assertTrue("NonlinearIOSystem" in str(type(non_sys)))
+    
+    def testPlotMIMOStaircaseResponse(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MDL)
+        plot_result_df = ctlsb.plotMIMOStaircaseResponse(
+            is_plot=IS_PLOT, figsize=(8,8),
+            input_names=["S1"], output_names=["S2", "S3"],
+            staircase=Staircase(initial_value=1, final_value=10, num_step=4),
+            end_time=100)
+        self.assertTrue(isinstance(plot_result_df, pd.DataFrame))
+        self.assertTrue(all([isinstance(plot_result_df.loc[i, o], util.PlotResult) 
+                             for i in plot_result_df.index for o in plot_result_df.columns]))
+
+    def testFitMIMOTransferFunction(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MDL)
+        fitter_result_df = ctlsb.fitMIMOTransferFunction(
+            num_numerator=1, num_denominator=2,
+            is_fixed_input_species=True,
+            input_names=["S1"], output_names=["S2", "S3"],
+            staircase=Staircase(initial_value=1, final_value=10, num_step=4),
+            end_time=100)
+        self.assertTrue(isinstance(fitter_result_df, pd.DataFrame))
+        self.assertTrue(all([isinstance(fitter_result_df.loc[i, o], cn.FitterResult) 
+                             for i in fitter_result_df.index for o in fitter_result_df.columns]))
+    
+    def testPlotMIMOTransferFunction(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MDL)
+        plot_result_df = ctlsb.plotMIMOTransferFunction(
+            num_numerator=1, num_denominator=2, is_plot=IS_PLOT, figsize=(8,8),
+            is_fixed_input_species=True,
+            input_names=["S1"], output_names=["S2", "S3"],
+            staircase=Staircase(initial_value=1, final_value=10, num_step=4),
+            end_time=100)
+        self.assertTrue(isinstance(plot_result_df, pd.DataFrame))
+        self.assertTrue(all([isinstance(plot_result_df.loc[i, o], util.PlotResult) 
+                             for i in plot_result_df.index for o in plot_result_df.columns]))
+        
 
 
 if __name__ == '__main__':
