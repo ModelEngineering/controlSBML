@@ -154,53 +154,6 @@ class SISOClosedLoopSystem(object):
         """
         return self.factory.report()
 
-    #FIXME: Either do a staircase plot or fit a transfer function and evaluate DC gain    
-    def deprecatedEvaluateControllability(self, times, input_names=None,
-           output_names=None):
-        """
-        Evaluates the controllability of the inputs on the outputs.
-        If no input (output) is specified, then all inputs (outputs)
-        are considered for self.ctlsb.
-
-        Parameters
-        ----------
-        times: list-float
-             times at which dc gain is evaluated
-        input_names: list-str
-        output_names: list-str
-
-        Returns
-        -------
-        dict
-            key: time
-            value: pd.DataFrame
-                 index: input_names
-                 columns: output_names
-                 value: dcgain of output for input
-        """
-        if input_names is None:
-            input_names = self.ctlsb.input_names
-        if output_names is None:
-            output_names = self.ctlsb.output_names
-        dct = {t: {} for t in times}
-        for output_name in output_names:
-            for input_name in input_names:
-                ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
-                      input_names=[input_name],
-                      output_names=[output_name],
-                      is_reduced=self.ctlsb.is_reduced)
-                for time in times:
-                    dct[time][output_name] = []
-                for time in times:
-                    tf = ctlsb.makeTransferFunction(time)
-                    dct[time][output_name].append(tf.dcgain())
-        # Construct the DataFrames
-        result_dct = {}
-        for time in dct.keys():
-            result_dct[time] = pd.DataFrame(dct[time], index=input_names)
-        #
-        return result_dct
-
     def makePIDClosedLoopSystem(self,
           kp=1, ki=0, kd=0,                       # Controller parameters
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
@@ -304,7 +257,8 @@ class SISOClosedLoopSystem(object):
         if value is None:
             return default
         return value
-
+    
+    # FIXME: Broken because of full state controller
     def makeFullStateClosedLoopSystem(self,
           time=0,                                 # Time of linearization
           poles=-1,                               # Desired poles or dominant pole
@@ -409,7 +363,7 @@ class SISOClosedLoopSystem(object):
             fltr, fltr_connections = siso.factory.makeStateFilter(
                   FLTR, kfs, SYSTEM, CONTROLLER, output_names)
             connections.extend(fltr_connections)
-            #
+            # FIXME: Need a new implementation of full state controller
             siso.controller = siso.factory.makeFullStateController(CONTROLLER,
                   ctlsb, poles=poles, time=time, dcgain=dcgain)
             #

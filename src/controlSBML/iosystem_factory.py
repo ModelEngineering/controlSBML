@@ -168,18 +168,16 @@ class IOSystemFactory(object):
             states=["last_err", "accumulated_err"],
             name=name)
 
-    def makeFullStateController(self, name, ctlsb, poles=-2, time=0,
-          dcgain=1.0):
+    # FIXME: Test. New implementation.
+    def makeFullStateController(self, controller_name, ss_sys, poles=-2, dcgain=1.0):
         """
         Creates a full state feedback controller for an SBML model
         where the system is linearized at the specified time.
 
         Parameters
         ----------
-        name: str
-            Name of the system
-        ctlsb: ControlSBML
-            SISO system
+        controller_name: str
+        ss_sys: State space system
         dcgain: float
             factor for adjusting the reference input to get a closed loop
             transfer function of 1
@@ -197,17 +195,9 @@ class IOSystemFactory(object):
            outputs:
                out
         """
-        # Validity Checks
-        if len(ctlsb.input_names) != 1:
-            msg = "SBML model must have a single input. Has: %s"  \
-                  % str(ctlsb.input_names)
-            raise ValueError(msg)
-        # Initializations
-        state_space = ctlsb.makeStateSpace(time=time)
         controller_input_names = [n for n in ctlsb.state_names
-             if not n in ctlsb.input_names]
+             if not n in self.ctlsb.input_names]
         controller_input_names.insert(0, REF)  # first input
-        num_state_input = len(controller_input_names) - 1
         is_distinct_poles = True
         try:
             _ = len(poles)
@@ -218,11 +208,11 @@ class IOSystemFactory(object):
             # Insert that poles are distinct
             #poles = np.array([poles + 0.1*n for n in range(num_state_input)])
             poles = np.array([poles - 0.1*n for n in 
-                 range(ctlsb.num_state)])
+                 range(self.ctlsb.num_state)])
         if not is_distinct_poles:
             raise ValueError("Poles must be distinct. Not: %s" % str(poles))
         # Calculate the gain matrix
-        kp_vec = control.place(state_space.A, state_space.B, poles)
+        kp_vec = control.place(ss_sys.A, ss_sys.B, poles)
         def outfcn(_, __, u_vec, ___):
             # u_vec: list-float - reference, state variables
             ref = u_vec[0]/dcgain
@@ -233,7 +223,7 @@ class IOSystemFactory(object):
         #
         return control.NonlinearIOSystem(
             None, outfcn, inputs=controller_input_names, outputs=['out'],
-            name=name)
+            name=controller_name)
     
     def makeArbitrarySignal(self, name, signal_function=lambda t: 1, start_time=0, end_time=None):
         """

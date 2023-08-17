@@ -115,6 +115,10 @@ _version.py.
     * NonlinearIOSystem inputs can be constant value (fixed species) or constant rate (add a boundary synthesis reaction)
     * Plot MIMO Bode plots
     * Staircase class with method to create staircase based on fractional deviation.
+    * Convenience methods for system identification:
+        - plotStaircaseResponse
+        - fitMIMOTransferFunction
+        - plotFitMIMOTransferFunction
 * 1.0.11 3/1/2023
     * Ensure that state variables are never negative.
 * 1.0.10
