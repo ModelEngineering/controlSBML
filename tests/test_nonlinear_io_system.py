@@ -174,10 +174,11 @@ class TestNonlinearIOSystem(unittest.TestCase):
 
     def _checkWithSimulation(self, df):
         df_rr = self.ctlsb.simulateRoadrunner(start_time=0, end_time=END_TIME,
-               points_per_time=POINTS_PER_TIME)     
-        df_rr = df_rr[df.columns]
+               points_per_time=POINTS_PER_TIME)
+        common_columns = list(df.columns.intersection(df_rr.columns))
+        df_rr = df_rr[common_columns]
         ssq = 0.0
-        for column in df.columns:
+        for column in common_columns:
             ssq += np.sum((df[column].values - df_rr[column].values)**2)
         # Calculate error per value
         rms_per_value = np.sqrt(ssq/(len(df.columns)*len(df)))

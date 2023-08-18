@@ -1,6 +1,7 @@
 var S0
 var S1
 var S2
+species SS0
 J0: $SS0 -> S1; k
 J1: S1 -> S1+S2; k0*S1
 J2: S1 -> S0; k1*S1

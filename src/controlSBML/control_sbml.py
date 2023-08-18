@@ -133,13 +133,13 @@ class ControlSBML(ControlPlot):
         if (staircase is None) or (isinstance(staircase, float)):
             # Find the centers for the staircase functions used in system identification
             self.setSteadyState()
-            center_dct = {n: self.get(n) for n in self.state_names if n in self.input_names}
+            center_dct = {n: self.get(n) for n in self.input_names}
             if isinstance(staircase, float):
                 deviation = staircase
             else:
                 deviation = cn.DEFAULT_DEVIATION
             staircase_dct = {n: Staircase.makeRelativeStaircase(
-                center=center_dct[n], fractional_deviation=deviation) for n in self.state_names if n in self.input_names}
+                center=center_dct[n], fractional_deviation=deviation) for n in self.input_names}
         else:
             staircase_dct = staircase
         builder = MIMOTransferFunctionBuilder(self, is_fixed_input_species=is_fixed_input_species,
@@ -215,7 +215,7 @@ class ControlSBML(ControlPlot):
     
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def fitMIMOTransferFunction(self,
-            input_names=None, output_names=None, staircase=None,
+            input_names=None, output_names=None, staircase=Staircase(),
             num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
             is_fixed_input_species=False,
             do_simulate_on_update=False,
@@ -256,8 +256,8 @@ class ControlSBML(ControlPlot):
         return fitter_result_df
 
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotMIMOTransferFunction(self,
-            input_names=None, output_names=None, staircase=None,
+    def plotFitMIMOTransferFunction(self,
+            input_names=None, output_names=None, staircase=Staircase(),
             num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
             is_fixed_input_species=False,
             do_simulate_on_update=False,

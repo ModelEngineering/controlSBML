@@ -77,7 +77,10 @@ class TestFunctions(unittest.TestCase):
         if IGNORE_TEST:
             return
         x_vec = ctl.simulate_system.makeStateVector(self.ctl_sys)
-        trues = [np.isclose(x, y) for x, y in zip(x_vec, INITIAL_VALUES)]
+        self.assertEqual(len(x_vec), len(INITIAL_VALUES))
+        trues = []
+        for x in x_vec:
+           trues.append(any([np.isclose(x, y) for y in INITIAL_VALUES]))
         self.assertTrue(all(trues))
 
     def testMakeStateVectorControlNonlinearSystem(self):

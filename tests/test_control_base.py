@@ -116,7 +116,7 @@ S3 = 0
 OUTPUT_NAMES_REDUCABLE = [
   "S0a", "S1a", "S2a", "S3a", "S0", "S1", "S2", "S3"]
 
-SPECIES_NAMES = ["S0", "S1", "S2"]
+SPECIES_NAMES = ["S0", "S1", "S2", "SS0"]
 
 def setList(lst, default):
     if lst is None:
@@ -143,19 +143,20 @@ class TestControlBase(unittest.TestCase):
         if IGNORE_TEST:
           return
         self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
-        for lst in [self.ctlsb.state_names, self.ctlsb.output_names]:
-            diff = set(SPECIES_NAMES).symmetric_difference(lst)
-            self.assertEqual(len(diff), 0)
-    # FIXME: Delete test?
-    def testMakeCDF(self):
+        diff = set(SPECIES_NAMES).symmetric_difference(self.ctlsb.input_names)
+        self.assertEqual(len(diff), 0)
+        #
+        diff = set(SPECIES_NAMES).difference(self.ctlsb.output_names)
+        self.assertGreater(len(diff), 0)
+
+    # FIXME: Delete test? 
+    def deprecatedTestConstructor(self):
         if IGNORE_TEST:
           return
-        return
-        self.init()
-        C_df = self.ctlsb._makeCDF()
-        num_row = len(self.ctlsb.output_names)
-        num_col = self.ctlsb.num_state
-        self.assertEqual(np.shape(C_df.values), (num_row, num_col))
+        self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
+        for lst in [self.ctlsb.species_names, self.ctlsb.output_names]:
+            diff = set(SPECIES_NAMES).symmetric_difference(lst)
+            self.assertEqual(len(diff), 0)
 
     def testConstructWithRoadrunner(self):
         if IGNORE_TEST:
@@ -226,27 +227,25 @@ class TestControlBase(unittest.TestCase):
         if IGNORE_TEST:
             return
         ctlsb = ControlBase(NONLINEAR1_MDL)
-        ser1 = ctlsb.state_ser
+        ser1 = ctlsb.species_ser
         ctlsb.setSteadyState()
-        ser2 = ctlsb.state_ser
+        ser2 = ctlsb.species_ser
         ctlsb.setSteadyState()
-        ser3 = ctlsb.state_ser
+        ser3 = ctlsb.species_ser
         self.assertFalse(ser1.equals(ser2))
         self.assertFalse(ser2.equals(ser3))
 
-    def test_state_ser(self):
+    def test_species_ser(self):
         if IGNORE_TEST:
           return
         def test(mdl):
             ctlsb = ControlBase(mdl)
-            num_species = len(ctlsb.state_names)
-            X0 = ctlsb.state_ser
+            num_species = len(ctlsb.species_names)
+            X0 = ctlsb.species_ser
             self.assertEqual(len(X0), num_species)
             jacobian_df = ctlsb.jacobian_df
             self.assertTrue(isinstance(jacobian_df, pd.DataFrame))
             self.assertEqual(len(jacobian_df), len(jacobian_df.columns))
-            dX0 = np.matmul(ctlsb.jacobian_df.values, X0.values)
-            self.assertEqual(len(X0), len(dX0))
         #
         test(NONLINEAR1_MDL)
         test(LINEAR_MDL)

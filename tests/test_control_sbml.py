@@ -121,7 +121,7 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         ctlsb = ControlSBML(LINEAR_MDL)
-        plot_result_df = ctlsb.plotMIMOTransferFunction(
+        plot_result_df = ctlsb.plotFitMIMOTransferFunction(
             num_numerator=1, num_denominator=2, is_plot=IS_PLOT, figsize=(8,8),
             is_fixed_input_species=True,
             input_names=["S1"], output_names=["S2", "S3"],

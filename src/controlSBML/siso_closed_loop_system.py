@@ -346,7 +346,8 @@ class SISOClosedLoopSystem(object):
             initial_ctlsb = ctl.ControlSBML(siso.ctlsb.model_reference,
                   input_names=[new_system_input],
                   output_names=[new_system_output])
-            output_names = list(initial_ctlsb.state_names)
+            # FIXME: Need to figure out state names
+            output_names = list(initial_ctlsb.species_names)
             output_names.remove(new_system_input)
             ctlsb = ctl.ControlSBML(siso.ctlsb.model_reference,
                   input_names=[new_system_input], output_names=output_names)

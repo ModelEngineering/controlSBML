@@ -51,48 +51,27 @@ class ControlBase(object):
         # First initializations
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
-        self._default_state_names = list(
-              self.roadrunner.getFullStoichiometryMatrix().rownames)
-        # FIXME: Handle State Space models better so can allow BoundarySpecies
-        if False:
-            self.species_names = set(self.roadrunner.getFloatingSpeciesIds())
-            self.species_names = list(
-                  self.species_names.union(self.roadrunner.getBoundarySpeciesIds()))
-        else:
-            self.species_names = list(
-                  self.roadrunner.getFullStoichiometryMatrix().rownames)
-        if output_names is None:
-            output_names = self.species_names
-        self.output_names = output_names
-        # Initializations with error checks
         self.is_reduced = is_reduced
-        if len(set(self.roadrunner.getReactionIds()).intersection(self.output_names)) > 0:
-            if self.is_reduced:
-                self.is_reduced = False
-                text = "Cannot have a flux output and is_reduced=True."
-                text += "  Setting is_reduced=False."
-                msgs.warn(text)
-        # Iinitial model calculations
-        self._jacobian_time = TIMEPOINT_NULL
-        self._jacobian_df = None
-        # Set defaults.
-        self.depeendent_names = list(
-              set(self.species_names).symmetric_difference(self.state_names))
-        if not set(self.state_names) <= set(self.species_names):
-            raise RuntimeError("State name is not a species name.")
-        self.full_stoichiometry_df, self.reduced_stoichiometry_df  \
-              = self._makeStoichiometryDF()
-        # Check for consistency on the state specification
-        if self.is_reduced:
-            self.reaction_names = list(self.reduced_stoichiometry_df.columns)
-        else:
-            self.reaction_names = list(self.reduced_stoichiometry_df.columns)
-        # Handle defaults
+        self.species_names = set(self.roadrunner.getFloatingSpeciesIds())
+        self.species_names = list(
+                  self.species_names.union(self.roadrunner.getBoundarySpeciesIds()))
+        # Handle inputs/outputs
         if input_names is None:
             self.input_names = self.species_names
         else:
             self.input_names = input_names
-        #self.input_names = self._sortList(self.reaction_names, self.input_names)
+        if output_names is None:
+            # Default output is all floating species
+            self.output_names = list(self.roadrunner.getFloatingSpeciesIds())
+        else:
+            self.output_names = output_names
+        # Iinitial model calculations
+        self._jacobian_time = TIMEPOINT_NULL
+        self._jacobian_df = None
+        # Set defaults.
+        self.full_stoichiometry_df, self.reduced_stoichiometry_df  \
+              = self._makeStoichiometryDF()
+        self.reaction_names = list(self.full_stoichiometry_df.columns)
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         # Other calculations
@@ -100,25 +79,63 @@ class ControlBase(object):
         # Do the initializations
         self.roadrunner.reset()
         # Validation checks
-        if not set(self.state_names) <= set(self.species_names):
-            text = "State does not include some spaces.\n"
-            text += "  Species are: %s" % str(self.species_names)
-            text += "  States are: %s" % str(self.state_names)
-            raise RuntimeError(text)
-        #
-        possible_names = set(self.species_names).union(self.reaction_names)
-        if not set(self.output_names) <= set(possible_names):
-            diff = list(set(self.output_names).difference(self.species_names))
+        invalid_names = self._invalidInputNames()
+        if len(invalid_names) > 0:
+            text = "Inputs must be a species, parameter, or compartment."
+            text += "   Invalid names are: %s" % str(invalid_names)
+            raise ValueError(text)
+        invalid_names = self._invalidOutputNames()
+        if len(invalid_names) > 0:
             text = "Outputs must be species or fluxes."
-            text += "The following outputs are invalid: %s" % str(diff)
+            text += "The following outputs are invalid: %s" % str(invalid_names)
             raise ValueError(text)
-        #
-        possible_names = set(self.species_names).union(self.roadrunner.getBoundarySpeciesIds())
-        if not set(self.input_names) <= set(possible_names):
-            diff = list(set(self.input_names).difference(possible_names))
-            text = "Inputs must be a species."
-            text += "   Invalid names are: %s" % str(diff)
-            raise ValueError(text)
+        
+    def _isExistingName(self, name, names):
+        if name in self.roadrunner.keys():
+            return True
+        names.append(name)
+        return False
+        
+    def _invalidInputNames(self):
+        """
+        Verifies that the input names are valid.
+
+        Returns
+        -------
+        bool
+        """
+        invalid_names = []
+        for name in self.input_names:
+            if not self._isExistingName(name, invalid_names):
+                continue
+            if name in self.reaction_names:
+                invalid_names.append(name)
+                continue
+            try:
+                value = self.get(name)
+                self.set({name: value})
+            except Exception:
+                invalid_names.append(name)
+        return invalid_names
+    
+    def _invalidOutputNames(self):
+        """
+        Verifies that the output names are valid.
+
+        Returns
+        -------
+        bool
+        """
+        invalid_names = []
+        for name in self.output_names:
+            if not self._isExistingName(name, invalid_names):
+                continue
+            try:
+                # Must be able to retrieve a value
+                _ = self.get(name)
+            except RuntimeError:
+                invalid_names.append(name)
+        return invalid_names
 
     def _makeStoichiometryDF(self):
         """
@@ -160,21 +177,21 @@ class ControlBase(object):
         return dct
 
     @property
-    def state_ser(self):
+    def species_ser(self):
         """
-        Contructs Series of current state values.
+        Contructs Series of current values of species.
 
         Returns
         -------
         pd.Series
         """
-        ser = util.makeRoadrunnerSer(self.roadrunner, self.state_names)
+        ser = util.makeRoadrunnerSer(self.roadrunner, self.species_names)
         return ser
 
     @property
     def output_ser(self):
         """
-        Contructs vector of current state values.
+        Contructs vector of current output values.
 
         Returns
         -------
@@ -212,19 +229,6 @@ class ControlBase(object):
         self._jacobian_df = pd.DataFrame(jacobian_mat, columns=names, index=names)
         self._jacobian_time = self.getTime()
         return self._jacobian_df
-
-    @property
-    def state_names(self):
-        jacobian_df = self.jacobian_df
-        if jacobian_df is not None:
-            state_names = list(jacobian_df.columns)
-            return self._sortList(self.species_names, state_names)
-        else:
-            return self._default_state_names
-
-    @property
-    def num_state(self):
-        return len(self.state_names)
 
     @property
     def A_df(self):
@@ -310,7 +314,7 @@ class ControlBase(object):
         if IS_DEBUG:
              print("2: %d" % bValue)
         bValue = bValue and all([s1 == s2 for s1, s2
-              in zip(self.state_names, other.state_names)])
+              in zip(self.species_names, other.species_names)])
         if IS_DEBUG:
              print("3: %d" % bValue)
         diff = set(self.roadrunner.keys()).symmetric_difference(
@@ -318,7 +322,7 @@ class ControlBase(object):
         bValue = bValue and (len(diff) == 0)
         if IS_DEBUG:
              print("4: %d" % bValue)
-        for attr in ["state_names", "input_names", "output_names"]:
+        for attr in ["species_names", "input_names", "output_names"]:
             expr1 = "self.%s" % attr
             expr2 = "other.%s" % attr
             try:

@@ -3,6 +3,8 @@ Convenience methods in ControlSBML
   3. Document use of convenience methods: plotMIMOStaircaseResponse,
       fitMIMOTransferFunction, plotFitMIMOTransferFunction
 Not building reasonable transfer functions for simple linear systems
+Fix makeFullStateController
+Check all FIXME
 
 readthedocs
 Herb's request for Bode plots
