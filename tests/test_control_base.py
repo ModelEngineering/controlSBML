@@ -144,7 +144,6 @@ class TestControlBase(unittest.TestCase):
           return
         self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
         diff = set(SPECIES_NAMES).symmetric_difference(self.ctlsb.input_names)
-        #self.assertEqual(len(diff), 0)
         self.assertEqual(len(diff), 1)
         #
         diff = set(SPECIES_NAMES).difference(self.ctlsb.output_names)
@@ -232,7 +231,7 @@ class TestControlBase(unittest.TestCase):
           return
         def test(mdl):
             ctlsb = ControlBase(mdl)
-            num_species = len(ctlsb.species_names)
+            num_species = len(ctlsb.floating_species_names)
             X0 = ctlsb.species_ser
             self.assertEqual(len(X0), num_species)
             jacobian_df = ctlsb.jacobian_df

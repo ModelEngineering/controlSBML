@@ -102,6 +102,19 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(plot_result_df, pd.DataFrame))
         self.assertTrue(all([isinstance(plot_result_df.loc[i, o], util.PlotResult) 
                              for i in plot_result_df.index for o in plot_result_df.columns]))
+        
+    def testPlotMIMOStaircaseResponse2(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MDL)
+        plot_result_df = ctlsb.plotMIMOStaircaseResponse(
+            is_plot=IS_PLOT, figsize=(8,8),
+            input_names=["k0"], output_names=["S2", "J1"],
+            staircase=Staircase(initial_value=1, final_value=10, num_step=4),
+            end_time=100)
+        self.assertTrue(isinstance(plot_result_df, pd.DataFrame))
+        self.assertTrue(all([isinstance(plot_result_df.loc[i, o], util.PlotResult) 
+                             for i in plot_result_df.index for o in plot_result_df.columns]))
 
     def testFitMIMOTransferFunction(self):
         if IGNORE_TEST:

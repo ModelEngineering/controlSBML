@@ -52,11 +52,11 @@ class ControlBase(object):
         self.model_reference = model_reference
         self.roadrunner = makeRoadrunner(self.model_reference)
         self.is_reduced = is_reduced
-        self.species_names = list(set(self.roadrunner.getFloatingSpeciesIds()))
+        self.floating_species_names = list(set(self.roadrunner.getFloatingSpeciesIds()))
         #self.species_names = list(self.species_names.union(self.roadrunner.getBoundarySpeciesIds()))
         # Handle inputs/outputs
         if input_names is None:
-            self.input_names = self.species_names
+            self.input_names = self.floating_species_names
         else:
             self.input_names = input_names
         if output_names is None:
@@ -184,7 +184,7 @@ class ControlBase(object):
         -------
         pd.Series
         """
-        ser = util.makeRoadrunnerSer(self.roadrunner, self.species_names)
+        ser = util.makeRoadrunnerSer(self.roadrunner, self.floating_species_names)
         return ser
 
     @property
@@ -313,7 +313,7 @@ class ControlBase(object):
         if IS_DEBUG:
              print("2: %d" % bValue)
         bValue = bValue and all([s1 == s2 for s1, s2
-              in zip(self.species_names, other.species_names)])
+              in zip(self.floating_species_names, other.floating_species_names)])
         if IS_DEBUG:
              print("3: %d" % bValue)
         diff = set(self.roadrunner.keys()).symmetric_difference(
@@ -321,7 +321,7 @@ class ControlBase(object):
         bValue = bValue and (len(diff) == 0)
         if IS_DEBUG:
              print("4: %d" % bValue)
-        for attr in ["species_names", "input_names", "output_names"]:
+        for attr in ["floating_species_names", "input_names", "output_names"]:
             expr1 = "self.%s" % attr
             expr2 = "other.%s" % attr
             try:
@@ -372,7 +372,6 @@ class ControlBase(object):
         """
         util.setRoadrunnerValue(self.roadrunner, name_dct)
 
-
     def add(self, name_dct):
         """
         Adds the indicated value to the current value of the variable.
@@ -403,11 +402,6 @@ class ControlBase(object):
         """
         new_super_lst = list(super_lst)
         return sorted(sub_lst, key=lambda v: new_super_lst.index(v))
-
-    def separateSpeciesReactionInputs(self):
-        species_inputs = [n for n in self.input_names if n in self.species_names]
-        reaction_inputs = [n for n in self.input_names if n in self.reaction_names]
-        return species_inputs, reaction_inputs
     
     def setSteadyState(self):
         """

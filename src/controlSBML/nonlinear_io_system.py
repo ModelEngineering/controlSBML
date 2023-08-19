@@ -57,19 +57,20 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             output_names = list(ctlsb.output_names)
         self.input_names = input_names
         self.output_names = output_names
-        self.state_names = list(ctlsb.species_names)
+        self.state_names = list(ctlsb.floating_species_names)
         self.dstate_names = [self._makeDstateName(n) for n in self.state_names]
         self.num_state = len(self.state_names)
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         # self.input_dct indicates if an input is held at a fixed at a value (True) or the input is a rate of change
         # FIXME: Only look at floating species
-        species_names = set(ctlsb.species_names).union(ctlsb.roadrunner.getBoundarySpeciesIds())
+        species_names = set(ctlsb.floating_species_names).union(ctlsb.roadrunner.getBoundarySpeciesIds())
         input_species = set(self.input_names).intersection(species_names)
         self.input_dct = {n: DEFAULT_INPUT_SPECIES_DESCRIPTOR for n in self.input_names}
         if isinstance(is_fixed_input_species, bool):
             self.input_dct.update(
-                  {n: is_fixed_input_species for n in input_species})
+                  {n: is_fixed_input_species if n in self.ctlsb.floating_species_names
+                    else True for n in self.input_names})
         else:
             if not isinstance(is_fixed_input_species, dict):
                 msgs.error("Invalid type of is_fixed_input_species: %s" % type(is_fixed_input_species))
@@ -149,7 +150,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         Parameters
         ----------
         time: float: time
-        x_vec: np.array(float): state vector
+        x_vec: np.array(float): state vector (floating species)
         u_vec: np.array(float): input vector (in log10 units)
 
         Returns
@@ -206,11 +207,14 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         -------
         np.array(float): change in state vector
         """
+        # Update the state of the simulation
+        self.ctlsb.setTime(time)
+        state_dct = {self.state_names[n]: x_vec[n] for n in range(len(self.state_names))}
+        self.ctlsb.set(state_dct)
+        # Calculate the values of the outputs
         out_vec = np.repeat(np.nan, self.num_output)
         for out_idx, name in enumerate(self.output_names):
-            if name in self.state_names:
-                state_idx = self.state_names.index(name)
-                out_vec[out_idx] = x_vec[state_idx]
+            out_vec[out_idx] = self.ctlsb.get(name)
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
         #self.logger.add(time, self.ctlsb.get(self.state_names).values())
