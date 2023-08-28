@@ -57,11 +57,8 @@ STEP_VAL = 1  # Multiplier used for simulation input
 TIME = "time"
 
 # Keyword options
-O_A_DF = "A_df"
 O_AX = "ax"
 O_AX2 = "ax2"
-O_B_DF = "B_df"
-O_C_DF = "C_df"
 O_END_TIME = "end_time"
 O_FIGURE = "figure"
 O_FIGSIZE = "figsize"
@@ -85,9 +82,6 @@ O_YTICKLABELS = "yticklabels"
 
 # Default values of options
 SIM_DCT = dict(
-      A_df=A_DF,
-      B_df=B_DF,
-      C_df=C_DF,
       step_val=STEP_VAL,
       start_time=START_TIME,
       end_time=END_TIME,
@@ -122,11 +116,8 @@ DEFAULT_DCTS = [PLOT_DCT, FIG_DCT, SIM_DCT]
 # Must maintain this in correspondence with SIM_DCT, PLOT_DCT, FIG_DCT
 KWARGS = [
     #SIMULATION OPTIONS
-    Kwarg(O_A_DF, default=10, dtype=pd.DataFrame, doc="Linear system A matrix"),
     Kwarg(O_AX, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting axis"),
     Kwarg(O_AX2, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting 2nd axis"),
-    Kwarg(O_B_DF, default=10, dtype=pd.DataFrame, doc="Linear system B matrix"),
-    Kwarg(O_C_DF, default=10, dtype=pd.DataFrame, doc="Linear system C matrix"),
     Kwarg(O_END_TIME, default=10, dtype=float, doc="end time of simulation"),
     Kwarg(O_POINTS_PER_TIME, default=10, dtype=float,
           doc="number of simulation points per time period"),

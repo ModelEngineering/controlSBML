@@ -15,7 +15,6 @@ from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML import util
 from controlSBML import msgs
 
-import control
 import numpy as np
 import pandas as pd
 
@@ -228,10 +227,6 @@ class ControlBase(object):
         self._jacobian_df = pd.DataFrame(jacobian_mat, columns=names, index=names)
         self._jacobian_time = self.getTime()
         return self._jacobian_df
-
-    @property
-    def A_df(self):
-        return self.jacobian_df
 
     @staticmethod
     def isRoadrunnerKey(key):
