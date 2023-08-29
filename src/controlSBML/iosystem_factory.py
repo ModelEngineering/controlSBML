@@ -168,8 +168,7 @@ class IOSystemFactory(object):
             states=["last_err", "accumulated_err"],
             name=name)
 
-    # FIXME: Test. New implementation.
-    def makeFullStateController(self, controller_name, ss_sys, poles=-2, dcgain=1.0):
+    def makeFullStateController(self, controller_name, ss_sys, state_names, poles=-2, dcgain=1.0):
         """
         Creates a full state feedback controller for an SBML model
         where the system is linearized at the specified time.
@@ -177,7 +176,8 @@ class IOSystemFactory(object):
         Parameters
         ----------
         controller_name: str
-        ss_sys: State space system
+        ss_sys: State space linear system that approximates
+        state_names: list-str
         dcgain: float
             factor for adjusting the reference input to get a closed loop
             transfer function of 1
@@ -195,29 +195,27 @@ class IOSystemFactory(object):
            outputs:
                out
         """
-        controller_input_names = [n for n in ctlsb.state_names
-             if not n in self.ctlsb.input_names]
+        num_state = len(state_names)
+        controller_input_names = list(state_names)
         controller_input_names.insert(0, REF)  # first input
         is_distinct_poles = True
-        try:
-            _ = len(poles)
+        if "len" in dir(poles):
             if len(set(poles)) < len(poles):
                 is_distinct_poles = False
             poles = np.array(poles)
-        except:
-            # Insert that poles are distinct
-            #poles = np.array([poles + 0.1*n for n in range(num_state_input)])
-            poles = np.array([poles - 0.1*n for n in 
-                 range(self.ctlsb.num_state)])
+        else:
+            # Ensure that poles are distinct
+            poles = np.array([poles - 0.1*n for n in range(num_state)])
         if not is_distinct_poles:
             raise ValueError("Poles must be distinct. Not: %s" % str(poles))
         # Calculate the gain matrix
         kp_vec = control.place(ss_sys.A, ss_sys.B, poles)
+        #
         def outfcn(_, __, u_vec, ___):
             # u_vec: list-float - reference, state variables
             ref = u_vec[0]/dcgain
             #arr = np.array(u_vec[1:])
-            arr = u_vec
+            arr = u_vec[1:]
             output = ref - kp_vec.dot(arr)
             return output
         #

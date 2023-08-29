@@ -52,7 +52,6 @@ class ControlBase(object):
         self.roadrunner = makeRoadrunner(self.model_reference)
         self.is_reduced = is_reduced
         self.floating_species_names = list(set(self.roadrunner.getFloatingSpeciesIds()))
-        #self.species_names = list(self.species_names.union(self.roadrunner.getBoundarySpeciesIds()))
         # Handle inputs/outputs
         if input_names is None:
             self.input_names = self.floating_species_names

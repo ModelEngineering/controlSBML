@@ -1,9 +1,7 @@
 Convenience methods in ControlSBML
-  1. Eliminate Jacobian based state model: delete makeTransferFunction and then state construtions
+Update the course notebooks
   3. Document use of convenience methods: plotMIMOStaircaseResponse,
       fitMIMOTransferFunction, plotFitMIMOTransferFunction
-Not building reasonable transfer functions for simple linear systems
-Fix makeFullStateController
 Check all FIXME
 
 readthedocs

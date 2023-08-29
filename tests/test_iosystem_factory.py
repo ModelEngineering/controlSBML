@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pandas as pd
+import tellurium as te
 import unittest
 
 
@@ -36,7 +37,7 @@ S3 = 0
 S4 = 0
 """
 MODEL = """
--> S0; 5
+J1: -> S0; 5
 S0 -> S1; k0*S0
 S1 -> S2; k1*S1
 S2 -> S1; k2*S2
@@ -50,6 +51,33 @@ S0 = 5
 S1 = 0
 S2 = 0
 """
+
+def makeSystemForModel():
+    A = [ 
+    [-0.5, 0, 0],
+    [0.5, -1, 2],
+    [0, 1, -5],
+        ]
+    B = [[5], [0], [0]]
+    C = np.eye(3)
+    model_sys = control.ss(A, B, C, 0)
+    X0=[5, 0, 0]
+    if IS_PLOT:
+        times, yvals = control.step_response(model_sys, np.linspace(0, 10, 100), X0=X0)
+        legends = []
+        _, axes = plt.subplots(2)
+        for idx in range(yvals.shape[0]):
+            ys = np.reshape(yvals[idx], (100,1))
+            legends.append("S%d" % idx)
+            axes[0].plot(times, ys)
+        axes[0].legend(legends)
+        rr = te.loada(MODEL)
+        arr = rr.simulate(0, 10, 100)
+        df = pd.DataFrame(arr, columns=["time", "S0", "S1", "S2"])
+        df.plot(x="time", y=["S0", "S1", "S2"], ax=axes[1])
+        plt.savefig("plot.pdf")
+    return model_sys, X0
+
 
 
 #############################
@@ -196,19 +224,16 @@ class TestIOSystemFactory(unittest.TestCase):
         #
         test()
 
-    # FIXME: Test
+    # TODO: Needs more tests
     def testMakeFullStateController(self):
         if IGNORE_TEST:
             return
-        return
-        ctlsb = ctl.ControlSBML(MODEL, input_names=["S0"], output_names=["S2"])
+        model_sys, X0 = makeSystemForModel()
+        state_names = ["S0", "S1", "S2"]
         controller = self.factory.makeFullStateController("controller",
-              ctlsb, dcgain=1.0, poles=-10, time=1)
+              model_sys, state_names, dcgain=1.0, poles=-10)
         times = [0.1*n for n in range(50)]
-        U = np.array([(0, 0, 0,) for _ in range(len(times))])
-        U[0] = np.array([1, 1, 1,])
-        U = U.transpose()
-        result = control.input_output_response(controller, T=times, U=U)
+        result = control.input_output_response(controller, T=times, U=1)
         outputs = result.outputs[0]
         self.assertEqual(len(times), len(outputs))
 
