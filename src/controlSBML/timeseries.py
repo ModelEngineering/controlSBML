@@ -183,7 +183,15 @@ class Timeseries(pd.DataFrame):
                 raise ValueError("No column information")
             else:
                 mat_columns = columns
-            df = pd.DataFrame(mat, columns=mat_columns)
+            df = pd.DataFrame(mat)
+            num_column = len(df.columns)
+            try:
+                new_columns = list(df.columns)
+                for pos, column in enumerate(mat_columns):
+                    new_columns[pos] = column
+                df.columns = new_columns
+            except:
+                import pdb; pdb.set_trace()
             if times is None:
                 raise ValueError("No time information found.")
         else:

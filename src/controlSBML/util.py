@@ -95,8 +95,10 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, **kwargs):
     """
     if colors is None:
         colors = ["green", "blue", "orange", "purple", "brown", "black"]
+        [colors.extend(colors) for _ in range(5)]
     if markers is None:
         markers = ["o", "s", "v", "^", "x", "+"]
+        [markers.extend(markers) for _ in range(5)]
     if mgr is None:
         mgr = OptionManager(kwargs)
         is_fig = True
