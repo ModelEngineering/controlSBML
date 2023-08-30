@@ -1,4 +1,16 @@
-"""Logs time series events"""
+"""
+Logs time series events
+
+Logger keeps tracks of variables over time. It is typically used to track changes in state.
+
+Usage:
+
+log = Logger("my_logger", ["x", "y"])
+log.add(0, [1, 2])  # Adds the value of 1 for x, 2 for y, at time 0.
+log.add(1, [3, 4])  # Adds the value of 3 for x, 4 for y, at time 1.
+df = log.report()   # Returns a dataframe whose columns are the variable names and the index is time
+
+"""
 
 import numpy as np
 import pandas as pd
@@ -89,8 +101,9 @@ class Logger(object):
                     ser = ser.loc[0, :]
                 sers.append(ser)
             new_df = pd.DataFrame(sers)
-            new_df[TIME] = new_df[TIMEUS].apply(lambda v: v/SEC_TO_US)
-            del new_df[TIMEUS]
+            if len(new_df)  > 0:
+                new_df[TIME] = new_df[TIMEUS].apply(lambda v: v/SEC_TO_US)
+                del new_df[TIMEUS]
         else:
             new_df = df
         # Format the dataframe

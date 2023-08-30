@@ -19,7 +19,6 @@ import numpy as np
 
 ARG_LST = [cn.TIME, cn.STATE, cn.INPUT, cn.PARAMS]
 MIN_ELAPSED_TIME = 1e-2
-IS_LOG = False
 DEFAULT_INPUT_SPECIES_DESCRIPTOR = False # True: fixed concentration, False: rate
 
 
@@ -27,7 +26,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
 
     def __init__(self, name, ctlsb,
          input_names=None, output_names=None, do_simulate_on_update=False,
-           is_fixed_input_species=DEFAULT_INPUT_SPECIES_DESCRIPTOR):
+           is_fixed_input_species=DEFAULT_INPUT_SPECIES_DESCRIPTOR,
+           is_log=False):
         """
         Parameters
         ----------
@@ -51,6 +51,7 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         self.ctlsb = ctlsb
         self.do_simulate_on_update = do_simulate_on_update
         self.is_fixed_input_species = is_fixed_input_species
+        self.is_log = is_log
         if input_names is None:
             input_names = list(ctlsb.input_names)
         if output_names is None:
@@ -76,12 +77,11 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                 msgs.error("Invalid type of is_fixed_input_species: %s" % type(is_fixed_input_species))
             self.input_dct.update((is_fixed_input_species))
         # Logging
-        self.logger = lg.Logger(self.name, self.state_names)
         # Initialize the controlNonlinearIOSystem object
-        self.logger_dct = {n: [] for n in self.state_names}
-        derivatives_dct = {n: [] for n in self.dstate_names}
-        self.logger_dct[cn.TIME] = []
-        self.logger_dct.update(derivatives_dct)
+        item_names = list(self.input_names)
+        item_names = list(self.state_names)
+        item_names.extend(self.dstate_names)
+        self.logger = lg.Logger(self.name, item_names)
         super().__init__(self._updfcn, self._outfcn,
               inputs=self.input_names, outputs=self.output_names,
               states=self.state_names, name=self.name)
@@ -182,7 +182,11 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
                 derivative_dct[dname] += input_dct[name]
         derivative_arr = np.array(list(derivative_dct.values()))
         # Update logger
-        if IS_LOG:
+        if self.is_log:
+            arr = np.append(x_vec, u_vec)
+            arr = np.append(arr, derivative_arr)
+            self.logger.add(time, arr)
+        if False:
             dstate_dct = {n: derivative_arr[i] for i, n in enumerate(self.dstate_names)}
             [self.logger_dct[n].append(state_dct[n]) for n in self.state_names]
             [self.logger_dct[n].append(dstate_dct[n]) for n in self.dstate_names]
@@ -217,6 +221,5 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
             out_vec[out_idx] = self.ctlsb.get(name)
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
-        #self.logger.add(time, self.ctlsb.get(self.state_names).values())
         out_vec = np.array([np.max(v, 0) for v in out_vec])
         return out_vec

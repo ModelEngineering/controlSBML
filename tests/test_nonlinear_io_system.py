@@ -124,7 +124,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.sys.setTime(TIMES[0])
         x_vec = self.sys.makeStateSer().values
         dct = {n: [] for n in self.sys.state_names}
-        for idx, time in enumerate(TIMES):
+        for time in TIMES:
             dx_vec = self.sys.updfcn(time, x_vec, u_vec, {})
             new_x_vec = x_vec + DT*dx_vec
             [dct[n].append(v) for n, v in
@@ -133,7 +133,6 @@ class TestNonlinearIOSystem(unittest.TestCase):
         df = pd.DataFrame(dct)
         return df
 
-    # FIXME: Ensure that simulation agrees with Tellurium
     def testUpdfcn(self):
         if IGNORE_TEST:
           return
@@ -183,16 +182,30 @@ class TestNonlinearIOSystem(unittest.TestCase):
         # Calculate error per value
         rms_per_value = np.sqrt(ssq/(len(df.columns)*len(df)))
         self.assertLess(rms_per_value, 1e-1)
+        if IS_PLOT:
+            mgr = OptionManager({})
+            num_col = len(common_columns)
+            _, axes = plt.subplots(num_col, 1)
+            for i, column in enumerate(common_columns):
+                axes[i].scatter(df_rr[column], df[column])
+                axes[i].set_xlabel("simulated")
+                axes[i].set_ylabel("predicted")
+                axes[i].set_title(column)
+                max_val = max(df_rr[column].max(), df[column].max())
+                axes[i].plot([0, max_val], [0, max_val], color="red", linestyle="--")
+            mgr.doFigOpts()
 
-    def runInputOutputResponse(self, u_val, end_time=END_TIME):
+    def runInputOutputResponse(self, u_val, end_time=END_TIME, sys=None):
+        if sys is None:
+            sys = self.sys
         u_val = np.array(u_val)
         #
-        x_vec = self.sys.makeStateSer().values
-        u_vec = np.repeat(u_val, self.sys.num_input)
+        x_vec = sys.makeStateSer().values
+        u_vec = np.repeat(u_val, sys.num_input)
         u_vecs = np.array([np.array(u_vec) for _ in range(NUM_TIME)])
         u_vecs = np.reshape(u_vecs, (1, NUM_TIME))
-        t, y = control.input_output_response(self.sys, TIMES, U=u_vecs, X0=x_vec)
-        df = pd.DataFrame(y, self.sys.output_names)
+        t, y = control.input_output_response(sys, TIMES, U=u_vecs, X0=x_vec)
+        df = pd.DataFrame(y, sys.output_names)
         df = df.transpose()
         df.index = t
         return df
@@ -205,10 +218,27 @@ class TestNonlinearIOSystem(unittest.TestCase):
         J1_flux_0 = self.ctlsb.roadrunner["J1"]
         self._checkWithSimulation(df)
         # Output increases with inpu
-        df1 = self.runInputOutputResponse(10)
+        _ = self.runInputOutputResponse(10)
         J1_flux_10 = self.ctlsb.roadrunner["J1"]
         self.assertGreater(J1_flux_10, J1_flux_0)
 
+    def testLogger(self):
+        #if IGNORE_TEST:
+        #    return
+        if IS_PLOT:
+            cn.PLOT_DIR = cn.TEST_DIR
+        else:
+            cn.PLOT_DIR= tempfile.mkdtemp()
+        ctlsb = ctl.ControlSBML(NONLINEAR_MDL,
+              input_names=["E_J0"], output_names=["S1", "S2"])
+        sys = ctl.NonlinearIOSystem("test_sys", ctlsb, is_log=True)
+        _ = self.runInputOutputResponse(0, sys=sys)
+        df = sys.logger.report()
+        self.assertTrue(isinstance(df, pd.DataFrame))
+        self.assertGreater(len(df), 0)
+        true_dct = {c: c in df.columns for c in sys.state_names}
+        self.assertTrue(all(true_dct.values()))
+       
     def testWithInputOutputResponseWithoutEffector(self):
         if IGNORE_TEST:
             return

@@ -1,4 +1,5 @@
 Convenience methods in ControlSBML
+Have logs for outfcn_log, updfcn_log
 Update the course notebooks
   3. Document use of convenience methods: plotMIMOStaircaseResponse,
       fitMIMOTransferFunction, plotFitMIMOTransferFunction

@@ -270,7 +270,7 @@ class SISOTransferFunctionBuilder(object):
             linestyle="--")
         setYAxColor(ax, "left", cn.PREDICTED_COLOR)
         setYAxColor(ax2, "right", cn.SIMULATED_COLOR)
-        ax2.set_label(staircase_name)
+        ax2.set_ylabel(staircase_name)
         mgr.doPlotOpts()
         ax.legend([])
         if is_fig:

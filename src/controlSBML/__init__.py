@@ -6,12 +6,13 @@ from controlSBML.nonlinear_io_system import NonlinearIOSystem
 from controlSBML.util import plotOneTS, plotManyTS, ppMat, mat2DF, plotMat,  \
       makeSimulationTimes, timeresponse2Timeseries
 from controlSBML.sequential_model import SequentialModel
-from controlSBML.simulate_system import simulateSystem, makeStateVector
-from controlSBML.timeseries import Timeseries, TimeseriesSer
 from controlSBML.iosystem_factory import IOSystemFactory
 from controlSBML.siso_closed_loop_system import SISOClosedLoopSystem
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 from controlSBML.mimo_transfer_function_builder import MIMOTransferFunctionBuilder
+from controlSBML.simulate_system import simulateSystem, makeStateVector
+from controlSBML.staircase import Staircase
+from controlSBML.timeseries import Timeseries, TimeseriesSer
 mat2TS = Timeseries.mat2TS
 BIOMODELS_DCT = {
       823: "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml",
