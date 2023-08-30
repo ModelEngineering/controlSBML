@@ -120,6 +120,7 @@ _version.py.
         - fitMIMOTransferFunction
         - plotFitMIMOTransferFunction
     * Input can be species, parameter, compartment. Output can be floating species, flux.
+    * Fixed and enhanced logging for ctl.NonlinearIOSystem, providing logs for both updfcn and outfcn.
 * 1.0.11 3/1/2023
     * Ensure that state variables are never negative.
 * 1.0.10

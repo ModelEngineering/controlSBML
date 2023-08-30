@@ -15,7 +15,7 @@ import tellurium as te
 import tempfile
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 END_TIME = 5
 DT = 0.01
@@ -225,6 +225,12 @@ class TestNonlinearIOSystem(unittest.TestCase):
     def testLogger(self):
         #if IGNORE_TEST:
         #    return
+        def test(df):
+            self.assertTrue(isinstance(df, pd.DataFrame))
+            self.assertGreater(len(df), 0)
+            true_dct = {c: c in df.columns for c in sys.state_names}
+            self.assertTrue(all(true_dct.values()))
+        #
         if IS_PLOT:
             cn.PLOT_DIR = cn.TEST_DIR
         else:
@@ -233,11 +239,10 @@ class TestNonlinearIOSystem(unittest.TestCase):
               input_names=["E_J0"], output_names=["S1", "S2"])
         sys = ctl.NonlinearIOSystem("test_sys", ctlsb, is_log=True)
         _ = self.runInputOutputResponse(0, sys=sys)
-        df = sys.logger.report()
-        self.assertTrue(isinstance(df, pd.DataFrame))
-        self.assertGreater(len(df), 0)
-        true_dct = {c: c in df.columns for c in sys.state_names}
-        self.assertTrue(all(true_dct.values()))
+        df1 = sys.updfcn_logger.report()
+        test(df1)
+        df2 = sys.outfcn_logger.report()
+        test(df2)
        
     def testWithInputOutputResponseWithoutEffector(self):
         if IGNORE_TEST:

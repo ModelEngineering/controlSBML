@@ -80,8 +80,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         # Initialize the controlNonlinearIOSystem object
         item_names = list(self.input_names)
         item_names = list(self.state_names)
+        out_names = list(item_names)
+        self.outfcn_logger = lg.Logger(self.name, out_names)
         item_names.extend(self.dstate_names)
-        self.logger = lg.Logger(self.name, item_names)
+        self.updfcn_logger = lg.Logger(self.name, item_names)
         super().__init__(self._updfcn, self._outfcn,
               inputs=self.input_names, outputs=self.output_names,
               states=self.state_names, name=self.name)
@@ -185,18 +187,10 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         if self.is_log:
             arr = np.append(x_vec, u_vec)
             arr = np.append(arr, derivative_arr)
-            self.logger.add(time, arr)
-        if False:
-            dstate_dct = {n: derivative_arr[i] for i, n in enumerate(self.dstate_names)}
-            [self.logger_dct[n].append(state_dct[n]) for n in self.state_names]
-            [self.logger_dct[n].append(dstate_dct[n]) for n in self.dstate_names]
-            self.logger_dct[cn.TIME].append(time)
-            df = pd.DataFrame(self.logger_dct)
-            df.set_index(cn.TIME, inplace=True)
-            df.to_csv("log.csv")        #
+            self.updfcn_logger.add(time, arr)
         return derivative_arr
 
-    def _outfcn(self, time, x_vec, _, __):
+    def _outfcn(self, time, x_vec, u_vec, __):
         """
         Calculates the values of outputs.
         Ensures that all state variables are non-negative since they are
@@ -222,4 +216,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
         out_vec = np.array([np.max(v, 0) for v in out_vec])
+        # Update logger
+        if self.is_log:
+            arr = np.append(x_vec, u_vec)
+            self.outfcn_logger.add(time, arr)
         return out_vec
