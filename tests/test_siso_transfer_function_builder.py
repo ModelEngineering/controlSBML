@@ -153,8 +153,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.assertLess(fitter_result.rms_residuals, 0.1)
 
     def testPlotFitTransferFunction(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.init()
         fitter_result = self.builder.fitTransferFunction(4, 4,
               end_time=50)

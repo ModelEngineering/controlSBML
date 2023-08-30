@@ -398,8 +398,8 @@ class SISOTransferFunctionBuilder(object):
         times = fitter_result.time_series.times
         #
         util.plotOneTS(fitter_result.time_series, mgr=mgr,
-                       colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
-                       markers=["o", "", "-"])
+                       colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR, cn.INPUT_COLOR],
+                       markers=["o", "", "."])
         ax = mgr.plot_opts[cn.O_AX]
         if mgr.plot_opts[cn.O_AX2] is None:
             ax2 = ax.twinx()
