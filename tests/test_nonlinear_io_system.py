@@ -15,7 +15,7 @@ import tellurium as te
 import tempfile
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 END_TIME = 5
 DT = 0.01
@@ -223,8 +223,8 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.assertGreater(J1_flux_10, J1_flux_0)
 
     def testLogger(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         def test(df):
             self.assertTrue(isinstance(df, pd.DataFrame))
             self.assertGreater(len(df), 0)
