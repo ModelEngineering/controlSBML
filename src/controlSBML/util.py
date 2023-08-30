@@ -120,10 +120,8 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, **kwargs):
         ax2 = None
     times = np.array(time_series.index)/cn.MS_IN_SEC
     num_col = len(time_series.columns)
-    sel_colors = colors[:num_col]
-    sel_markers = markers[:num_col]
     for column in time_series.columns:
-        ax.plot(times, time_series[column], color=sel_colors.pop(0), marker=sel_markers.pop(0))
+        ax.plot(times, time_series[column], color=colors.pop(0), marker=markers.pop(0))
     legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
     mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()

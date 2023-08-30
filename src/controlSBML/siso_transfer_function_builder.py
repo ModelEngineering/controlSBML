@@ -357,6 +357,7 @@ class SISOTransferFunctionBuilder(object):
         #
         _, y_arr = control.forced_response(transfer_function, T=times, U=staircase_arr, X0=0)
         output_ts[cn.O_PREDICTED] = y_arr
+        output_ts[staircase_column_name] = staircase_arr
         fitter_result = cn.FitterResult(
               input_name=self.input_name,
               output_name=self.output_name,
@@ -398,7 +399,7 @@ class SISOTransferFunctionBuilder(object):
         #
         util.plotOneTS(fitter_result.time_series, mgr=mgr,
                        colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
-                       markers=["o", ""])
+                       markers=["o", "", "-"])
         ax = mgr.plot_opts[cn.O_AX]
         if mgr.plot_opts[cn.O_AX2] is None:
             ax2 = ax.twinx()
