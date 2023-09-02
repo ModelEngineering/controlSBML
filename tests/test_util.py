@@ -180,6 +180,23 @@ class TestFunctions(unittest.TestCase):
         tf = control.TransferFunction([1, 0, 0], [1, 0.0002, 1])
         latex = util.latexifyTransferFunction(tf)
 
+    def testCleanTimes(self):
+        if IGNORE_TEST:
+           return
+        expected_diff = 1000
+        TIMES = expected_diff*np.array([1, 2, 3, 4, 5]).astype(int)
+        def test(times):
+            result = util.cleanTimes(times)
+            mean_diff = np.mean(np.diff(result))
+            self.assertTrue(np.isclose(mean_diff, expected_diff))
+            self.assertTrue(all([r == t for r, t in zip(result, TIMES)]))
+        #
+        test(TIMES)
+        new_times = np.array(TIMES)
+        new_times[2] += 2
+        test(new_times)
+
+
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

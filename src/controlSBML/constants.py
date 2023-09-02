@@ -26,7 +26,7 @@ class LegendSpec():
         self.loc = loc
 
 FitterResult = collections.namedtuple("FitterResult",
-            "transfer_function staircase parameters rms_residuals stderr nfev redchi time_series input_name output_name")
+            "transfer_function staircase_arr staircase_name parameters rms_residuals stderr nfev redchi time_series input_name output_name")
 
 
 ################ DIRECTORIES #################

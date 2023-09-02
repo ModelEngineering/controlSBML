@@ -442,6 +442,31 @@ def setNoPlot(kwargs):
     new_kwargs[cn.O_IS_PLOT] = False
     return new_kwargs
 
+def cleanTimes(times):
+    """
+    Makes sure that int times are evenly spaced.
+
+    Args:
+        times: int
+    Returns:
+        np.array-int
+    """
+    expected_diff = np.mean(np.diff(times))
+    expected_diff = int(np.round(expected_diff))
+    diffs = np.diff(times)
+    indices = [n for n in range(len(times)-1) if diffs[n] != expected_diff]
+    new_times = list(times)
+    for idx in indices:
+        if idx > 0:
+            new_times[idx] = new_times[idx - 1] + expected_diff
+        else:
+            if not 1 in indices:
+                new_times[idx] = new_times[idx + 1] - expected_diff
+            else:
+                raise ValueError("Cannot exceptions at indices 0, 1")
+    return np.array(new_times)
+
+
 ############### CLASSES ################
 
 class PlotResult(object):

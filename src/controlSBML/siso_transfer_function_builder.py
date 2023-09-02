@@ -8,11 +8,11 @@ Builds a transfer function for a SISO NonlinearIOSystem
 """
 
 import controlSBML.constants as cn
+import controlSBML as ctl
 from controlSBML import msgs
 from controlSBML import util
 import controlSBML.simulate_system as ss
 from controlSBML.option_management.option_manager import OptionManager
-from controlSBML.option_management.options import Options
 from controlSBML.staircase import Staircase
 
 import control
@@ -306,7 +306,7 @@ class SISOTransferFunctionBuilder(object):
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR,
                             num_denominator=cn.DEFAULT_NUM_DENOMINATOR, staircase=Staircase(), 
-                            **kwargs):
+                            fit_start_time=None, fit_end_time=None, **kwargs):
         """
         Constructs a transfer function for the NonlinearIOSystem.
 
@@ -315,6 +315,8 @@ class SISOTransferFunctionBuilder(object):
         num_numerator: int (number of numerator terms)
         num_denominator: int (number of denominator terms)
         staircase: Staircase
+        fit_start_time: float (time at which fitting starts)
+        fit_end_time: float (time at which fitting ends)
         kwargs: dict (simulation options as described below)
         #@expand
 
@@ -332,16 +334,23 @@ class SISOTransferFunctionBuilder(object):
         # Get the calibration data
         new_staircase = staircase.copy()
         data_ts = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
+        ms_times = util.cleanTimes(data_ts.index)
         output_ts, staircase_column_name, _ = self._extractStaircaseResponseInformation(data_ts)
+        data_ts.index = ms_times
+        output_ts.index = ms_times
         new_staircase.name = staircase_column_name
-        times = data_ts.times
-        times_diff = np.diff(times)
-        if not np.allclose(times_diff, times_diff[0]):
-            import pdb; pdb.set_trace()
-            pass
-        staircase_arr = new_staircase.staircase_arr
-        data_in = (times, staircase_arr)
-        data_out = data_ts[self.output_name]
+        #  Construct the fitting data
+        start_idx = 0
+        end_idx = len(ms_times)
+        if fit_start_time is not None:
+            start_idx = np.sum(ms_times <= cn.MS_IN_SEC*fit_start_time)
+        if fit_end_time is not None:
+            end_idx = np.sum(ms_times <= cn.MS_IN_SEC*fit_end_time)
+        sel_times = ms_times[start_idx:end_idx]
+        sel_ts = data_ts.loc[sel_times]
+        staircase_arr = sel_ts[staircase_column_name].values
+        data_in = (sel_times, staircase_arr)
+        data_out = sel_ts[self.output_name]
         # Do the fit
         parameters = _makeParameters(num_numerator, num_denominator)
         mini = lmfit.Minimizer(_calculateTransferFunctionResiduals,
@@ -351,13 +360,16 @@ class SISOTransferFunctionBuilder(object):
         max_abs_residual = np.max(np.abs(residuals))
         if max_abs_residual > MAX_ABS_RESIDUAL:
             msgs.warn("Possible numerical instability: max abs residual is %f" % max_abs_residual)
-        rms_residuals = np.sqrt(np.mean(residuals**2))
+        rms_residuals = np.sqrt(np.mean((residuals**2)))
         stderr_dct = {k: v.stderr for k,v in minimizer_result.params.items()}
         transfer_function = _makeTransferFunction(minimizer_result.params)
         #
-        _, y_arr = control.forced_response(transfer_function, T=times, U=staircase_arr, X0=0)
+        _, y_arr = control.forced_response(transfer_function, T=sel_times, U=staircase_arr, X0=0)
+        output_ts = output_ts.loc[sel_times]
         output_ts[cn.O_PREDICTED] = y_arr
         output_ts[staircase_column_name] = staircase_arr
+        output_ts = ctl.Timeseries(output_ts)
+        output_ts.index = sel_times
         fitter_result = cn.FitterResult(
               input_name=self.input_name,
               output_name=self.output_name,
@@ -367,7 +379,8 @@ class SISOTransferFunctionBuilder(object):
               rms_residuals = rms_residuals,
               redchi=minimizer_result.redchi,
               time_series=output_ts,
-              staircase=new_staircase,
+              staircase_arr=staircase_arr,
+              staircase_name=staircase_column_name,
               parameters=minimizer_result.params)
         return fitter_result
     
@@ -392,22 +405,23 @@ class SISOTransferFunctionBuilder(object):
         else:
             is_fig = False
         output_name = fitter_result.output_name
-        staircase = fitter_result.staircase
-        staircase_arr = staircase.staircase_arr
+        staircase_arr = fitter_result.staircase_arr
+        staircase_name = fitter_result.staircase_name
         transfer_function = fitter_result.transfer_function
-        times = fitter_result.time_series.times
+        times = fitter_result.time_series.index
         #
-        util.plotOneTS(fitter_result.time_series, mgr=mgr,
-                       colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR, cn.INPUT_COLOR],
-                       markers=["o", "", "."])
+        ts = fitter_result.time_series.drop(staircase_name, axis=1)
+        util.plotOneTS(ts, mgr=mgr,
+                       colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
+                       markers=["o", ""])
         ax = mgr.plot_opts[cn.O_AX]
         if mgr.plot_opts[cn.O_AX2] is None:
             ax2 = ax.twinx()
             mgr.plot_opts[cn.O_AX2] = ax2
         else:
             ax2 = mgr.plot_opts[cn.O_AX2]
-        ax2.set_ylabel(staircase.name, color=cn.INPUT_COLOR)
-        ax2.plot(times, staircase_arr, color=cn.INPUT_COLOR, linestyle="--")
+        ax2.set_ylabel(staircase_name, color=cn.INPUT_COLOR)
+        ax2.plot(times/cn.MS_IN_SEC, staircase_arr, color=cn.INPUT_COLOR, linestyle="--")
         latex = util.latexifyTransferFunction(transfer_function)
         if len(mgr.plot_opts[cn.O_TITLE]) == 0:
             #title = "%s->%s;  %s   " % (input_name, output_name, latex)

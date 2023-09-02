@@ -15,6 +15,9 @@ IOSystems created:
     makePassthur: creates an IOSystem that outputs the input
     makePIDController: creates a PID controller
     makeFullStateController: creates a PID controller
+
+Factory can create a logger for the IOSystem using the is_log parameter. Logs are
+in the factor property loggers.
 """
 
 from controlSBML import constants as cn
@@ -34,7 +37,7 @@ STATE = "state"
 
 class IOSystemFactory(object):
 
-    def __init__(self, name="factory", dt=1/cn.POINTS_PER_TIME):
+    def __init__(self, name="factory", dt=1/cn.POINTS_PER_TIME, is_log=False):
         """
         Parameters
         ----------
@@ -42,13 +45,17 @@ class IOSystemFactory(object):
             Name of the InterconnectedSystem
         dt: float
             delta between simulation times
+        is_log: bool
+            Log activity of factory objects
         """
         self.name = name
         self.dt = dt
         self.registered_names = []  # List of names logged
+        self.is_log = is_log
         self.loggers = []  # Loggers for created objects
 
     def _registerLogger(self, logger_name, item_names, logger=None):
+        """Creates and records loggers in the factory."""
         is_duplicate = any([logger_name == l.logger_name for l in self.loggers])
         if is_duplicate:
             raise ValueError("Duplicate logger name: %s" % logger_name)
@@ -84,6 +91,10 @@ class IOSystemFactory(object):
         """
         for logger in self.loggers:
             logger.initialize()
+    
+    def add(self, logger, time, items):
+        if self.is_log:
+            logger.add(time, items)
 
     def report(self):
         """
@@ -91,8 +102,10 @@ class IOSystemFactory(object):
 
         Returns
         -------
-        pd.DataFrame
+        pd.DataFrame or None if not logging
         """
+        if not self.is_log:
+            return None
         if len(self.loggers) == 0:
             return None
         if len(self.loggers) == 1:
@@ -114,7 +127,7 @@ class IOSystemFactory(object):
         -------
         """
         system = ctlsb.makeNonlinearIOSystem(name)
-        self._registerLogger(name, None, logger=system.logger)
+        self._registerLogger(name, None, logger=system.updfcn_logger)
         return system
 
     def makePIDController(self, name, kp=2, ki=0, kd=0):
@@ -141,7 +154,8 @@ class IOSystemFactory(object):
         control.NonlinearIOSystem
         """
         #
-        logger = self._registerLogger(name, [IN, "last_err",
+        logger_name = "%s_outfcn" % name
+        logger = self._registerLogger(logger_name, [IN, "last_err",
               "acc_err", OUT])
         def updfcn(_, x_vec, u_vec, __):
             # u: float (error signal)
@@ -160,7 +174,7 @@ class IOSystemFactory(object):
             control_out =  kp*u_val  \
                           + ki*accumulated_u_val \
                           + kd*(u_val - last_u_val)/self.dt
-            logger.add(time, [u_val, x_vec[0], x_vec[1], control_out])
+            self.add(logger, time, [u_val, x_vec[0], x_vec[1], control_out])
             return control_out
         #
         return control.NonlinearIOSystem(
@@ -251,7 +265,7 @@ class IOSystemFactory(object):
             output = 0.0
             if (time >= start_time) and (end_time is None or time <= end_time):
                 output = signal_function(time)
-            logger.add(time, [output])
+            self.add(logger, time, [output])
             return output
         #
         return control.NonlinearIOSystem(
@@ -334,7 +348,7 @@ class IOSystemFactory(object):
             output = np.sum(u_vec*mult_arr)
             item_values = list(u_vec)
             item_values.append(output)
-            logger.add(time, item_values)
+            self.add(logger, time, item_values)
             return output
         #
         return control.NonlinearIOSystem(
@@ -378,7 +392,7 @@ class IOSystemFactory(object):
                 output = u_val
             else:
                 output = x_val
-            logger.add(time, [u_val, x_val, output])
+            self.add(logger, time, [u_val, x_val, output])
             return output
         #
         return control.NonlinearIOSystem(
@@ -476,7 +490,7 @@ class IOSystemFactory(object):
             log_vals.extend(list(u_vec))
             log_vals.extend(outputs)
             log_vals.extend(list(x_vec))
-            logger.add(time, log_vals)
+            self.add(logger, time, log_vals)
             return outputs
         #
         inputs = list(input_dct.values())
@@ -518,7 +532,7 @@ class IOSystemFactory(object):
         def outfcn(time, _, u_vec, __):
             u_val = self._array2scalar(u_vec)
             output = u_val
-            logger.add(time, [u_val, output])
+            self.add(logger, time, [u_val, output])
             return output
         #
         return control.NonlinearIOSystem(
@@ -541,7 +555,7 @@ class IOSystemFactory(object):
         def outfcn(time, _, u_vec, __):
             u_val = self._array2scalar(u_vec)
             output = factor*u_val
-            logger.add(time, [u_val, output])
+            self.add(logger, time, [u_val, output])
             return output
 
         #

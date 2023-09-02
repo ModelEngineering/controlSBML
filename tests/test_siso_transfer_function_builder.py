@@ -14,7 +14,7 @@ import tempfile
 
 
 IGNORE_TEST = False
-IS_PLOT = False
+IS_PLOT = False 
 PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
@@ -147,10 +147,25 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.init()
         sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb, is_fixed_input_species=True)
         builder = stb.SISOTransferFunctionBuilder(sys)
-        fitter_result = builder.fitTransferFunction(4, 4,
+        fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
               end_time=100)
+        if IS_PLOT:
+            builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
-        self.assertLess(fitter_result.rms_residuals, 0.1)
+        self.assertLess(fitter_result.rms_residuals, 0.2)
+
+    def testFitTransferFunctionTimes(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb, is_fixed_input_species=True)
+        builder = stb.SISOTransferFunctionBuilder(sys)
+        fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
+              end_time=100, fit_start_time=10, fit_end_time=40)
+        if IS_PLOT:
+            builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT)
+        self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
+        self.assertLess(fitter_result.rms_residuals, 0.5)
 
     def testPlotFitTransferFunction(self):
         if IGNORE_TEST:

@@ -88,8 +88,8 @@ class TestIOSystemFactory(unittest.TestCase):
     def setUp(self):
         self.factory = IOSystemFactory()
 
-    def runController(self, name="controller", **kwargs):
-        factory = IOSystemFactory()
+    def runController(self, name="controller", is_log=False, **kwargs):
+        factory = IOSystemFactory(is_log=is_log)
         controller = factory.makePIDController(name, **kwargs)
         times = list(range(20))
         return factory, control.input_output_response(controller, T=times, U=times)
@@ -216,13 +216,18 @@ class TestIOSystemFactory(unittest.TestCase):
     def testMakeLogReport(self):
         if IGNORE_TEST:
           return
-        def test():
-            factory, _ = self.runController()
+        def test(is_log=False):
+            factory, _ = self.runController(is_log=is_log)
             df = factory.report()
-            self.assertGreater(len(df), 0)
-            self.assertEqual(len(df.columns), 4)
+            if not is_log:
+               self.assertIsNone(df)
+            else:
+                self.assertGreater(len(df), 0)
+                self.assertEqual(len(df.columns), 4)
+            return df
         #
-        test()
+        _ = test(is_log=False)
+        df = test(is_log=True)
 
     # TODO: Needs more tests
     def testMakeFullStateController(self):
