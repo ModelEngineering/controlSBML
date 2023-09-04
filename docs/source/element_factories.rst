@@ -321,6 +321,6 @@ Below shows how the multiplier is used in an ``InterconnectedSystem``system and 
 Passthru
 ^^^^^^^^
 
-Example
-#######
+Example (FINISH)
+################
 This section illustrates how to use the factory constructed elements. An important part of this is knowing the inputs and outputs defined for each.

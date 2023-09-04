@@ -425,7 +425,10 @@ def latexifyTransferFunction(tf, num_decimal=2):
     numr_str = latexifyPolynomial(tf.num[0][0])
     denr_str = latexifyPolynomial(tf.den[0][0])
     if len(numr_str) > 0:
-        latex = r'$\frac{%s}{%s}$' % (numr_str, denr_str)
+        if len(denr_str) > 0:
+            latex = r'$\frac{%s}{%s}$' % (numr_str, denr_str)
+        else:
+            latex = r'$\infty$'
     else:
         latex = r'$0$'
     return latex

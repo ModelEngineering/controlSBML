@@ -1,17 +1,14 @@
 Convenience methods in ControlSBML
-Have logs for outfcn_log, updfcn_log
+Possible bug in system ID lecture. Step response doesn't look right.
 Update the course notebooks
   3. Document use of convenience methods: plotMIMOStaircaseResponse,
       fitMIMOTransferFunction, plotFitMIMOTransferFunction
 Check all FIXME
-Fix logger
 
 readthedocs
 Herb's request for Bode plots
-Construction of state space representation is done by system identification
-Remove effector_dct. Inputs must be species.
 notebook tests
-Docker container for MIMO
+*Docker container for MIMO
 Document logger
 
 
@@ -21,15 +18,4 @@ Bugs
   0. SISOClosedLoopSystem
      makeTransferFunction
      makeFullStateClosedLoopSystem(is_dcgain_adjusted)
-  1. Resolve how to handle reduced order models. Keep? Delete?
-  2. Remove effector_dct. Inputs must be species.
-Conserved moieties
-  - Need right side null space of stoichiometry matrix
-  - Construct the dependent matrix for C
-    - A = Reduced_Stoichiometry * Flux_Jacobian
-    - C = Right_Nullspace_Stoichiometry * Flux_Jacobian, where
-      Right_Nullspace_Stoichimentry = getKMatrix()
-  2. Inputs are always species, never fluxes. However, outputs can be fluxes.
-  3. readthedocs
   4. Document IOSystemFactor, SISOClosedLoopSystem
-  5. Resolve "FIXME"

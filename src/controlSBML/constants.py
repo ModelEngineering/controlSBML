@@ -156,7 +156,8 @@ TIMESERIES_INDEX_NAME = "miliseconds"
 TIMES = np.linspace(0, 5, 1000)
 
 # URLs
-WOLF_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml" 
+WOLF_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
+MTOR_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
 
 # Transfer function building
 DEFAULT_NUM_NUMERATOR = 2

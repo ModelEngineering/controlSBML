@@ -255,7 +255,7 @@ class SISOTransferFunctionBuilder(object):
         staircase_ts = response_ts[staircase_name]
         response_ts = new_response_ts
         # Do the plots
-        plot_result = util.plotOneTS(response_ts, mgr=mgr, color=cn.PREDICTED_COLOR)
+        plot_result = util.plotOneTS(response_ts, mgr=mgr, color=cn.SIMULATED_COLOR)
         ax = plot_result.ax
         mgr.plot_opts.set(cn.O_AX, ax)
         mgr.plot_opts.set(cn.O_YLABEL, output_name)
@@ -266,10 +266,10 @@ class SISOTransferFunctionBuilder(object):
             ax2 = mgr.plot_opts[cn.O_AX2]
         # Plot the staircase
         times = np.array(response_ts.index)/cn.MS_IN_SEC
-        ax2.plot(times, staircase_ts, color=cn.SIMULATED_COLOR,
+        ax2.plot(times, staircase_ts, color=cn.INPUT_COLOR,
             linestyle="--")
-        setYAxColor(ax, "left", cn.PREDICTED_COLOR)
-        setYAxColor(ax2, "right", cn.SIMULATED_COLOR)
+        setYAxColor(ax, "left", cn.SIMULATED_COLOR)
+        setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax2.set_ylabel(staircase_name)
         mgr.doPlotOpts()
         ax.legend([])
@@ -346,10 +346,11 @@ class SISOTransferFunctionBuilder(object):
             start_idx = np.sum(ms_times <= cn.MS_IN_SEC*fit_start_time)
         if fit_end_time is not None:
             end_idx = np.sum(ms_times <= cn.MS_IN_SEC*fit_end_time)
-        sel_times = ms_times[start_idx:end_idx]
-        sel_ts = data_ts.loc[sel_times]
+        sel_ms_times = ms_times[start_idx:end_idx]
+        sel_ts = data_ts.loc[sel_ms_times]
         staircase_arr = sel_ts[staircase_column_name].values
-        data_in = (sel_times, staircase_arr)
+        sel_sec_times = sel_ms_times/cn.MS_IN_SEC
+        data_in = (sel_sec_times, staircase_arr)
         data_out = sel_ts[self.output_name]
         # Do the fit
         parameters = _makeParameters(num_numerator, num_denominator)
@@ -364,12 +365,12 @@ class SISOTransferFunctionBuilder(object):
         stderr_dct = {k: v.stderr for k,v in minimizer_result.params.items()}
         transfer_function = _makeTransferFunction(minimizer_result.params)
         #
-        _, y_arr = control.forced_response(transfer_function, T=sel_times, U=staircase_arr, X0=0)
-        output_ts = output_ts.loc[sel_times]
+        _, y_arr = control.forced_response(transfer_function, T=sel_sec_times, U=staircase_arr, X0=0)
+        output_ts = output_ts.loc[sel_ms_times]
         output_ts[cn.O_PREDICTED] = y_arr
         output_ts[staircase_column_name] = staircase_arr
         output_ts = ctl.Timeseries(output_ts)
-        output_ts.index = sel_times
+        output_ts.index = sel_ms_times
         fitter_result = cn.FitterResult(
               input_name=self.input_name,
               output_name=self.output_name,
