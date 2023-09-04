@@ -114,7 +114,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         if IGNORE_TEST:
            return
         response_df = self.builder.makeStaircaseResponse(staircase=Staircase(final_value=5), end_time=10)
-        result_df = self.builder.plotMIMOStaircaseResponse(response_df, is_plot=IS_PLOT)
+        result_df = self.builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 
     def plotLinearTransferFunction(self, is_fixed_input_species):
@@ -154,7 +154,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         ctlsb = ControlSBML(cn.WOLF_URL, input_names=["at", "na"], output_names=["s6", "s5"])
         builder = ctlsb.makeMIMOTransferFunctionBuilder()
         response_df = builder.makeStaircaseResponse(staircase=staircase_dct)
-        result_df = builder.plotMIMOStaircaseResponse(response_df, is_plot=IS_PLOT)
+        result_df = builder.plotStaircaseResponse(response_df, is_plot=IS_PLOT)
         self.checkPlotResultDF(result_df)
 
 if __name__ == '__main__':

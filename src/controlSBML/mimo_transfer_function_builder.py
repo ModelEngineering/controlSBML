@@ -158,7 +158,7 @@ class MIMOTransferFunctionBuilder(object):
     
     @classmethod
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotMIMOStaircaseResponse(cls, response_df, **options):
+    def plotStaircaseResponse(cls, response_df, **options):
         """
         Plots the Nonlinear simulation response to a monotonic sequence of step inputs.
 

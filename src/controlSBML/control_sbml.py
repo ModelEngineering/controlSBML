@@ -211,7 +211,7 @@ class ControlSBML(ControlPlot):
         if not "is_steady_state" in kwargs:
             kwargs["is_steady_state"] = True
         response_df = builder.makeStaircaseResponse(staircase=staircase, **kwargs)
-        return builder.plotMIMOStaircaseResponse(response_df, **mgr.plot_fig_options)
+        return builder.plotStaircaseResponse(response_df, **mgr.plot_fig_options)
     
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def fitMIMOTransferFunction(self,
