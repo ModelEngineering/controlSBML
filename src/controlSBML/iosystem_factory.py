@@ -130,7 +130,7 @@ class IOSystemFactory(object):
         self._registerLogger(name, None, logger=system.updfcn_logger)
         return system
 
-    def makePIDController(self, name, kp=2, ki=0, kd=0):
+    def makePIDController(self, name, kp=2, ki=0, kd=0, is_nonnegative_output=False):
         """
         Creates a PID controller.
         NonlinearIOSystem with input IN and output OUT.
@@ -148,6 +148,7 @@ class IOSystemFactory(object):
            integral control constant
         kd: float
            differential control constant.
+        is_nonnegative_output: bool (output cannot be negative)
 
         Returns
         -------
@@ -174,6 +175,8 @@ class IOSystemFactory(object):
             control_out =  kp*u_val  \
                           + ki*accumulated_u_val \
                           + kd*(u_val - last_u_val)/self.dt
+            if is_nonnegative_output:
+                control_out = max(0, control_out)
             self.add(logger, time, [u_val, x_vec[0], x_vec[1], control_out])
             return control_out
         #

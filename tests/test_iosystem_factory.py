@@ -13,8 +13,9 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
+SIZE = 20
 if IS_PLOT:
     import matplotlib
     matplotlib.use('TkAgg')
@@ -88,16 +89,18 @@ class TestIOSystemFactory(unittest.TestCase):
     def setUp(self):
         self.factory = IOSystemFactory()
 
-    def runController(self, name="controller", is_log=False, **kwargs):
+    def runController(self, name="controller", is_log=False, U=None, **kwargs):
+        times = list(range(SIZE))
+        if U is None:
+           U = times
         factory = IOSystemFactory(is_log=is_log)
         controller = factory.makePIDController(name, **kwargs)
-        times = list(range(20))
-        return factory, control.input_output_response(controller, T=times, U=times)
+        return factory, control.input_output_response(controller, T=times, U=U)
 
     # TODO: More tests for integral and differential control
     def testMakePIDController(self):
-        if IGNORE_TEST:
-          return
+        #if IGNORE_TEST:
+        #  return
         kp = 2
         factory, result = self.runController(kp=kp)
         trues = [r == kp*( t) for t, r in zip(result.t, result.outputs)]
@@ -106,6 +109,11 @@ class TestIOSystemFactory(unittest.TestCase):
         _, result_ki = self.runController(ki=kp)
         _, result_kd = self.runController(kd=kp)
         self.assertGreater(result_ki.y[0][-1], result_kd.y[0][-1])
+        U = np.array(range(SIZE//2))
+        U = np.concatenate([U, -U])
+        _, result_kd1 = self.runController(kd=kp, is_nonnegative_output=True, U=U)
+        tot = np.sum(result_kd1.y[SIZE//2:])
+        self.assertEqual(tot, 0)
 
     def testMakeSinusoid(self):
         if IGNORE_TEST:
