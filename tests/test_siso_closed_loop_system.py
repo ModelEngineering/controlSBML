@@ -17,6 +17,7 @@ IS_PLOT = False
 SIZE = 10
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL3 = """
+
 -> S0; k0
 S0 -> S1; k1*S0
 S1 -> S2; k2*S1
@@ -96,24 +97,24 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         self.assertTrue("Factory" in str(type(self.siso.factory)))
 
     def testMakeClosedLoopSystem1(self):
-        # FIXME: check that outputs are correct
         if IGNORE_TEST:
             return
-        ctlsb = ctl.ControlSBML(MODEL2, input_names=["S0"],
-              output_names=["S3"])
+        ctlsb = ctl.ControlSBML(MODEL3, input_names=["S0"],
+              output_names=["S2"])
         siso = SISOClosedLoopSystem(ctlsb)
-        siso.makePIDClosedLoopSystem(kp=0.2)
+        siso.makePIDClosedLoopSystem(kp=0.2,
+                                    closed_loop_outputs=["S1", "S2"])
         times = ctl.makeSimulationTimes(end_time=100)
         inputs = np.repeat(0, len(times))
         inputs[0] = 1
         result = control.input_output_response(siso.closed_loop_system,
               times, U=inputs)
-        if False:
+        if IS_PLOT:
             plt.plot(result.t.flatten(), result.y[0].flatten())
             plt.plot(result.t.flatten(), result.y[1].flatten())
             plt.show()
-        outputs = result.y.flatten()
-        self.assertGreater(np.abs(outputs[-1]), 0)
+        self.assertEqual(np.shape(result.y)[0], 2)  # Should have 2 outputs
+        self.assertTrue(np.isclose(result.y[1,-1], 0))  # S2 should go to 0
 
     def testMakePIDClosedLoopSystem2(self):
         # FIXME: very inefficient test

@@ -128,6 +128,10 @@ class SISOClosedLoopSystem(object):
     # Constructs and evaluates a SISO closed loop system.
 
     def __init__(self, ctlsb):
+        """
+        Args:
+            ctlsb: ControlSBML
+        """
         self.ctlsb = ctlsb
         self.factory = ctl.IOSystemFactory()
         self.closed_loop_system = None
@@ -146,7 +150,7 @@ class SISOClosedLoopSystem(object):
         self.sum_F_R = None
         self.sum_D_U = None
         # Names of signals
-        self.closed_loop_outputs = None  # output signals
+        self.closed_loop_outputs = None
 
     def report(self):
         """
@@ -220,8 +224,10 @@ class SISOClosedLoopSystem(object):
             system_input = self.ctlsb.input_names[0]
         if system_output is None:
             system_output = self.ctlsb.output_names[-1]
+        full_closed_loop_outputs = list(set(closed_loop_outputs).union([system_output]))
+        full_closed_loop_outputs = [o for o in full_closed_loop_outputs if not "." in o]
         ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
-              input_names=[system_input], output_names=[system_output])
+              input_names=[system_input], output_names=full_closed_loop_outputs)
         self.system = self.factory.makeNonlinearIOSystem(SYSTEM, ctlsb)
         system_in = "%s.%s" % (SYSTEM, system_input)
         system_out = "%s.%s" % (SYSTEM, system_output)
@@ -237,7 +243,6 @@ class SISOClosedLoopSystem(object):
         sys_lst.extend([self.system, self.controller, self.fltr, self.sum_F_R])
         # Additional names
         filter_str = "-%s" % FLTR_OUT
-        system_out = "%s.%s" % (SYSTEM, system_output)
         connections.append([SUM_F_R_REF, CL_INPUT_OUT])
         connections.append([CONTROLLER_IN, SUM_F_R_OUT])
         connections.append([SUM_D_U_U, CONTROLLER_OUT])
@@ -258,7 +263,6 @@ class SISOClosedLoopSystem(object):
             return default
         return value
     
-    # FIXME: Broken because of full state controller
     def makeFullStateClosedLoopSystem(self,
           time=0,                                 # Time of linearization
           poles=-1,                               # Desired poles or dominant pole
@@ -313,10 +317,11 @@ class SISOClosedLoopSystem(object):
         """
         if kf is None:
             kf = 0  # Passthru
-        if self.closed_loop_system is not None:
-            raise ValueError("Closed loop system exists already.")
         #
-        self.closed_loop_outputs = self._set(closed_loop_outputs,
+        if closed_loop_outputs == None:
+            closed_loop_outputs = []
+        adjusted_closed_loop_outputs = ["%s.%s" % (SYSTEM, c) for c in closed_loop_outputs if not "." in c]
+        self.closed_loop_outputs = self._set(adjusted_closed_loop_outputs,
               [CL_OUTPUT_OUT])
         def make(siso=self, dcgain=1, closed_loop_outputs=self.closed_loop_outputs):
             """
