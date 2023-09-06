@@ -113,11 +113,10 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, **kwargs):
     if ax is None:
         fig, ax = plt.subplots(1)
         mgr.plot_opts.set(cn.O_AX, ax)
+    ax2 = None
     if mgr.plot_opts[cn.O_AX2] is None:
         ax2 = ax.twinx()
         mgr.plot_opts[cn.O_AX2] = ax2
-    else:
-        ax2 = None
     times = np.array(time_series.index)/cn.MS_IN_SEC
     sel_colors = list(colors)
     sel_markers = list(markers)

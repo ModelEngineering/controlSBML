@@ -127,13 +127,14 @@ ConnectionAssembly = collections.namedtuple("ConnectionAssembly",
 class SISOClosedLoopSystem(object):
     # Constructs and evaluates a SISO closed loop system.
 
-    def __init__(self, ctlsb):
+    def __init__(self, ctlsb, **kwargs):
         """
         Args:
             ctlsb: ControlSBML
+            kwargs: arguments for IOSystemFactory
         """
         self.ctlsb = ctlsb
-        self.factory = ctl.IOSystemFactory()
+        self.factory = ctl.IOSystemFactory(**kwargs)
         self.closed_loop_system = None
         # Elements in the closed loop system
         ## Subsysems
@@ -163,6 +164,7 @@ class SISOClosedLoopSystem(object):
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
           kf=None,                                # Filter
+          is_nonnegative_output=False,
           system_input=None,                      # SISO input, output
           system_output=None,
           closed_loop_outputs=None):              # list of outputs
@@ -206,6 +208,10 @@ class SISOClosedLoopSystem(object):
         """
         if self.closed_loop_system is not None:
             raise ValueError("Closed loop system exists already.")
+        if closed_loop_outputs is None:
+            self.closed_loop_outputs = [CL_OUTPUT_OUT]
+        else:
+            self.closed_loop_outputs = closed_loop_outputs
         #
         assembly = self._makeDisturbanceNoiseCLinputoutput(
               disturbance_amp=disturbance_amp,
@@ -215,8 +221,6 @@ class SISOClosedLoopSystem(object):
               )
         sys_lst = list(assembly.sys)
         connections = list(assembly.con)
-        self.closed_loop_outputs = self._set(closed_loop_outputs,
-              [CL_OUTPUT_OUT])
         # Make controller, system, filter
         self.sum_F_R = self.factory.makeAdder(SUM_F_R, input_names=["ref", "fltr"])
         # Choose first system input and last system output as defaults
@@ -224,7 +228,7 @@ class SISOClosedLoopSystem(object):
             system_input = self.ctlsb.input_names[0]
         if system_output is None:
             system_output = self.ctlsb.output_names[-1]
-        full_closed_loop_outputs = list(set(closed_loop_outputs).union([system_output]))
+        full_closed_loop_outputs = list(set(self.closed_loop_outputs).union([system_output]))
         full_closed_loop_outputs = [o for o in full_closed_loop_outputs if not "." in o]
         ctlsb = ctl.ControlSBML(self.ctlsb.model_reference,
               input_names=[system_input], output_names=full_closed_loop_outputs)
@@ -233,7 +237,7 @@ class SISOClosedLoopSystem(object):
         system_out = "%s.%s" % (SYSTEM, system_output)
         #
         self.controller = self.factory.makePIDController(CONTROLLER,
-              kp=kp, ki=ki, kd=kd)
+              kp=kp, ki=ki, kd=kd, is_nonnegative_output=is_nonnegative_output)
         #
         if kf is None:
             self.fltr = self.factory.makePassthru(FLTR)

@@ -1,9 +1,11 @@
-mTOR example
+ metformin example 
+ design algorithm: find design parameters that create a closed loop
+    transfer function with low rmse
+ effective noise rejection?
   1. Easily construct testbed and run it
      handling construction of initial state
      MIMO analysis
 Convenience methods in ControlSBML
-Possible bug in system ID lecture. Step response doesn't look right.
 Update the course notebooks
   3. Document use of convenience methods: plotMIMOStaircaseResponse,
       fitMIMOTransferFunction, plotFitMIMOTransferFunction
