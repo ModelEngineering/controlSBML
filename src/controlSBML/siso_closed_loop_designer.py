@@ -180,27 +180,32 @@ class SISOClosedLoopDesigner(object):
         """
         if transfer_function is None:
             transfer_function = self.closed_loop_tf
-        _, predictions = control.forced_response(transfer_function, T=self.times, U=self.step_size)
+        if times is None:
+            times = self.times
+        _, predictions = control.forced_response(transfer_function, T=times, U=self.step_size)
         return predictions
     
-    def plot(self, option_manager=None, **kwargs):
+    def plot(self, times=None, **kwargs):
         """
         Plots the step response if values are assigned to the closed loop parameters.
 
         Args:
-            option_manager: OptionManager
+            kwargs: arguments for OptionManager
         """
-        if option_manager is None:
-            option_manager = OptionManager(kwargs)
-        predictions = self.simulate()
-        df = pd.DataFrame({"time": self.times, "predictions": predictions})
+        predictions = self.simulate(times=times)
+        df = pd.DataFrame({"time": times, "predictions": predictions})
         df["step_size"] = self.step_size
         ts = Timeseries(mat=df)
-        plot_result = util.plotOneTS(ts, mgr=option_manager)
+        if "is_plot" in kwargs:
+            is_plot = kwargs["is_plot"]
+        else:
+            is_plot = True
+        kwargs["is_plot"] = False
+        plot_result = util.plotOneTS(ts, **kwargs)
         ax = plot_result.ax
         tf_text = util.simplifyTransferFunction(self.closed_loop_tf)
         ax.set_title(tf_text)
-        if "is_plot" in kwargs and kwargs["is_plot"]:
+        if is_plot:
             plt.show()
         # Title lists values of the design parameters
 

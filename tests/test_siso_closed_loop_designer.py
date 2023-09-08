@@ -95,7 +95,13 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.designer.set(**PARAMETER_DCT)
-        self.designer.plot(is_plot=IS_PLOT)
+        times = np.linspace(0, 50, 500)
+        self.designer.plot(times=times, is_plot=IS_PLOT, markers=["", ""])
+        self.designer.set(kp=10, ki=5)
+        self.designer.plot(times=times, is_plot=IS_PLOT)
+        designer = self.designer.history.get(1)
+        designer.set(kp=1)
+        designer.plot(times=times, is_plot=IS_PLOT, markers=["", ""])
 
 
 #############################
