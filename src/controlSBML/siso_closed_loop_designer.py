@@ -8,6 +8,7 @@ from controlSBML.siso_closed_loop_system import SISOClosedLoopSystem
 
 import control
 import lmfit
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -60,10 +61,11 @@ def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None):
 ##################################################################
 class SISOClosedLoopDesigner(object):
 
-    def __init__(self, sys_tf, times=None, step_size=STEP_SIZE):
+    def __init__(self, sys_tf, times=None, step_size=STEP_SIZE, is_history=True):
         """
         Args:
             sys_tf: control.TransferFunction (open loop system)
+            is_history: bool (if True, then history is maintained)
         """
         self.sys_tf = sys_tf
         self.step_size = step_size
@@ -72,7 +74,7 @@ class SISOClosedLoopDesigner(object):
         else:
             self.times = times
         # Internal state
-        self.history = _History(self)
+        self.history = _History(self, is_history=is_history)
         # Outputs affected by self.set
         self.kp = None
         self.ki = None
@@ -194,7 +196,12 @@ class SISOClosedLoopDesigner(object):
         df = pd.DataFrame({"time": self.times, "predictions": predictions})
         df["step_size"] = self.step_size
         ts = Timeseries(mat=df)
-        util.plotOneTS(ts, mgr=option_manager)
+        plot_result = util.plotOneTS(ts, mgr=option_manager)
+        ax = plot_result.ax
+        tf_text = util.simplifyTransferFunction(self.closed_loop_tf)
+        ax.set_title(tf_text)
+        if "is_plot" in kwargs and kwargs["is_plot"]:
+            plt.show()
         # Title lists values of the design parameters
 
     def makeNonlinearIOSystemClosedLoop(self, ctlsb, **kwargs):
@@ -216,30 +223,40 @@ class SISOClosedLoopDesigner(object):
         self.history.add()
         util.plotOneTS(self.closed_loop_system_ts, markers=["", ""], figsize=(5, 5), xlabel="time", ax2=0)
 
+
 class _History(object):
     # Maintains history of changes to design choices
-    def __init__(self, designer):
+    def __init__(self, designer, is_history=True):
         self.designer = designer
-        self._history = None
+        self.is_history = is_history
+        self._dct = None
         self.clear()
+
+    def __len__(self):
+        first = PARAM_NAMES[0]
+        return len(self._dct[first])
     
     def clear(self):
-        self._history = {}
+        self._dct = {}
         for name in PARAM_NAMES:
-            self._history[name] = []
-        self._history[COL_CLOSED_LOOP_SYSTEM] = []
-        self._history[COL_STEP_SIZE] = []
-        self._history[COL_RMSE] = []
+            self._dct[name] = []
+        self._dct[COL_CLOSED_LOOP_SYSTEM] = []
+        self._dct[COL_CLOSED_LOOP_SYSTEM_TS] = []
+        self._dct[COL_STEP_SIZE] = []
+        self._dct[COL_RMSE] = []
 
     def add(self):
+        if not self.is_history:
+            return
         for name in PARAM_NAMES:
-            self._history[name].append(self.designer.__getattribute__(name))
-        self._history[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
-        self._history[COL_STEP_SIZE].append(self.designer.step_size)
-        self._history[COL_RMSE].append(self.designer.rmse)
+            self._dct[name].append(self.designer.__getattribute__(name))
+        self._dct[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
+        self._dct[COL_CLOSED_LOOP_SYSTEM_TS].append(self.designer.closed_loop_system_ts)
+        self._dct[COL_STEP_SIZE].append(self.designer.step_size)
+        self._dct[COL_RMSE].append(self.designer.rmse)
 
     def undo(self):
-        _ = self._history.pop()
+        _ = self._dct.pop()
 
     def report(self):
         """
@@ -248,7 +265,7 @@ class _History(object):
         Returns:
             pd.DataFrame
         """
-        df = pd.DataFrame(self._history)
+        df = pd.DataFrame(self._dct)
         return df
 
     def get(self, idx):
@@ -260,7 +277,12 @@ class _History(object):
         Returns:
             SISOClosedLoopDesigner
         """
-        dct = self._history[idx]
+        if idx > len(self) - 1:
+            raise ValueError("idx must be less than %d" % len(self))
+        # Construct entries for the desired history element
+        dct = {}
+        for name in self._dct.keys():
+            dct[name] = self._dct[name][idx]
         designer = SISOClosedLoopDesigner(self.designer.sys_tf,
                                           times=self.designer.times,
                                           step_size=STEP_SIZE)

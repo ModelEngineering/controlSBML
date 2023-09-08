@@ -6,8 +6,8 @@ import control
 import numpy as np
 import unittest
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 helpers.setupPlotting(__file__)
 MODEL = """
 S0 -> S1; k0*S0
@@ -92,10 +92,62 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertLess(calcDiff(prediction2s), calcDiff(prediction1s))
 
     def testPlot(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         self.designer.set(**PARAMETER_DCT)
         self.designer.plot(is_plot=IS_PLOT)
+        import pdb; pdb.set_trace()
+
+
+#############################
+class TestHistory(unittest.TestCase):
+
+    def setUp(self):
+        self.sys_tf = TRANSFER_FUNCTION
+        self.designer = scld.SISOClosedLoopDesigner(self.sys_tf)
+        self.history = scld._History(self.designer)
+
+    def testConstructor(self):
+        if IGNORE_TEST:
+            return
+        self.assertEqual(len(self.history), 0)
+        diff = set(scld.PARAM_NAMES) - set(self.history._dct.keys())
+        self.assertEqual(len(diff), 0)
+
+    def addItems(self, count):
+        for _ in range(count):
+            self.history.add()
+    
+    def testAdd(self):
+        if IGNORE_TEST:
+            return
+        self.addItems(1)
+        self.assertEqual(len(self.history), 1)
+        self.addItems(1)
+        self.assertEqual(len(self.history), 2)
+
+    def testReport(self):
+        if IGNORE_TEST:
+            return
+        COUNT = 3
+        self.addItems(COUNT)
+        df = self.history.report()
+        self.assertEqual(len(df), COUNT)
+    
+    def testGet(self):
+        if IGNORE_TEST:
+            return
+        COUNT = 1
+        self.addItems(COUNT)
+        designer = self.history.get(0)
+        self.assertTrue(isinstance(designer, scld.SISOClosedLoopDesigner))
+
+    def testClear(self):
+        if IGNORE_TEST:
+            return
+        self.addItems(3)
+        self.history.clear()
+        self.assertEqual(len(self.history), 0)
 
 
 if __name__ == '__main__':
