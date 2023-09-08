@@ -213,6 +213,8 @@ class NonlinearIOSystem(control.NonlinearIOSystem):
         out_vec = np.repeat(np.nan, self.num_output)
         for out_idx, name in enumerate(self.output_names):
             out_vec[out_idx] = self.ctlsb.get(name)
+            if name in self.ctlsb.floating_species_names:
+                out_vec[out_idx] = np.max(out_vec[out_idx], 0)
         if np.isnan(np.sum(out_vec)):
             raise ValueError("Outputs could not be calculated.")
         out_vec = np.array([np.max(v, 0) for v in out_vec])
