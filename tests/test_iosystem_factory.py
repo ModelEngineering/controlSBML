@@ -13,7 +13,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 SIZE = 20
 if IS_PLOT:
@@ -99,8 +99,8 @@ class TestIOSystemFactory(unittest.TestCase):
 
     # TODO: More tests for integral and differential control
     def testMakePIDController(self):
-        #if IGNORE_TEST:
-        #  return
+        if IGNORE_TEST:
+          return
         kp = 2
         factory, result = self.runController(kp=kp)
         trues = [r == kp*( t) for t, r in zip(result.t, result.outputs)]

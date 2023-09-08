@@ -6,8 +6,8 @@ import control
 import numpy as np
 import unittest
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 helpers.setupPlotting(__file__)
 MODEL = """
 S0 -> S1; k0*S0
@@ -92,11 +92,10 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertLess(calcDiff(prediction2s), calcDiff(prediction1s))
 
     def testPlot(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.designer.set(**PARAMETER_DCT)
         self.designer.plot(is_plot=IS_PLOT)
-        import pdb; pdb.set_trace()
 
 
 #############################
