@@ -1,14 +1,9 @@
-from controlSBML import util
-from controlSBML.timeseries import Timeseries
 import controlSBML.siso_closed_loop_designer as scld
-import controlSBML.constants as cn
 import controlSBML as ctl
 import helpers
 
 import control
-import pandas as pd
 import numpy as np
-import tellurium as te
 import unittest
 
 IGNORE_TEST = False
