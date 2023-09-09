@@ -20,8 +20,8 @@ S1 = 0
 S2 = 0
 """
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
-ctlsb = ctl.ControlSBML(MODEL, input_names=["S0"], output_names=["S2"])
-builder = ctlsb.makeSISOTransferFunctionBuilder(is_fixed_input_species=True)
+CTLSB = ctl.ControlSBML(MODEL, input_names=["S0"], output_names=["S2"])
+builder = CTLSB.makeSISOTransferFunctionBuilder(is_fixed_input_species=True)
 staircase = ctl.Staircase(final_value=15, num_step=5)
 fitter_result = builder.fitTransferFunction(num_numerator=2, num_denominator=3, staircase=staircase)
 TRANSFER_FUNCTION = fitter_result.transfer_function
@@ -38,6 +38,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
     def setUp(self):
         self.sys_tf = TRANSFER_FUNCTION
         self.designer = scld.SISOClosedLoopDesigner(self.sys_tf)
+        self.ctlsb = CTLSB
 
     def testGetSet(self):
         if IGNORE_TEST:
@@ -86,9 +87,9 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         sys_tf = control.tf([1], [1, 1])
         designer = scld.SISOClosedLoopDesigner(sys_tf)
         designer.set(kp=20)
-        prediction1s = designer.simulate()
+        _, prediction1s = designer.simulate()
         designer.set(kp=20, ki=50)
-        prediction2s = designer.simulate()
+        _, prediction2s = designer.simulate()
         self.assertLess(calcDiff(prediction2s), calcDiff(prediction1s))
 
     def testPlot(self):
@@ -102,6 +103,12 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer = self.designer.history.get(1)
         designer.set(kp=1)
         designer.plot(times=times, is_plot=IS_PLOT, markers=["", ""])
+    
+    def testEvaluatePlotResult(self):
+        if IGNORE_TEST:
+            return
+        self.designer.set(**PARAMETER_DCT)
+        self.designer.evaluateNonlinearIOSystemClosedLoop(self.ctlsb, is_plot=IS_PLOT)
 
 
 #############################

@@ -139,7 +139,7 @@ class SISOClosedLoopDesigner(object):
             kwargs = dict(sys_tf=self.sys_tf)
             kwargs.update(params.valuesdict())
             tf = _calculateClosedLoopTf(**kwargs)
-            predictions = self.simulate(transfer_function=tf)
+            _, predictions = self.simulate(transfer_function=tf)
             if min_response is not None:
                 predictions = np.array([v if v >= min_response else v*BELOW_MIN_MULTIPLIER for v in predictions])
             if max_response is not None:
@@ -174,7 +174,7 @@ class SISOClosedLoopDesigner(object):
         Args
             times (np.array): time points for the simulation
         Returns
-            (np.array, np.array): predictions
+            (np.array, np.array): times, predictions
         Raises
             ValueError: if there are no parameters defined for the closed loop transfer function
         """
@@ -182,8 +182,8 @@ class SISOClosedLoopDesigner(object):
             transfer_function = self.closed_loop_tf
         if times is None:
             times = self.times
-        _, predictions = control.forced_response(transfer_function, T=times, U=self.step_size)
-        return predictions
+        new_times, predictions = control.forced_response(transfer_function, T=times, U=self.step_size)
+        return new_times, predictions
     
     def plot(self, times=None, **kwargs):
         """
@@ -192,8 +192,8 @@ class SISOClosedLoopDesigner(object):
         Args:
             kwargs: arguments for OptionManager
         """
-        predictions = self.simulate(times=times)
-        df = pd.DataFrame({"time": times, "predictions": predictions})
+        new_times, predictions = self.simulate(times=times)
+        df = pd.DataFrame({"time": new_times, "predictions": predictions})
         df["step_size"] = self.step_size
         ts = Timeseries(mat=df)
         if "is_plot" in kwargs:
@@ -209,7 +209,8 @@ class SISOClosedLoopDesigner(object):
             plt.show()
         # Title lists values of the design parameters
 
-    def makeNonlinearIOSystemClosedLoop(self, ctlsb, **kwargs):
+    def evaluateNonlinearIOSystemClosedLoop(self, ctlsb, times=None, step_size=STEP_SIZE, 
+                                            is_plot=True, **kwargs):
         """
         Creates a SISOClosedLoopSystem using the parameters of the designer.
 
@@ -219,14 +220,26 @@ class SISOClosedLoopDesigner(object):
         Returns:
             control.Interconnect
         """
+        if times is None:
+            times = self.times
+        start_time = times[0]
+        end_time = times[-1]
         siso = SISOClosedLoopSystem(ctlsb)
         new_kwargs = self.get()
         new_kwargs.update(kwargs)
         siso.makePIDClosedLoopSystem(**new_kwargs)
         self.closed_loop_system = siso.closed_loop_system
-        self.closed_loop_system_ts = siso.makeStepResponse(start_time=0, end_time=100, step_size=500)
+        self.closed_loop_system_ts = siso.makeStepResponse(start_time=start_time, end_time=end_time,
+                                                           step_size=step_size)
         self.history.add()
-        util.plotOneTS(self.closed_loop_system_ts, markers=["", ""], figsize=(5, 5), xlabel="time", ax2=0)
+        plot_result = util.plotOneTS(self.closed_loop_system_ts, markers=["", ""],
+                                     figsize=(5, 5), xlabel="time", ax2=0,
+                       is_plot=False)
+        param_dct = self.get()
+        text = ["%s=%2.4f " % (name, param_dct[name]) for name in param_dct.keys()]
+        plot_result.ax.set_title(" ".join(text))
+        if is_plot:
+            plt.show()
 
 
 class _History(object):
@@ -296,4 +309,5 @@ class _History(object):
         designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]
         designer.closed_loop_system_ts = dct[COL_CLOSED_LOOP_SYSTEM_TS]
         designer.rmse = dct[COL_RMSE]
+        designer.history.add()
         return designer

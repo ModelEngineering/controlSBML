@@ -10,6 +10,7 @@ from controlSBML.iosystem_factory import IOSystemFactory
 from controlSBML.siso_closed_loop_system import SISOClosedLoopSystem
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 from controlSBML.mimo_transfer_function_builder import MIMOTransferFunctionBuilder
+from controlSBML.siso_closed_loop_designer import SISOClosedLoopDesigner
 from controlSBML.simulate_system import simulateSystem, makeStateVector
 from controlSBML.staircase import Staircase
 from controlSBML.timeseries import Timeseries, TimeseriesSer
