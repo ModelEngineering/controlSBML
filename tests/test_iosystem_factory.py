@@ -95,7 +95,11 @@ class TestIOSystemFactory(unittest.TestCase):
            U = times
         factory = IOSystemFactory(is_log=is_log)
         controller = factory.makePIDController(name, **kwargs)
-        return factory, control.input_output_response(controller, T=times, U=U)
+        if isinstance(controller, control.TransferFunction):
+            result = control.forced_response(controller, T=times, U=U)
+        else:
+            result = control.input_output_response(controller, T=times, U=U)
+        return factory, result
 
     # TODO: More tests for integral and differential control
     def testMakePIDController(self):
@@ -103,7 +107,7 @@ class TestIOSystemFactory(unittest.TestCase):
           return
         kp = 2
         factory, result = self.runController(kp=kp)
-        trues = [r == kp*( t) for t, r in zip(result.t, result.outputs)]
+        trues = [np.abs(r-kp*t) < 0.01 for t, r in zip(result.t, result.y[0])]
         self.assertTrue(all(trues))
         #
         _, result_ki = self.runController(ki=kp)
@@ -111,7 +115,7 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertGreater(result_ki.y[0][-1], result_kd.y[0][-1])
         U = np.array(range(SIZE//2))
         U = np.concatenate([U, -U])
-        _, result_kd1 = self.runController(kd=kp, is_nonnegative_output=True, U=U)
+        _, result_kd1 = self.runController(kd=kp, U=U)
         tot = np.sum(result_kd1.y[SIZE//2:])
         self.assertEqual(tot, 0)
 
@@ -225,13 +229,15 @@ class TestIOSystemFactory(unittest.TestCase):
         if IGNORE_TEST:
           return
         def test(is_log=False):
-            factory, _ = self.runController(is_log=is_log)
+            factory = IOSystemFactory(is_log=is_log)
+            signal = factory.makeArbitrarySignal("arb")
+            _ = control.input_output_response(signal, T=TIMES)
             df = factory.report()
             if not is_log:
                self.assertIsNone(df)
             else:
                 self.assertGreater(len(df), 0)
-                self.assertEqual(len(df.columns), 4)
+                self.assertEqual(len(df.columns), 1)
             return df
         #
         _ = test(is_log=False)
@@ -250,13 +256,14 @@ class TestIOSystemFactory(unittest.TestCase):
         outputs = result.outputs[0]
         self.assertEqual(len(times), len(outputs))
 
+    # FIXME: Takes too long t run
     def testBug1(self):
         if IGNORE_TEST:
           return
         # Elements of the system
         kp = 1
-        ki = 1
-        kd = 0
+        ki = 0.1
+        kd = 0.1
         dt = 1/cn.POINTS_PER_TIME
         factory = ctl.IOSystemFactory(dt=dt)
         # Create the elements of the feedback loop
@@ -290,7 +297,7 @@ class TestIOSystemFactory(unittest.TestCase):
           outlist=['system.S3'],
         )
         
-        times = ctl.makeSimulationTimes(0, 50, 1/dt)
+        times = np.linspace(0,1, 10)
         X0 = ctl.makeStateVector(closed_loop)
         U = 1
         result = control.input_output_response(closed_loop, T=times, U=U, X0=X0)

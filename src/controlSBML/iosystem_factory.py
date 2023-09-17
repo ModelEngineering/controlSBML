@@ -33,11 +33,14 @@ IN2 = "in2"
 OUT = "out"
 REF = "ref"
 STATE = "state"
+#
+MIN_TIME_DELTA = 1e-5
+LOWPASS_POLE = 1e4
 
 
 class IOSystemFactory(object):
 
-    def __init__(self, name="factory", dt=1/cn.POINTS_PER_TIME, is_log=False):
+    def __init__(self, name="factory", dt=1/cn.POINTS_PER_TIME, is_log=False, **kwargs):
         """
         Parameters
         ----------
@@ -47,12 +50,15 @@ class IOSystemFactory(object):
             delta between simulation times
         is_log: bool
             Log activity of factory objects
+        kwargs: dict
+            Keyword arguments for the NonIOSystem
         """
         self.name = name
         self.dt = dt
         self.registered_names = []  # List of names logged
         self.is_log = is_log
         self.loggers = []  # Loggers for created objects
+        self.nonlineariosystem_kwargs = kwargs
 
     def _registerLogger(self, logger_name, item_names, logger=None):
         """Creates and records loggers in the factory."""
@@ -126,17 +132,15 @@ class IOSystemFactory(object):
         Returns
         -------
         """
-        system = ctlsb.makeNonlinearIOSystem(name)
+        system = ctlsb.makeNonlinearIOSystem(name, **self.nonlineariosystem_kwargs)
         self._registerLogger(name, None, logger=system.updfcn_logger)
         return system
-
-    def makePIDController(self, name, kp=2, ki=0, kd=0, is_nonnegative_output=False):
+    
+    
+    def makePIDController(self, name, kp=0, ki=0, kd=0):
         """
-        Creates a PID controller.
-        NonlinearIOSystem with input IN and output OUT.
-        States are:
-            culmulative_err: cumulative control error
-            last_err: last control error
+        Creates a PID controller followed by a low/med pass filter. This is done to avoid an improper transfer function
+        (degree of the numerator exceeds the denominator).
 
         Parameters
         ----------
@@ -148,7 +152,40 @@ class IOSystemFactory(object):
            integral control constant
         kd: float
            differential control constant.
-        is_nonnegative_output: bool (output cannot be negative)
+
+        Returns
+        -------
+        control.TransferFunction or control.NonlinearIOSystem (if kd=0)
+            name: name
+            inputs: cn.IN
+            outputs: cn.OUT
+        """
+        if np.isclose(kd, 0):
+            return self.makePIController(name, kp=kp, ki=ki)
+        else:
+            # Must create a transfer not improper transfer function
+            kf = LOWPASS_POLE
+            numr = [kf*kd, kf*kp, kf*ki]
+            denr = [1, kf, 0]
+            control_filter_tf = control.TransferFunction(numr, denr, name=name, inputs=cn.IN, outputs=cn.OUT)
+            return control_filter_tf
+
+
+    def makePIController(self, name, kp=None, ki=None):
+        """
+        Creates a PID controller.
+        NonlinearIOSystem with input IN (setpoint) and control output OUT.
+        States are:
+            culmulative_err: cumulative control error
+
+        Parameters
+        ----------
+        name: str
+            Name of the system
+        kp: float
+           proportional control constant
+        ki: float
+           integral control constant
 
         Returns
         -------
@@ -156,33 +193,29 @@ class IOSystemFactory(object):
         """
         #
         logger_name = "%s_outfcn" % name
-        logger = self._registerLogger(logger_name, [IN, "last_err",
-              "acc_err", OUT])
+        logger = self._registerLogger(logger_name, ["u_val", "x_state" "acc_err", OUT])
         def updfcn(_, x_vec, u_vec, __):
             # u: float (error signal)
-            # x_vec[0] - last_u
-            # x_vec[1] - accumulated_u
+            # x_vec[0] - accumulated_u
             u_val = self._array2scalar(u_vec)
-            daccumulated_u = u_val/self.dt
-            dlast_u_val = (u_val - x_vec[0])/self.dt
-            return dlast_u_val, daccumulated_u
+            return u_val
         #
         def outfcn(time, x_vec, u_vec, __):
             # u: float (error signal)
+            # x_vec[0] - accumulated_u
+            #####
             u_val = self._array2scalar(u_vec)
-            last_u_val = x_vec[0]
-            accumulated_u_val = x_vec[1]
-            control_out =  kp*u_val  \
-                          + ki*accumulated_u_val \
-                          + kd*(u_val - last_u_val)/self.dt
-            if is_nonnegative_output:
-                control_out = max(0, control_out)
-            self.add(logger, time, [u_val, x_vec[0], x_vec[1], control_out])
+            accumulated_u_val = x_vec[0]
+            control_out =  kp*u_val  + ki*accumulated_u_val
+            # Log the calculation
+            values = list([u_val, x_vec[0], accumulated_u_val, control_out])
+            self.add(logger, time, values)
+            #
             return control_out
         #
         return control.NonlinearIOSystem(
             updfcn, outfcn, inputs=[IN], outputs=[OUT],
-            states=["last_err", "accumulated_err"],
+            states=["accumulated_err"],
             name=name)
 
     def makeFullStateController(self, controller_name, ss_sys, state_names, poles=-2, dcgain=1.0):

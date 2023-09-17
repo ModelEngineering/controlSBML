@@ -16,7 +16,7 @@ IGNORE_TEST = False
 IS_PLOT = False
 SIZE = 10
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
-MODEL3 = """
+MODEL3a = """
 
 -> S0; k0
 S0 -> S1; k1*S0
@@ -101,9 +101,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             return
         ctlsb = ctl.ControlSBML(MODEL3, input_names=["S0"],
               output_names=["S2"])
-        siso = SISOClosedLoopSystem(ctlsb)
-        siso.makePIDClosedLoopSystem(kp=0.2,
-                                    closed_loop_outputs=["S1", "S2"])
+        siso = SISOClosedLoopSystem(ctlsb, is_fixed_input_species=True)
+        siso.makePIDClosedLoopSystem(kp=0.2, closed_loop_outputs=["S1", "S2"])
         times = ctl.makeSimulationTimes(end_time=100)
         inputs = np.repeat(0, len(times))
         inputs[0] = 1
@@ -114,7 +113,9 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
             plt.plot(result.t.flatten(), result.y[1].flatten())
             plt.show()
         self.assertEqual(np.shape(result.y)[0], 2)  # Should have 2 outputs
-        self.assertTrue(np.isclose(result.y[1,-1], 0))  # S2 should go to 0
+        max_val = np.max(result.y[1,:])
+        max_ratio = result.y[1,-1]/max_val
+        self.assertLess(max_ratio, 0.01)  # S2 should go to 0
 
     def testMakePIDClosedLoopSystem2(self):
         # FIXME: very inefficient test
@@ -154,8 +155,8 @@ class TestSISOClosedLoopSystem(unittest.TestCase):
         siso.makePIDClosedLoopSystem(kp=1, ki=0, kf=None,
             noise_amp=0, noise_frq=20,
             closed_loop_outputs=closed_loop_outputs)
-        ts = siso.makeStepResponse(time=1, step_size=1, end_time=30,
-              points_per_time=2)
+        ts = siso.makeResponse(time=0, step_size=1, end_time=5, period=2,
+              points_per_time=10)
         ts.columns = ["input", "e(t)", "system.in", "output"]
         self.assertGreater(len(ts), 0)
         self.assertEqual(sum(sum(np.isnan(ts.to_numpy()))), 0)

@@ -19,53 +19,48 @@ STEP_SIZE = 1
 BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
 PARAM_NAMES = ["kp", "ki", "kd", "kf"]
+LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
 COL_KP = "kp"
 COL_KI = "ki"
 COL_KD = "kd"
 COL_KF = "kf"
-COL_RMSE = "rmse"
+COL_RESIDUAL_RMSE = "residual_rmse"
 COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
 COL_CLOSED_LOOP_SYSTEM_TS = "closed_loop_system_ts"
 COL_STEP_SIZE = "step_size"
 
 
-
-def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None):
+##################################################################
+def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
     # Construct the transfer functions
-    is_none = True
-    if sys_tf is None:
-        raise ValueError("sys_tf must be defined")
-    controller_tf = control.tf([0], [1])
-    if kp is not None:
-        is_none = False
-        controller_tf += control.tf([kp], [1])
-    if ki is not None:
-        is_none = False
-        controller_tf += control.tf([ki], [1, 0])
-    if kd is not None:
-        is_none = False
-        controller_tf += control.tf([kd, 0], [1])
+    controller_tf = util.makePIDTransferFunction(kp=kp, ki=ki, kd=kd)
     # Filter
     if kf is not None:
         is_none = False
         filter_tf = control.TransferFunction([kf], [1, kf])
     else:
         filter_tf = 1
-    if is_none:
-        raise ValueError("At least one parameter must be defined")
     # Closed loop transfer function
-    return control.feedback(controller_tf*sys_tf, filter_tf)
+    forward_tf = sys_tf*controller_tf
+    final_tf = control.feedback(forward_tf, filter_tf, sign=sign)
+    # Ensure that the resulting transfer function is proper
+    if len(final_tf.num[0][0]) == len(final_tf.den[0][0]):
+        lowpass_tf = control.tf([LOWPASS_POLE], [1, LOWPASS_POLE])
+        forward_tf = lowpass_tf*forward_tf
+        final_tf = control.feedback(forward_tf, filter_tf, sign=sign)
+    return final_tf
 
 
 ##################################################################
 class SISOClosedLoopDesigner(object):
 
-    def __init__(self, sys_tf, times=None, step_size=STEP_SIZE, is_history=True):
+    def __init__(self, sys_tf, times=None, step_size=STEP_SIZE, is_history=True, sign=-1):
         """
         Args:
             sys_tf: control.TransferFunction (open loop system)
             is_history: bool (if True, then history is maintained)
+            sign: int (if -1, then the residuals are multiplied by -1)
         """
         self.sys_tf = sys_tf
         self.step_size = step_size
@@ -73,24 +68,28 @@ class SISOClosedLoopDesigner(object):
             self.times = np.linspace(0, 5, 50)
         else:
             self.times = times
+        self.sign = sign
         # Internal state
         self.history = _History(self, is_history=is_history)
-        # Outputs affected by self.set
+        # Outputs
         self.kp = None
         self.ki = None
         self.kd = None
         self.kf = None
         self.closed_loop_system = None
         self.closed_loop_system_ts = None
-        # Outputs produced by self.design
+        self.residual_rmse = None
         self.minimizer_result = None
-        self.rmse = None # Root mean square of residuals
+        #
+        self._initializeDesigner()
+        self.siso = None # SISOClosedLoopSystem
         # 
         self.history.add()
 
     @property
     def closed_loop_tf(self):
-        return _calculateClosedLoopTf(sys_tf=self.sys_tf, kp=self.kp, ki=self.ki, kd=self.kd, kf=self.kf)
+        return _calculateClosedLoopTf(sys_tf=self.sys_tf, kp=self.kp, ki=self.ki, kd=self.kd,
+                                      kf=self.kf, sign=self.sign)
     
     def set(self, kp=None, ki=None, kd=None, kf=None):
         """
@@ -120,31 +119,44 @@ class SISOClosedLoopDesigner(object):
             if self.__getattribute__(name) is not None:
                 dct[name] = self.__getattribute__(name)
         return dct 
+    
+    def _initializeDesigner(self):
+        self.minimizer_result = None
+        self.residual_rmse = None # Root mean square of residuals
+        self.kp = None
+        self.ki = None
+        self.kd = None
+        self.kf = None
 
-    def design(self, min_response=None, max_response=None, kp=False, ki=False, kd=False, kf=False):
+    def design(self, min_response=None, max_response=None, kp=False, ki=False, kd=False, kf=False,
+               residual_precision=5):
         """
         Args:
             times (np.array): time points for the simulation
             min_response (float): minimum response value for the transfer function
             max_response (float): maximum response value for the transfer function
             kp, ki, kd, kf (bool, float): if True, the parameter is fitted. If float, then initial value.
+            residual_precision: int (number of decimal places for the residuals)
         """
+        self._initializeDesigner()
         def _calculateResiduals(params):
             """
             Args:
                 params (lmfit.Parameters)
-                sys_tf (control.TransferFunction)
             """
             # Calculate the closed loop transfer function
             kwargs = dict(sys_tf=self.sys_tf)
             kwargs.update(params.valuesdict())
+            kwargs.update({"sign": self.sign})
             tf = _calculateClosedLoopTf(**kwargs)
             _, predictions = self.simulate(transfer_function=tf)
             if min_response is not None:
                 predictions = np.array([v if v >= min_response else v*BELOW_MIN_MULTIPLIER for v in predictions])
             if max_response is not None:
                 predictions = np.array([v if v <= max_response else v*ABOVE_MAX_MULTIPLIER for v in predictions])
-            return STEP_SIZE - predictions
+            residuals = self.step_size - predictions
+            residuals = np.round(residuals, residual_precision)
+            return residuals
         # Construct the parameters
         params = lmfit.Parameters()
         for name in PARAM_NAMES:
@@ -164,14 +176,15 @@ class SISOClosedLoopDesigner(object):
                 value = self.minimizer_result.params[name].value
                 new_params.add(name, value=value, min=MIN_VALUE, max=MAX_VALUE)
         residuals = _calculateResiduals(new_params)
-        self.rmse = np.sqrt(np.mean(residuals**2))
+        self.residual_rmse = np.sqrt(np.mean(residuals**2))
         self.history.add()
 
-    def simulate(self, transfer_function=None, times=None):
+    def simulate(self, transfer_function=None, period=None, times=None):
         """
         Simulates the closed loop transfer function based on the parameters of the object.
 
         Args
+            transfer_function (control.TransferFunction): closed loop transfer function
             times (np.array): time points for the simulation
         Returns
             (np.array, np.array): times, predictions
@@ -182,17 +195,22 @@ class SISOClosedLoopDesigner(object):
             transfer_function = self.closed_loop_tf
         if times is None:
             times = self.times
-        new_times, predictions = control.forced_response(transfer_function, T=times, U=self.step_size)
+        if period is not None:
+            U = np.sin(2*np.pi*times/period)
+        else:
+            U = np.repeat(1, len(times))
+        U = U*self.step_size
+        new_times, predictions = control.forced_response(transfer_function, T=times, U=U)
         return new_times, predictions
     
-    def plot(self, times=None, **kwargs):
+    def plot(self, times=None, period=None, **kwargs):
         """
         Plots the step response if values are assigned to the closed loop parameters.
 
         Args:
             kwargs: arguments for OptionManager
         """
-        new_times, predictions = self.simulate(times=times)
+        new_times, predictions = self.simulate(times=times, period=period)
         df = pd.DataFrame({"time": new_times, "predictions": predictions})
         df["step_size"] = self.step_size
         ts = Timeseries(mat=df)
@@ -210,12 +228,15 @@ class SISOClosedLoopDesigner(object):
         # Title lists values of the design parameters
 
     def evaluateNonlinearIOSystemClosedLoop(self, ctlsb, times=None, step_size=STEP_SIZE, 
-                                            is_plot=True, **kwargs):
+                                            num_initial_zero=5, period=0, is_plot=True, **kwargs):
         """
         Creates a SISOClosedLoopSystem using the parameters of the designer.
 
         Args:
             ctlsb: ControlSBML
+            times: np.array (times for simulation)
+            step_size: float (step size for simulation)
+            num_initial_zero: int (number of initial zeros for simulation)
             kwargs: arguments for SISOClosedLoopSystem
         Returns:
             control.Interconnect
@@ -224,13 +245,13 @@ class SISOClosedLoopDesigner(object):
             times = self.times
         start_time = times[0]
         end_time = times[-1]
-        siso = SISOClosedLoopSystem(ctlsb)
-        new_kwargs = self.get()
-        new_kwargs.update(kwargs)
-        siso.makePIDClosedLoopSystem(**new_kwargs)
-        self.closed_loop_system = siso.closed_loop_system
-        self.closed_loop_system_ts = siso.makeStepResponse(start_time=start_time, end_time=end_time,
-                                                           step_size=step_size)
+        self.siso = SISOClosedLoopSystem(ctlsb, **kwargs)
+        param_dct = {n: 0 for n in PARAM_NAMES}
+        param_dct.update(self.get())
+        self.siso.makePIDClosedLoopSystem(**param_dct)
+        self.closed_loop_system = self.siso.closed_loop_system
+        self.closed_loop_system_ts = self.siso.makeResponse(start_time=start_time, end_time=end_time, period=period,
+                                                           step_size=step_size, num_initial_zero=num_initial_zero)
         self.history.add()
         plot_result = util.plotOneTS(self.closed_loop_system_ts, markers=["", ""],
                                      figsize=(5, 5), xlabel="time", ax2=0,
@@ -261,7 +282,7 @@ class _History(object):
         self._dct[COL_CLOSED_LOOP_SYSTEM] = []
         self._dct[COL_CLOSED_LOOP_SYSTEM_TS] = []
         self._dct[COL_STEP_SIZE] = []
-        self._dct[COL_RMSE] = []
+        self._dct[COL_RESIDUAL_RMSE] = []
 
     def add(self):
         if not self.is_history:
@@ -271,7 +292,7 @@ class _History(object):
         self._dct[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
         self._dct[COL_CLOSED_LOOP_SYSTEM_TS].append(self.designer.closed_loop_system_ts)
         self._dct[COL_STEP_SIZE].append(self.designer.step_size)
-        self._dct[COL_RMSE].append(self.designer.rmse)
+        self._dct[COL_RESIDUAL_RMSE].append(self.designer.residual_rmse)
 
     def undo(self):
         _ = self._dct.pop()
@@ -308,6 +329,6 @@ class _History(object):
             designer.__setattr__(name, dct[name])
         designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]
         designer.closed_loop_system_ts = dct[COL_CLOSED_LOOP_SYSTEM_TS]
-        designer.rmse = dct[COL_RMSE]
+        designer.residual_rmse = dct[COL_RESIDUAL_RMSE]
         designer.history.add()
         return designer

@@ -164,7 +164,6 @@ class SISOClosedLoopSystem(object):
           disturbance_amp=0, disturbance_frq=0,   # Disturbance
           noise_amp=0, noise_frq=0,               # Noise
           kf=None,                                # Filter
-          is_nonnegative_output=False,
           system_input=None,                      # SISO input, output
           system_output=None,
           closed_loop_outputs=None):              # list of outputs
@@ -236,8 +235,7 @@ class SISOClosedLoopSystem(object):
         system_in = "%s.%s" % (SYSTEM, system_input)
         system_out = "%s.%s" % (SYSTEM, system_output)
         #
-        self.controller = self.factory.makePIDController(CONTROLLER,
-              kp=kp, ki=ki, kd=kd, is_nonnegative_output=is_nonnegative_output)
+        self.controller = self.factory.makePIDController(CONTROLLER, kp=kp, ki=ki, kd=kd)
         #
         if kf is None:
             self.fltr = self.factory.makePassthru(FLTR)
@@ -520,16 +518,20 @@ class SISOClosedLoopSystem(object):
         dct[CONNECTIONS] = connections
         return dct
 
-    def makeStepResponse(self, time=0, step_size=1, **time_opts):
+    def makeResponse(self, time=0, step_size=1, period=0, num_initial_zero=5, **time_opts):
         """
-        Simulates the step response.
+        Simulates the response to an input signal, either step response or sinusoid.
 
         Parameters
         ----------
         time: float
             time used for state in the ControlSBML system
+        step_size: float (step size, sine wave amplitude)
+        period: float (period of sine wave)
+        num_initial_zero: int (number of zeroes at beginng of step)
         time_opts: Options
             start_time, end_time
+        num_initial_zero: int (number of zeroes at beginng of step)
 
         Returns
         -------
@@ -539,10 +541,14 @@ class SISOClosedLoopSystem(object):
         """
         self.factory.dt = time_opts.get("dt", 1.0/cn.POINTS_PER_TIME)
         self.factory.initializeLoggers()
-        times = ctl.makeSimulationTimes(**time_opts)
+        times = util.cleanTimes(cn.MS_IN_SEC*ctl.makeSimulationTimes(**time_opts))/cn.MS_IN_SEC
         X0 = makeStateVector(self.closed_loop_system, start_time=time)
+        U = np.array([0 if n < num_initial_zero else 1 for n in range(len(times))])
+        if (period is not None) and (period > 0):
+            U = U*np.sin(2*np.pi*times/period)
+        U = step_size*U
         timeresponse = control.input_output_response(self.closed_loop_system,
-              times, U=step_size, X0=X0)
+              T=times, U=U, X0=X0)
         ts = util.timeresponse2Timeseries(timeresponse,
               column_names=self.closed_loop_outputs)
         df = ts.rename({CL_OUTPUT_OUT: self.ctlsb.output_names[-1]}, axis="columns")

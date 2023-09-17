@@ -198,6 +198,39 @@ def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
     times = times/cn.MS_IN_SEC
     return np.array(times)
 
+def makePIDTransferFunction(kp=None, ki=None, kd=None, name="controller", input_name=cn.IN, output_name=cn.OUT):
+    """
+    Constructs a PID transfer function.
+
+    Args:
+        kp: float
+        ki: float
+        kd: float
+
+    Raises:
+        ValueError: must provide at least one of kp, ki, kd
+
+    Returns:
+        control.TransferFunction
+    """
+    is_none = True
+    controller_tf = control.tf([0], [1], name=name, inputs=input_name, outputs=output_name)
+    if kp is not None:
+        is_none = False
+        controller_tf += control.tf([kp], [1])
+    if ki is not None:
+        is_none = False
+        controller_tf += control.tf([ki], [1, 0])
+    if kd is not None:
+        is_none = False
+        controller_tf += control.tf([kd, 0], [1])
+    if is_none:
+        raise ValueError("At least one of kp, ki, kd, kf must be defined")
+    controller_tf.name = name
+    controller_tf.input_labels = [input_name]
+    controller_tf.output_labels = [output_name]
+    return controller_tf
+
 def mat2DF(mat, column_names=None, row_names=None):
     """
     Converts a numpy ndarray or array-like to a DataFrame.

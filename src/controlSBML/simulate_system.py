@@ -71,6 +71,7 @@ def simulateSystem(sys, output_names=None, initial_x_vec=None, u_vec=None,
           end_time=end_time, points_per_time=points_per_time)
     if "ctlsb" in dir(sys):
         # The following is needed to address models that have assignment rules
+        sys.ctlsb.roadrunner.reset()
         conserved_moiety_analysis = sys.ctlsb.roadrunner.conservedMoietyAnalysis
         sys.ctlsb.roadrunner.conservedMoietyAnalysis = False
         pass
