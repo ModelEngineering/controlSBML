@@ -11,6 +11,10 @@ class TemporalSeries(object):
             times: list-float (positive)
             values: list-float
         """
+        if times is None:
+            times = []
+        if values is None:
+            values = []
         if len(times) != len(values):
             raise ValueError("len(times) != len(values)")
         self._times = list(times)
@@ -82,6 +86,10 @@ class TemporalSeries(object):
         mult = 10**precision
         step = int(mult*np.round(step_time, precision))
         upper = min(int(mult*max_time+count*step), mult*max_time)
-        times = np.arange(int(mult*min_time), upper, step)/mult
-        values = [self.getValue(t) for t in times]
+        if upper > 0:
+            times = np.arange(int(mult*min_time), upper, step)/mult
+            values = [self.getValue(t) for t in times]
+        else:
+            times = [self._times[-1]]
+            values = [self._values[-1]]
         return times, values

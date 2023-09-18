@@ -539,7 +539,6 @@ class SISOClosedLoopSystem(object):
             COL_REF
             closed loop outputs
         """
-        self.factory.dt = time_opts.get("dt", 1.0/cn.POINTS_PER_TIME)
         self.factory.initializeLoggers()
         times = util.cleanTimes(cn.MS_IN_SEC*ctl.makeSimulationTimes(**time_opts))/cn.MS_IN_SEC
         X0 = makeStateVector(self.closed_loop_system, start_time=time)

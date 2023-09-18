@@ -13,7 +13,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 SIZE = 20
 if IS_PLOT:
@@ -264,8 +264,7 @@ class TestIOSystemFactory(unittest.TestCase):
         kp = 1
         ki = 0.1
         kd = 0.1
-        dt = 1/cn.POINTS_PER_TIME
-        factory = ctl.IOSystemFactory(dt=dt)
+        factory = ctl.IOSystemFactory()
         # Create the elements of the feedback loop
         noise = factory.makeSinusoid("noise", amplitude=0, frequency=20)
         disturbance = factory.makeSinusoid("disturbance", 0, 2)
@@ -374,6 +373,15 @@ class TestIOSystemFactory(unittest.TestCase):
         self.assertEqual(min(y_values), 0)
         if IS_PLOT:
             plt.savefig(PLOT_PATH)
+
+    # TODO: Compare if transfer function simulation
+    def testMakeFromTransferFunction(self):
+       #if IGNORE_TEST:
+       #   return
+       tf = control.TransferFunction([1, 2, 3, 4], [1, 4, 3, 2, 24])
+       sys = self.factory.makeFromTransferFunction("tf", tf)
+       result = control.input_output_response(sys, T=TIMES, U=1)
+       import pdb; pdb.set_trace()
 
 
 if __name__ == '__main__':

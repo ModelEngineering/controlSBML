@@ -22,6 +22,7 @@ in the factor property loggers.
 
 from controlSBML import constants as cn
 from controlSBML import logger as lg
+from controlSBML.temporal_series import TemporalSeries
 from controlSBML import util
 
 import control
@@ -40,21 +41,18 @@ LOWPASS_POLE = 1e4
 
 class IOSystemFactory(object):
 
-    def __init__(self, name="factory", dt=1/cn.POINTS_PER_TIME, is_log=False, **kwargs):
+    def __init__(self, name="factory", is_log=False, **kwargs):
         """
         Parameters
         ----------
         name: str
             Name of the InterconnectedSystem
-        dt: float
-            delta between simulation times
         is_log: bool
             Log activity of factory objects
         kwargs: dict
             Keyword arguments for the NonIOSystem
         """
         self.name = name
-        self.dt = dt
         self.registered_names = []  # List of names logged
         self.is_log = is_log
         self.loggers = []  # Loggers for created objects
@@ -170,7 +168,6 @@ class IOSystemFactory(object):
             control_filter_tf = control.TransferFunction(numr, denr, name=name, inputs=cn.IN, outputs=cn.OUT)
             return control_filter_tf
 
-
     def makePIController(self, name, kp=None, ki=None):
         """
         Creates a PID controller.
@@ -216,6 +213,46 @@ class IOSystemFactory(object):
         return control.NonlinearIOSystem(
             updfcn, outfcn, inputs=[IN], outputs=[OUT],
             states=["accumulated_err"],
+            name=name)
+
+    def makeFromTransferFunction(self, name, transfer_function, count=10):
+        """
+        Creates a NonlinearIOSystem from a transfer function.
+
+        Parameters
+        ----------
+        name: str
+            Name of the system
+        transfer_function: control.TransferFunction
+        count: int (number of values used to calculate the transfer function)
+
+        Returns
+        -------
+        control.NonlinearIOSystem
+        """
+        #
+        logger_name = "%s_outfcn" % name
+        logger = self._registerLogger(logger_name, [IN, OUT])
+        series = TemporalSeries()
+        transfer_function_ss = control.tf2ss(transfer_function)
+        def outfcn(time, _, u_vec, __):
+            # u: float (error signal)
+            #####
+            u_val = self._array2scalar(u_vec)
+            series.add(time, u_val)
+            if len(series) > 1:
+                times, values = series.getTimesValues(count)
+                _, ys = control.forced_response(transfer_function_ss, T=times, U=values)
+                output = ys[-1]
+            else:
+                output = 0
+            # Log the calculation
+            self.add(logger, time, [u_val, output])
+            #
+            return output
+        #
+        return control.NonlinearIOSystem(
+            None, outfcn, inputs=[IN], outputs=[OUT],
             name=name)
 
     def makeFullStateController(self, controller_name, ss_sys, state_names, poles=-2, dcgain=1.0):

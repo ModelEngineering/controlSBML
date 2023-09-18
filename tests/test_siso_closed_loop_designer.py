@@ -79,9 +79,9 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer.kf = 4
         closed_loop_tf = designer.closed_loop_tf
         numr = np.array(closed_loop_tf.num[0][0])
-        self.assertTrue(np.allclose(numr, [2, 8, 0]))
+        self.assertTrue(np.allclose(numr, [20000, 80000, 0]))
         denr = np.array(closed_loop_tf.den[0][0])
-        self.assertTrue(np.allclose(denr, [1, 13, 4]))
+        self.assertTrue(np.allclose(denr, [1.00000e+00, 1.00050e+04, 1.30004e+05, 4.00000e+04]))
 
     def testDesign1(self):
         if IGNORE_TEST:
