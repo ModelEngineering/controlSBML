@@ -39,6 +39,10 @@ class TemporalSeries(object):
         Returns:
             float
         """
+        min_time = np.min(self._times)
+        max_time = np.max(self._times)
+        if (time < min_time) or (time > max_time):
+            raise ValueError("time must be in [%f, %f]" % (min_time, max_time))
         lower_time = np.max([t for t in self._times if t <= time])
         upper_time = np.min([t for t in self._times if t >= time])
         if np.isclose(lower_time, upper_time):
@@ -76,7 +80,8 @@ class TemporalSeries(object):
         step_time = range_time / count
         # Do steps as integers to avoid floating point errors
         mult = 10**precision
-        step = np.round(mult*step_time, precision)
-        times = np.arange(min_time, max_time+step, step)/mult
+        step = int(mult*np.round(step_time, precision))
+        upper = min(int(mult*max_time+count*step), mult*max_time)
+        times = np.arange(int(mult*min_time), upper, step)/mult
         values = [self.getValue(t) for t in times]
         return times, values

@@ -7,8 +7,8 @@ import numpy as np
 import sympy
 import unittest
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 helpers.setupPlotting(__file__)
 MODEL = """
 S0 -> S1; k0*S0
