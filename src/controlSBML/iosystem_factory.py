@@ -166,9 +166,7 @@ class IOSystemFactory(object):
             numr = [kf*kd, kf*kp, kf*ki]
             denr = [1, kf, 0]
             control_filter_tf = control.TransferFunction(numr, denr, name=name, inputs=cn.IN, outputs=cn.OUT)
-            # Return a NonlinearIOSytem
-            sys = self.makeFromTransferFunction(name, control_filter_tf)
-            return sys
+            return control_filter_tf
 
     def makePIController(self, name, kp=None, ki=None):
         """
@@ -252,7 +250,6 @@ class IOSystemFactory(object):
             # Log the calculation
             self.add(logger, time, [u_val, output])
             #
-            print(time, u_val, output)
             return output
         #
         return control.NonlinearIOSystem(
@@ -328,6 +325,7 @@ class IOSystemFactory(object):
         logger = self._registerLogger(logger_name, [IN, OUT])
         series = TemporalSeries()
         transfer_function_ss = control.tf2ss(transfer_function)
+        #
         def outfcn(time, _, u_vec, __):
             # u: float (error signal)
             #####
@@ -343,7 +341,6 @@ class IOSystemFactory(object):
             # Log the calculation
             self.add(logger, time, [u_val, output])
             #
-            print(time, u_val, output)
             return output
         #
         return control.NonlinearIOSystem(

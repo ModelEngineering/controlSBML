@@ -230,7 +230,8 @@ class SISOClosedLoopDesigner(object):
         # Title lists values of the design parameters
 
     def evaluateNonlinearIOSystemClosedLoop(self, ctlsb, times=None, step_size=STEP_SIZE, 
-                                            num_initial_zero=5, period=0, is_plot=True, **kwargs):
+                                            num_initial_zero=5,
+                                            period=0, is_plot=True, **kwargs):
         """
         Creates a SISOClosedLoopSystem using the parameters of the designer.
 

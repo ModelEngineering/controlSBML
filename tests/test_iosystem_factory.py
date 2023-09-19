@@ -89,8 +89,9 @@ class TestIOSystemFactory(unittest.TestCase):
     def setUp(self):
         self.factory = IOSystemFactory()
 
-    def runController(self, name="controller", is_log=False, U=None, **kwargs):
-        times = list(range(SIZE))
+    def runController(self, name="controller", is_log=False, U=None, times=None, **kwargs):
+        if times is None:
+            times = list(range(SIZE))
         if U is None:
            U = times
         factory = IOSystemFactory(is_log=is_log)
@@ -110,8 +111,9 @@ class TestIOSystemFactory(unittest.TestCase):
         trues = [np.abs(r-kp*t) < 0.01 for t, r in zip(result.t, result.y[0])]
         self.assertTrue(all(trues))
         #
-        _, result_ki = self.runController(ki=kp)
-        _, result_kd = self.runController(kd=kp)
+        times = np.linspace(0, 2, 20)
+        _, result_ki = self.runController(ki=kp, times=times)
+        _, result_kd = self.runController(kd=kp, times=times)
         self.assertGreater(result_ki.y[0][-1], result_kd.y[0][-1])
         U = np.array(range(SIZE//2))
         U = np.concatenate([U, -U])

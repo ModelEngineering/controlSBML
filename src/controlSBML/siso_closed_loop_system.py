@@ -166,7 +166,8 @@ class SISOClosedLoopSystem(object):
           kf=None,                                # Filter
           system_input=None,                      # SISO input, output
           system_output=None,
-          closed_loop_outputs=None):              # list of outputs
+          closed_loop_outputs=None,               # list of outputs from closed loop system
+          ):
         """
         Creates a closed loop system for a ControlSBML object.
         The closed loop system
