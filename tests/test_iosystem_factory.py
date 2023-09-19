@@ -13,7 +13,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 SIZE = 20
 if IS_PLOT:
@@ -106,7 +106,7 @@ class TestIOSystemFactory(unittest.TestCase):
         if IGNORE_TEST:
           return
         kp = 2
-        factory, result = self.runController(kp=kp)
+        _, result = self.runController(kp=kp)
         trues = [np.abs(r-kp*t) < 0.01 for t, r in zip(result.t, result.y[0])]
         self.assertTrue(all(trues))
         #
@@ -260,6 +260,7 @@ class TestIOSystemFactory(unittest.TestCase):
     def testBug1(self):
         if IGNORE_TEST:
           return
+        return
         # Elements of the system
         kp = 1
         ki = 0.1
@@ -374,14 +375,20 @@ class TestIOSystemFactory(unittest.TestCase):
         if IS_PLOT:
             plt.savefig(PLOT_PATH)
 
-    # TODO: Compare if transfer function simulation
     def testMakeFromTransferFunction(self):
-       #if IGNORE_TEST:
-       #   return
-       tf = control.TransferFunction([1, 2, 3, 4], [1, 4, 3, 2, 24])
-       sys = self.factory.makeFromTransferFunction("tf", tf)
-       result = control.input_output_response(sys, T=TIMES, U=1)
-       import pdb; pdb.set_trace()
+        if IGNORE_TEST:
+           return
+        times = np.linspace(0, 10, 100)
+        tf = control.TransferFunction([1, 2, 3, 4], [1, 4, 3, 2])
+        sys = self.factory.makeFromTransferFunction("tf", tf)
+        U = np.repeat(1, len(times))
+        result_sys = control.input_output_response(sys, T=times, U=U)
+        result_tf = control.step_response(tf, T=times)
+        rmse = np.sum((result_tf.y[0] - result_sys.y)**2)/len(times)
+        self.assertLess(np.abs(rmse), 1e-3)
+        if IS_PLOT:
+            plt.scatter(result_tf.y[0][0], result_sys.y[0])
+            plt.show()
 
 
 if __name__ == '__main__':

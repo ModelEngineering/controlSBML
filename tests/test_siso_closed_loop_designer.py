@@ -66,7 +66,6 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         closed_loop_tf_kd = scld._calculateClosedLoopTf(sys_tf=sys_tf, kd=3)
         self.assertGreater(len(closed_loop_tf_kd.den[0][0]), len(closed_loop_tf_kp.den[0][0]))
 
-
     def test_closed_loop_tf(self):
         if IGNORE_TEST:
             return

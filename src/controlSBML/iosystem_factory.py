@@ -41,7 +41,7 @@ LOWPASS_POLE = 1e4
 
 class IOSystemFactory(object):
 
-    def __init__(self, name="factory", is_log=False, **kwargs):
+    def __init__(self, name="factory", is_log=True, **kwargs):
         """
         Parameters
         ----------
@@ -166,7 +166,9 @@ class IOSystemFactory(object):
             numr = [kf*kd, kf*kp, kf*ki]
             denr = [1, kf, 0]
             control_filter_tf = control.TransferFunction(numr, denr, name=name, inputs=cn.IN, outputs=cn.OUT)
-            return control_filter_tf
+            # Return a NonlinearIOSytem
+            sys = self.makeFromTransferFunction(name, control_filter_tf)
+            return sys
 
     def makePIController(self, name, kp=None, ki=None):
         """
@@ -215,7 +217,7 @@ class IOSystemFactory(object):
             states=["accumulated_err"],
             name=name)
 
-    def makeFromTransferFunction(self, name, transfer_function, count=10):
+    def makeFromTransferFunction(self, name, transfer_function, count=200):
         """
         Creates a NonlinearIOSystem from a transfer function.
 
@@ -240,15 +242,108 @@ class IOSystemFactory(object):
             #####
             u_val = self._array2scalar(u_vec)
             series.add(time, u_val)
-            if len(series) > 1:
-                times, values = series.getTimesValues(count)
+            if series.num_nonzero_times > 1:
+                actual_count = min(count, len(series))
+                times, values = series.getTimesValues(actual_count)
                 _, ys = control.forced_response(transfer_function_ss, T=times, U=values)
                 output = ys[-1]
             else:
-                output = 0
+                output = util.calculateInitialValue(transfer_function)
             # Log the calculation
             self.add(logger, time, [u_val, output])
             #
+            print(time, u_val, output)
+            return output
+        #
+        return control.NonlinearIOSystem(
+            None, outfcn, inputs=[IN], outputs=[OUT],
+            name=name)
+
+    def makeMixedPIDController(self, name, kp=None, ki=None, mix_fraction=1.0, count=200):
+        """
+        Creates a PID controller that is a mix of a transfer function and a nonlinear system.
+        NonlinearIOSystem with input IN (setpoint) and control output OUT.
+        States are:
+            culmulative_err: cumulative control error
+
+        Parameters
+        ----------
+        name: str
+            Name of the system
+        kp: float
+           proportional control constant
+        ki: float
+           integral control constant
+        mix_fraction: float
+           fraction of output that is the transfer function
+
+        Returns
+        -------
+        control.NonlinearIOSystem
+        """
+        #
+        logger_name = "%s_outfcn" % name
+        logger = self._registerLogger(logger_name, ["u_val", "x_state" "acc_err", OUT])
+        def updfcn(_, x_vec, u_vec, __):
+            # u: float (error signal)
+            # x_vec[0] - accumulated_u
+            u_val = self._array2scalar(u_vec)
+            return u_val
+        #
+        def outfcn(time, x_vec, u_vec, __):
+            # u: float (error signal)
+            # x_vec[0] - accumulated_u
+            #####
+            u_val = self._array2scalar(u_vec)
+            accumulated_u_val = x_vec[0]
+            control_out =  kp*u_val  + ki*accumulated_u_val
+            # Log the calculation
+            values = list([u_val, x_vec[0], accumulated_u_val, control_out])
+            self.add(logger, time, values)
+            #
+            return control_out
+        #
+        return control.NonlinearIOSystem(
+            updfcn, outfcn, inputs=[IN], outputs=[OUT],
+            states=["accumulated_err"],
+            name=name)
+
+    def makeFromTransferFunction(self, name, transfer_function, count=200):
+        """
+        Creates a NonlinearIOSystem from a transfer function.
+
+        Parameters
+        ----------
+        name: str
+            Name of the system
+        transfer_function: control.TransferFunction
+        count: int (number of values used to calculate the transfer function)
+
+        Returns
+        -------
+        control.NonlinearIOSystem
+        """
+        #
+        logger_name = "%s_outfcn" % name
+        logger = self._registerLogger(logger_name, [IN, OUT])
+        series = TemporalSeries()
+        transfer_function_ss = control.tf2ss(transfer_function)
+        def outfcn(time, _, u_vec, __):
+            # u: float (error signal)
+            #####
+            u_val = self._array2scalar(u_vec)
+            series.add(time, u_val)
+            if series.num_nonzero_times > 1:
+                actual_count = min(count, len(series))
+                times, values = series.getTimesValues(actual_count)
+                _, ys = control.forced_response(transfer_function_ss, T=times, U=values)
+                output = ys[-1]
+            else:
+                output = util.calculateInitialValue(transfer_function)
+            # Log the calculation
+            self.add(logger, time, [u_val, output])
+            #
+            print(time, u_val, output)
             return output
         #
         return control.NonlinearIOSystem(

@@ -102,7 +102,8 @@ class SISOClosedLoopDesigner(object):
             kf (float)
         """
         for name in PARAM_NAMES:
-            self.__setattr__(name, eval(name))
+            value = eval(name)
+            self.__setattr__(name, value)
         self.closed_loop_system = None
         self.closed_loop_system_ts = None
         self.history.add()
@@ -117,7 +118,8 @@ class SISOClosedLoopDesigner(object):
         dct = {}
         for name in PARAM_NAMES:
             if self.__getattribute__(name) is not None:
-                dct[name] = self.__getattribute__(name)
+                value = self.__getattribute__(name)
+                dct[name] = value
         return dct 
     
     def _initializeDesigner(self):
@@ -171,9 +173,9 @@ class SISOClosedLoopDesigner(object):
         self.minimizer_result = minimizer.leastsq()
         new_params = lmfit.Parameters()
         for name in PARAM_NAMES:
-            if name in self.minimizer_result.params:
-                self.__setattr__(name, self.minimizer_result.params[name].value)
-                value = self.minimizer_result.params[name].value
+            if name in self.minimizer_result.params.valuesdict().keys():
+                value = self.minimizer_result.params.valuesdict()[name]
+                self.__setattr__(name, value)
                 new_params.add(name, value=value, min=MIN_VALUE, max=MAX_VALUE)
         residuals = _calculateResiduals(new_params)
         self.residual_rmse = np.sqrt(np.mean(residuals**2))

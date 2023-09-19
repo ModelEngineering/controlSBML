@@ -501,6 +501,21 @@ def cleanTimes(times):
                 raise ValueError("Cannot exceptions at indices 0, 1")
     return np.array(new_times)
 
+def calculateInitialValue(transfer_function):
+    """
+    Calculates the initial value of a transfer function.
+
+    Args:
+        transfer_function: control.TransferFunction
+    Returns:
+        float
+    """
+    numr = transfer_function.num[0][0]
+    denr = transfer_function.den[0][0]
+    if len(numr) < len(denr):
+        return 0
+    return numr[0]/denr[0]
+
 
 ############### CLASSES ################
 

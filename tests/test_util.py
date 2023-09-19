@@ -196,7 +196,20 @@ class TestFunctions(unittest.TestCase):
         new_times[2] += 2
         test(new_times)
 
-
+    def testCalculateInitialValue(self):
+        if IGNORE_TEST:
+           return
+        times = np.linspace(0, 10, 100)
+        def test(tf):
+            value = util.calculateInitialValue(tf)
+            _, ys = control.step_response(tf, T=times)
+            self.assertTrue(np.isclose(value, ys[0]))
+        #
+        tf = control.TransferFunction([1], [1, 0.0002, 1])
+        test(tf)
+        tf = control.TransferFunction([2, 2, 3], [1, 0.0002, 1])
+        test(tf)
+        
 
 if __name__ == '__main__':
     unittest.main()
