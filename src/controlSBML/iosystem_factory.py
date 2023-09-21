@@ -41,7 +41,7 @@ LOWPASS_POLE = 1e4
 
 class IOSystemFactory(object):
 
-    def __init__(self, name="factory", is_log=True, **kwargs):
+    def __init__(self, name="factory", is_log=False, **kwargs):
         """
         Parameters
         ----------

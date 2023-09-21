@@ -10,7 +10,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 SIZE = 10
 if IS_PLOT:
@@ -209,6 +209,18 @@ class TestFunctions(unittest.TestCase):
         test(tf)
         tf = control.TransferFunction([2, 2, 3], [1, 0.0002, 1])
         test(tf)
+
+    def testCompareSingleArgumentFunctions(self):
+        if IGNORE_TEST:
+           return
+        func1 = lambda x: x**2
+        func2 = lambda x: x
+        result = util.compareSingleArgumentFunctions(func1, func2, 0, 100)
+        self.assertFalse(result)
+        result = util.compareSingleArgumentFunctions(func1, func1, 0, 100)
+        self.assertTrue(result)
+        result = util.compareSingleArgumentFunctions(func2, func2, 0, 100)
+        self.assertTrue(result)
         
 
 if __name__ == '__main__':

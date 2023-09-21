@@ -20,6 +20,22 @@ S0 = 0
 S1 = 0
 S2 = 0
 """
+LINEAR_MDL = """
+species S3
+
+ -> S1; k0
+S1 -> S2; k1*S1
+S2 -> S3; k2*S2
+S3 -> ; k3*S3
+
+S1 = 0
+S2 = 0
+S3 = 0
+k0 = 0
+k1 = 1
+k2 = 2
+k3 = 3
+"""
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
 CTLSB = ctl.ControlSBML(MODEL, input_names=["S0"], output_names=["S2"])
 builder = CTLSB.makeSISOTransferFunctionBuilder(is_fixed_input_species=True)
@@ -126,8 +142,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertLess(calcDiff(prediction2s), calcDiff(prediction1s))
 
     def testPlot(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.designer.set(**PARAMETER_DCT)
         times = np.linspace(0, 50, 500)
         self.designer.plot(times=times, is_plot=IS_PLOT, markers=["", ""])
@@ -142,6 +158,49 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             return
         self.designer.set(kp=1)
         self.designer.evaluateNonlinearIOSystemClosedLoop(self.ctlsb, is_plot=IS_PLOT)
+
+    def test_closed_loop_tf(self):
+        # Checks that the closed loop transfer function is calculated correctly
+        if IGNORE_TEST:
+            return
+        # Setup
+        s, kp, ki = sympy.symbols("s kp ki")
+        # System transfer function
+        sys_tf = control.tf([1], [1, 1])
+        systf = 1/(s + 1)
+        # Symbolic calculation of transfer function
+        ctltf = kp + ki/s
+        looptf = sympy.simplify(systf*ctltf)
+        cltf = sympy.simplify(looptf/(1 + looptf))
+        #
+        designer = ctl.SISOClosedLoopDesigner(sys_tf, times=TIMES, step_size=5)
+        designer.set(kp=2, ki=3)
+        closed_loop_tf = designer.closed_loop_tf
+        func1 = lambda x: float(closed_loop_tf(x))
+        cltf_nums = cltf.subs({kp: 2, ki: 3})
+        func2 = lambda x: sympy.N(cltf_nums.subs({s: x}))
+        self.assertTrue(ctl.util.compareSingleArgumentFunctions(func1, func2, 0, 100))
+
+    # FIXME: Finish tests
+    def testBug1(self):
+        if IGNORE_TEST:
+            return
+        # Setup
+        ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=["k0"], output_names=["S3"])
+        linear_bldr = ctlsb.makeSISOTransferFunctionBuilder(is_fixed_input_species=True)
+        linear_staircase = ctl.Staircase(initial_value=0, final_value=10, num_step=5)
+        fitter_result = linear_bldr.fitTransferFunction(num_numerator=3, num_denominator=4, 
+                                                    staircase=linear_staircase, fit_start_time=20,
+                                                start_time=0, end_time=100)
+        linear_tf = fitter_result.transfer_function
+        numr = linear_tf.num[0][0]
+        denr = linear_tf.den[0][0]
+        #
+        designer = ctl.SISOClosedLoopDesigner(linear_tf, times=TIMES, step_size=5)
+        designer.set(kp=2, ki=3)
+        if IS_PLOT:
+            designer.plot(figsize=(5,5), times=TIMES)  # Have options for a period
+
 
 
 #############################

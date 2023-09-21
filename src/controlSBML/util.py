@@ -75,7 +75,7 @@ def getModel(file_name=MODEL_823_FILE):
     return model_str
 
 @Expander(cn.KWARGS, cn.ALL_KWARGS)
-def plotOneTS(time_series, colors=None, markers=None, mgr=None, **kwargs):
+def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **kwargs):
     """
     Plots a dataframe as multiple lines on a single plot. The
     columns are legends. If an OptionManger is provided,
@@ -87,6 +87,7 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, **kwargs):
     mgr: OptionsManager
     colors: list-str
     markers: list-str
+    legend: bool (whether to show legend)
     #@expand
 
     Returns
@@ -122,8 +123,9 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, **kwargs):
     sel_markers = list(markers)
     for column in time_series.columns:
         ax.plot(times, time_series[column], color=sel_colors.pop(0), marker=sel_markers.pop(0))
-    legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
-    mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
+    if legend:
+        legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
+        mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
     if is_fig:
         mgr.doFigOpts()
@@ -515,6 +517,26 @@ def calculateInitialValue(transfer_function):
     if len(numr) < len(denr):
         return 0
     return numr[0]/denr[0]
+
+def compareSingleArgumentFunctions(func1, func2, arg_min, arg_max, num_point=100, max_rmse=1e-3):
+    """
+    Compares the results of two functions that take a single argument.
+
+    Args:
+        func1: function
+        func2: function
+        arg_min: float
+        arg_max: float
+        num_point: int
+        max_rmse: float (maximum root mean square error if the same)
+    """
+    values = np.linspace(arg_min, arg_max, num_point)
+    squared_diff_arr = np.array([(func1(v) - func2(v))**2 for v in values])
+    rmse = np.sum(squared_diff_arr)/len(values)
+    if rmse < max_rmse**2:
+        return True
+    else:
+        return False
 
 
 ############### CLASSES ################

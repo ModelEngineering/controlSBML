@@ -199,6 +199,7 @@ class SISOClosedLoopSystem(object):
             the name must be present in the ControlSBML object
         closed_loop_ouputs: list-str
             If None, "ref", last output in ctlsb
+        is_fixed_input_species: bool
 
         Returns
         -------
@@ -519,7 +520,7 @@ class SISOClosedLoopSystem(object):
         dct[CONNECTIONS] = connections
         return dct
 
-    def makeResponse(self, time=0, step_size=1, period=0, num_initial_zero=5, **time_opts):
+    def makeResponse(self, time=0, times=None, step_size=1, period=0, num_initial_zero=5, **time_opts):
         """
         Simulates the response to an input signal, either step response or sinusoid.
 
@@ -527,6 +528,7 @@ class SISOClosedLoopSystem(object):
         ----------
         time: float
             time used for state in the ControlSBML system
+        times: list-float (time in seconds)
         step_size: float (step size, sine wave amplitude)
         period: float (period of sine wave)
         num_initial_zero: int (number of zeroes at beginng of step)
@@ -541,7 +543,8 @@ class SISOClosedLoopSystem(object):
             closed loop outputs
         """
         self.factory.initializeLoggers()
-        times = util.cleanTimes(cn.MS_IN_SEC*ctl.makeSimulationTimes(**time_opts))/cn.MS_IN_SEC
+        if times is None:
+            times = util.cleanTimes(cn.MS_IN_SEC*ctl.makeSimulationTimes(**time_opts))/cn.MS_IN_SEC
         X0 = makeStateVector(self.closed_loop_system, start_time=time)
         U = np.array([0 if n < num_initial_zero else 1 for n in range(len(times))])
         if (period is not None) and (period > 0):

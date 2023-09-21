@@ -1,4 +1,8 @@
-"""Designs a closed loop SISO System with a PID controller and Filter."""
+"""
+Designs a closed loop SISO System with a PID controller and Filter.
+
+The design is done using transfer functions and is most appropriate if there is a fixed input species.
+"""
 
 import controlSBML.constants as cn
 from controlSBML.option_management.option_manager import OptionManager
@@ -223,14 +227,16 @@ class SISOClosedLoopDesigner(object):
         kwargs["is_plot"] = False
         plot_result = util.plotOneTS(ts, **kwargs)
         ax = plot_result.ax
-        tf_text = util.simplifyTransferFunction(self.closed_loop_tf)
-        ax.set_title(tf_text)
+        param_dct = self.get()
+        text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
+        ax.set_title(" ".join(text))
+        plt.rcParams['axes.titley'] = 0.9    # y is in axes-relative coordinates.
         if is_plot:
             plt.show()
         # Title lists values of the design parameters
 
     def evaluateNonlinearIOSystemClosedLoop(self, ctlsb, times=None, step_size=STEP_SIZE, 
-                                            num_initial_zero=5,
+                                            is_fixed_input_species=False,
                                             period=0, is_plot=True, **kwargs):
         """
         Creates a SISOClosedLoopSystem using the parameters of the designer.
@@ -239,8 +245,8 @@ class SISOClosedLoopDesigner(object):
             ctlsb: ControlSBML
             times: np.array (times for simulation)
             step_size: float (step size for simulation)
-            num_initial_zero: int (number of initial zeros for simulation)
-            kwargs: arguments for SISOClosedLoopSystem
+            is_fixed_input_species: bool (if True, then the input species are fixed)
+            kwargs: plot options
         Returns:
             control.Interconnect
         """
@@ -248,19 +254,18 @@ class SISOClosedLoopDesigner(object):
             times = self.times
         start_time = times[0]
         end_time = times[-1]
-        self.siso = SISOClosedLoopSystem(ctlsb, **kwargs)
+        self.siso = SISOClosedLoopSystem(ctlsb, is_fixed_input_species=is_fixed_input_species)
         param_dct = {n: 0 for n in PARAM_NAMES}
         param_dct.update(self.get())
         self.siso.makePIDClosedLoopSystem(**param_dct)
         self.closed_loop_system = self.siso.closed_loop_system
         self.closed_loop_system_ts = self.siso.makeResponse(start_time=start_time, end_time=end_time, period=period,
-                                                           step_size=step_size, num_initial_zero=num_initial_zero)
+                                                           step_size=step_size)
         self.history.add()
         plot_result = util.plotOneTS(self.closed_loop_system_ts, markers=["", ""],
-                                     figsize=(5, 5), xlabel="time", ax2=0,
-                       is_plot=False)
+                                     xlabel="time", ax2=0, is_plot=False, **kwargs)
         param_dct = self.get()
-        text = ["%s=%2.4f " % (name, param_dct[name]) for name in param_dct.keys()]
+        text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
         plot_result.ax.set_title(" ".join(text))
         if is_plot:
             plt.show()
