@@ -155,7 +155,7 @@ for kwargs in [SIM_KWARGS, PLOT_KWARGS, FIG_KWARGS]:
 MS_IN_SEC = 1000
 SEC_IN_MS = 1.0/MS_IN_SEC
 TIMESERIES_INDEX_NAME = "miliseconds"
-TIMES = np.linspace(0, 5, 1000)
+TIMES = np.linspace(0, 5, 50)
 
 # URLs
 WOLF_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"

@@ -144,6 +144,7 @@ class SISOClosedLoopDesigner(object):
             kp, ki, kd, kf (bool, float): if True, the parameter is fitted. If float, then initial value.
             residual_precision: int (number of decimal places for the residuals)
         """
+        sample_period = np.mean(np.diff(self.times))
         self._initializeDesigner()
         def _calculateResiduals(params):
             """
@@ -155,7 +156,8 @@ class SISOClosedLoopDesigner(object):
             kwargs.update(params.valuesdict())
             kwargs.update({"sign": self.sign})
             tf = _calculateClosedLoopTf(**kwargs)
-            _, predictions = self.simulate(transfer_function=tf)
+            dtf = control.c2d(tf, Ts=sample_period)
+            _, predictions = self.simulate(transfer_function=dtf)
             if min_response is not None:
                 predictions = np.array([v if v >= min_response else v*BELOW_MIN_MULTIPLIER for v in predictions])
             if max_response is not None:
