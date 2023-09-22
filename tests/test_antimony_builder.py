@@ -82,14 +82,24 @@ class TestAntimonyBuilder(unittest.TestCase):
        self.check()
 
     def testMakeStaircase(self):
-       #if IGNORE_TEST:
-       #    return
+       if IGNORE_TEST:
+           return
        self.builder.startModification()
        self.builder.makeBoundarySpecies("S1")
        value_arr = self.builder.makeStaircase("S1", initial_value=2)
        self.builder.endModification()
        self.assertTrue("at " in self.builder.antimony_strs[4])
        self.assertEqual(len(value_arr), len(cn.TIMES))
+       self.check()
+    
+    def testMakeStaircase(self):
+       #if IGNORE_TEST:
+       #    return
+       self.builder.startModification()
+       self.builder.makeBoundarySpecies("S1")
+       self.builder.makeSISOClosedLoop("S1", "S3", kp=1)
+       self.builder.endModification()
+       import pdb; pdb.set_trace()
        self.check()
        
 

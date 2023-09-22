@@ -80,7 +80,22 @@ class AntimonyBuilder(object):
         initialization_str = "%s = 0" % parameter_name
         self._insert(initialization_str)
 
-    def makeSISOClosedLoop(self, input_name, output_name, kp, ki, kd, kf):
+    def makeClosedLoopSuffix(self, input_name, output_name):
+        return "_%s_%s" % (input_name, output_name)
+
+    def makeClosedLoopName(self, generic_name, input_name, output_name):
+        """
+        Creates the name of the symbol used in closed loop for the specified input_name and output_name
+
+        Args:
+            generic_name (_type_): _description_
+            input_name (_type_): _description_
+            output_name (_type_): _description_
+        """
+        suffix = self.makeClosedLoopSuffix(input_name, output_name)
+        return "%s%s" % (generic_name, suffix)
+
+    def makeSISOClosedLoop(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None):
         """
         Args:
             input_name: str
@@ -90,7 +105,39 @@ class AntimonyBuilder(object):
             kd: float
             kf: float
         """
-        raise NotImplementedError("makeSISOClosedLoop")
+        suffix = self.makeClosedLoopSuffix(input_name, output_name)
+        # suffix, suffix, suffix, output_name
+        # suffix, suffix, suffix
+        # suffix, suffix
+        # input_name, suffix, suffix, suffix, suffix
+        if kf is not None:
+            statement = "filter%s' = -%f*filter%s + %f*%s" % (
+                suffix, kf, kf, output_name
+            )
+            self._insert(statement)
+        statement = "control_error%s := reference%s - filter%s" % (
+            suffix, suffix, suffix
+        )
+        self._insert(statement)
+        statement = "integral_control_error%s' = control_error%s" % (
+            suffix, suffix
+        )
+        self._insert(statement)
+        if kp is not None:
+            statement = "%s = %f*control_error%s" % (
+                input_name, kp, suffix)
+        else:
+            statement = "%s = 0" % input_name
+        if ki is not None:
+            statement = statement + "+ %f*integral_control_error%s" % (ki, suffix)
+        self._insert(statement)
+        # Initialization statements
+        statement = "filter%s := %s" % (suffix, output_name)
+        self._insert(statement) 
+        statement = "integral_control_error%s = 0" % suffix
+        self._insert(statement)
+        statement = "reference%s = 0" % suffix
+        self._insert(statement)
     
     def makeStaircase(self, input_name, times=cn.TIMES, initial_value=DEFAULT_INITIAL_VALUE,
                  num_step=DEFAULT_NUM_STEP, final_value=DEFAULT_FINAL_VALUE):
