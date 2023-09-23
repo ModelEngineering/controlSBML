@@ -211,20 +211,17 @@ class SBMLSystem(object):
             input_name = self.input_names[0]
         if output_name is None:
             output_name = self.output_names[0]
+        self.antimony_builder.addStatement("")
         comment = "Closed loop: %s -> %s" % (input_name, output_name)
         self.antimony_builder.makeComment(comment)
         #
         if self.is_fixed_input_species and (input_name in self.floating_species_names):
-            self.antimony_builder.makeBoundarySpecies(input_name)
             new_input_name = input_name
         else:
-            self.antimony_builder.makeBoundaryReaction(input_name)
             new_input_name = self.antimony_builder.makeParameterNameForBoundaryReaction(input_name)
-        self.antimony_builder.makeSISOClosedLoop(new_input_name, output_name, kp=kp, ki=ki, kf=kf)
-        reference_name = self.antimony_builder.makeClosedLoopName(REFERENCE, input_name, output_name)
-        self.roadrunner = te.loada(str(self.antimony_builder))
-        self.set({reference_name: reference})
-        return self._simulate(start_time, end_time, num_point, is_steady_state)
+        self.antimony_builder.makeSISOClosedLoop(new_input_name, output_name, kp=kp, ki=ki, kf=kf, reference=reference)
+        # Run the simulation
+        return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=True)
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
                  num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE, is_steady_state=True):
@@ -240,6 +237,7 @@ class SBMLSystem(object):
         Returns:
             Timeseries
         """
+        self.antimony_builder.addStatement("")
         self.antimony_builder.makeComment("Staircase: %s->%s" % (input_name, output_name))
         self.antimony_builder.makeStaircase(input_name, times=times, initial_value=initial_value,
                                             num_step=num_step, final_value=final_value)

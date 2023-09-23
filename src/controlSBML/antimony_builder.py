@@ -28,7 +28,7 @@ class AntimonyBuilder(object):
     def __repr__(self):
         return "\n".join(self.antimony_strs)
 
-    def _insert(self, stg):
+    def addStatement(self, stg):
         """
         Args:
             stg: str
@@ -45,14 +45,14 @@ class AntimonyBuilder(object):
             species_name: str
         """
         self.boundary_species.append(species_name)
-        self._insert("const %s" % species_name)
+        self.addStatement("const %s" % species_name)
 
     def makeComment(self, comment):
         """
         Args:
             comment: str
         """
-        self._insert("%s %s" % (cn.COMMENT_STR, comment))
+        self.addStatement("%s %s" % (cn.COMMENT_STR, comment))
 
     def makeParameterNameForBoundaryReaction(self, species_name):
         """
@@ -68,9 +68,9 @@ class AntimonyBuilder(object):
         """
         parameter_name = self.makeParameterNameForBoundaryReaction(species_name)
         reaction_str = " -> %s; %s" % (species_name, parameter_name)
-        self._insert(reaction_str)
+        self.addStatement(reaction_str)
         initialization_str = "%s = 0" % parameter_name
-        self._insert(initialization_str)
+        self.addStatement(initialization_str)
 
     def makeClosedLoopSuffix(self, input_name, output_name):
         return "_%s_%s" % (input_name, output_name)
@@ -87,7 +87,7 @@ class AntimonyBuilder(object):
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
         return "%s%s" % (generic_name, suffix)
 
-    def makeSISOClosedLoop(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None):
+    def makeSISOClosedLoop(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None, reference=0):
         """
         Args:
             input_name: str
@@ -103,20 +103,20 @@ class AntimonyBuilder(object):
             statement = "filter%s' = -%f*filter%s + %f*%s" % (
                 suffix, kf, suffix, kf, output_name
             )
-            self._insert(statement)
+            self.addStatement(statement)
             statement = "filter%s = %s" % (suffix, output_name)
-            self._insert(statement) 
+            self.addStatement(statement) 
         else:
             statement = "filter%s := %s" % (suffix, output_name)
-            self._insert(statement) 
+            self.addStatement(statement) 
         statement = "control_error%s := reference%s - filter%s" % (
             suffix, suffix, suffix
         )
-        self._insert(statement)
+        self.addStatement(statement)
         statement = "integral_control_error%s' = control_error%s" % (
             suffix, suffix
         )
-        self._insert(statement)
+        self.addStatement(statement)
         if kp is not None:
             statement = "%s := %f*control_error%s" % (
                 input_name, kp, suffix)
@@ -124,13 +124,27 @@ class AntimonyBuilder(object):
             statement = "%s = 0" % input_name
         if ki is not None:
             statement = statement + "+ %f*integral_control_error%s" % (ki, suffix)
-        self._insert(statement)
+        self.addStatement(statement)
         # Initialization statements
         statement = "integral_control_error%s = 0" % suffix
-        self._insert(statement)
-        statement = "reference%s = 0" % suffix
-        self._insert(statement)
-    
+        self.addStatement(statement)
+        statement = "reference%s = %f" % (suffix, reference)
+        self.addStatement(statement)
+
+    def _makeInputManipulationName(self, input_name):
+        """
+        Constructs the name of the input that is being manipulated since floating species can be manipulated
+        by a boundary reaction.
+
+        Args:
+            input_name: str
+        """
+        if (input_name in self.species_names) and (input_name not in self.boundary_species):
+            name = self.makeParameterNameForBoundaryReaction(input_name)
+        else:
+            name = input_name
+        return name
+
     def makeStaircase(self, input_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
                  num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE):
         """
@@ -144,15 +158,11 @@ class AntimonyBuilder(object):
         Returns:
             array-float: values
         """
-        # Find the name to use to effect the staircase
-        if input_name in self.species_names:
-            if not input_name in self.boundary_species:
-                name = self.makeParameterNameForBoundaryReaction(input_name)
-            else:
-                name = input_name
-        else:
-            name = input_name
-        #
+        # Initialize the input
+        name = self._makeInputManipulationName(input_name)
+        statement = "%s = %f" % (name, initial_value)
+        self.addStatement(statement)
+        # Add events
         point_per_step = int(len(times)/num_step)
         step_size = (final_value - initial_value)/num_step
         values = []
@@ -161,7 +171,7 @@ class AntimonyBuilder(object):
             break_time = times[nstep*point_per_step]
             break_value = initial_value + nstep*step_size
             statement = "at (time>= %s): %s = %s" % (break_time, name, break_value)
-            self._insert(statement)
+            self.addStatement(statement)
         num_point_remaining = len(times) - len(values)
         values.extend([final_value for _ in range(num_point_remaining)])
         value_arr = np.array(values)

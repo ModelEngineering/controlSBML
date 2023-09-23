@@ -74,26 +74,46 @@ class TestSBMLSystem(unittest.TestCase):
     def testSimulateSISOClosedLoop(self):
         if IGNORE_TEST:
             return
-        ts = self.system.simulateSISOClosedLoop("S1", "S3", kp=60, ki=1, kf=None, reference=5, end_time=20, num_point=1000)
-        self.assertGreater(len(ts), 0)
-        if IS_PLOT:
-            del ts["integral_control_error_S1_S3"]
-            if "filter_S1_S3" in ts.columns:
-                del ts["filter_S1_S3"]
-            del ts["S4"]
-            util.plotOneTS(ts, ax2=0, figsize=(8,8))
-            plt.show()
+        def test(is_fixed_input_species):
+            system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=is_fixed_input_species)
+            reference = 5
+            ts = system.simulateSISOClosedLoop("S1", "S3", kp=2, ki=0.8, kf=0.5, reference=reference, end_time=20, num_point=1000)
+            self.assertGreater(len(ts), 0)
+            if is_fixed_input_species:
+                tolerance = 0.3
+            else:
+                tolerance = 0.8
+            self.assertLess(np.abs(ts["S3"].values[-1] - reference), tolerance)
+            if IS_PLOT:
+                for column in ts.columns:
+                    if column not in ["time", "S1", "S3"]:
+                        del ts[column]
+                if is_fixed_input_species:
+                    title = "Boundary species"
+                else:
+                    title = "Boundary reaction"
+                util.plotOneTS(ts, ax2=0, figsize=(8,8), title=title)
+                plt.show()
+        #
+        test(False)
+        test(True)
 
     def testSimulateStaircase(self):
         if IGNORE_TEST:
             return
         times = np.linspace(0, 50, 500)
-        system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
-        ts = system.simulateStaircase("S1", "S3", times=times, final_value=10, num_step=5, is_steady_state=False)
-        self.assertGreater(len(ts), 0)
-        if IS_PLOT:
-            util.plotOneTS(ts, ax2=0, figsize=(8,8), ylim=[0, 10])
-            plt.show()
+        def test(is_fixed_input_species):
+            system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
+            ts = system.simulateStaircase("S1", "S3", times=times, final_value=10, num_step=5, is_steady_state=False)
+            self.assertGreater(len(ts), 0)
+            variance = np.var(ts["S3"])
+            self.assertFalse(np.isclose(variance, 0))
+            if IS_PLOT:
+                util.plotOneTS(ts, ax2=0, figsize=(8,8), ylim=[0, 10])
+                plt.show()
+        #
+        test(True)
+        test(False)
 
 
 if __name__ == '__main__':
