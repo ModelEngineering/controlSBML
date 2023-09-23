@@ -1,13 +1,16 @@
 """Creates a system from an SBML model: inputs, input type, outputs."""
 
 import controlSBML.constants as cn
+from controlSBML.antimony_builder import AntimonyBuilder
 from controlSBML import msgs
 from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML.timeseries import Timeseries
 from controlSBML import util
 
-import numpy as np
-import pandas as pd
+import tellurium as te
+
+
+REFERENCE = "reference"
 
 
 class SBMLSystem(object):
@@ -24,15 +27,26 @@ class SBMLSystem(object):
         """
         # First initializations
         self.model_reference = model_reference
+        self.input_names = input_names
+        self.output_names = output_names
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
         self.floating_species_names = list(set(self.roadrunner.getFloatingSpeciesIds()))
+        self.antimony = self.roadrunner.getAntimony()
+        self.antimony_builder = AntimonyBuilder(self.antimony, self.floating_species_names)
+        for name in self.input_names:
+            if name in self.floating_species_names:
+                if is_fixed_input_species:
+                    self.antimony_builder.makeBoundarySpecies(name)
+                else:
+                    self.antimony_builder.makeBoundaryReaction(name)
         # Handle inputs/outputs
-        self.reaction_names = list(self.full_stoichiometry_df.columns)
+        stoichiometry_mat = self.roadrunner.getFullStoichiometryMatrix()
+        self.floating_species_names = list(self.roadrunner.getFloatingSpeciesIds())
+        self.reaction_names = list(stoichiometry_mat.colnames)
+        self.parameter_names = list(self.roadrunner.getGlobalParameterIds())
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
-        # Other calculations
-        self.antimony = self.roadrunner.getAntimony()
         # Validation checks
         invalid_names = self._invalidInputNames()
         if len(invalid_names) > 0:
@@ -92,24 +106,19 @@ class SBMLSystem(object):
                 invalid_names.append(name)
         return invalid_names
 
-    def get(self, names=None):
+    def get(self, name):
         """
-        Provides the roadrunner values for a name. If no name,
-        then all values of symbols are given.
+        Provides the roadrunner values for a name.
 
         Parameters
         ----------
-        name: str/list-str
+        name: str
 
         Returns
         -------
-        object/dict
+        object
         """
-        if names is None:
-            names = [k for k in self.roadrunner.keys() if not ")" in k]
-        if isinstance(names, str):
-            return self.roadrunner[names]
-        return {n: self.roadrunner[n] for n in names}
+        return self.roadrunner[name]
 
     def set(self, name_dct):
         """
@@ -140,7 +149,7 @@ class SBMLSystem(object):
                 pass
         return False
     
-    def simulate(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None):
+    def simulate(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, is_steady_state=False):
         """
         Simulates the system.
 
@@ -149,6 +158,7 @@ class SBMLSystem(object):
         start_time: float
         end_time: float
         num_point: int
+        is_steady_state: bool (start the simulation at steady state)
 
         Returns
         -------
@@ -157,8 +167,82 @@ class SBMLSystem(object):
         if num_point is None:
             num_point = int(cn.POINTS_PER_TIME*(end_time - start_time))
         self.roadrunner.reset()
+        if is_steady_state:
+            self.setSteadyState()
+        return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=False)
+    
+    def _simulate(self, start_time, end_time, num_point, is_steady_state=False, is_reload=True):
+        """
+        Simulates the system the roadrunner object.
+
+        Parameters
+        ----------
+        start_time: float
+        end_time: float
+        num_point: int
+        is_steady_state: bool (start the simulation at steady state)
+
+        Returns
+        -------
+        DataFrame
+        """
+        if is_reload:
+            self.roadrunner = te.loada(str(self.antimony_builder))
+        if is_steady_state:
+            self.setSteadyState()
         data = self.roadrunner.simulate(start_time, end_time, num_point)
-        column_names = [c[1:-1] if c[0] == "[" else c for c in data.colnames]
-        df = pd.DataFrame(data, columns=column_names)
-        ts = Timeseries(df, times=df[cn.TIME])
+        ts = Timeseries(data)
+        return ts
+    
+    def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, reference=1,
+                               start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, is_steady_state=False):
+        """
+        Simulates a closed loop system.
+
+        Args:
+            input_name: str
+            output_name: str
+            kp: float
+            ki float
+            kf: float
+            reference: float (setpoint)
+        """
+        if input_name is None:
+            input_name = self.input_names[0]
+        if output_name is None:
+            output_name = self.output_names[0]
+        comment = "Closed loop: %s -> %s" % (input_name, output_name)
+        self.antimony_builder.makeComment(comment)
+        #
+        if self.is_fixed_input_species and (input_name in self.floating_species_names):
+            self.antimony_builder.makeBoundarySpecies(input_name)
+            new_input_name = input_name
+        else:
+            self.antimony_builder.makeBoundaryReaction(input_name)
+            new_input_name = self.antimony_builder.makeParameterNameForBoundaryReaction(input_name)
+        self.antimony_builder.makeSISOClosedLoop(new_input_name, output_name, kp=kp, ki=ki, kf=kf)
+        reference_name = self.antimony_builder.makeClosedLoopName(REFERENCE, input_name, output_name)
+        self.roadrunner = te.loada(str(self.antimony_builder))
+        self.set({reference_name: reference})
+        return self._simulate(start_time, end_time, num_point, is_steady_state)
+    
+    def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
+                 num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE, is_steady_state=True):
+        """
+        Adds events for the staircase.
+        Args:
+            input_name: str
+            output_name: str
+            initial_value: float (value for first step)
+            final_value: float (value for final step)
+            num_step: int (number of steps in staircase)
+            num_point_in_step: int (number of points in each step)
+        Returns:
+            Timeseries
+        """
+        self.antimony_builder.makeComment("Staircase: %s->%s" % (input_name, output_name))
+        self.antimony_builder.makeStaircase(input_name, times=times, initial_value=initial_value,
+                                            num_step=num_step, final_value=final_value)
+        ts = self._simulate(start_time=times[0], end_time=times[-1], num_point=len(times),
+                            is_steady_state=is_steady_state)
         return ts

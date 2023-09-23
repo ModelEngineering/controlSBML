@@ -4,13 +4,6 @@ import controlSBML.constants as cn
 
 import numpy as np
 
-START_STR = "// ControlSBML: Start modifications VVVVVVVVVVVVVVV"
-END_STR = "// ControlSBML: End modifications ^^^^^^^^^^^^^^^^"
-COMMENT_STR = "//"
-DEFAULT_NUM_STEP = 5
-DEFAULT_INITIAL_VALUE = 0
-DEFAULT_FINAL_VALUE = 10
-DEFAULT_POINT_PER_STEP = 10
 
 class AntimonyBuilder(object):
 
@@ -23,11 +16,12 @@ class AntimonyBuilder(object):
         self.species_names = species_names
         self.antimony_strs = antimony.split("\n")
         self.boundary_species = []
+        self._initialized_output = False
         for idx, stg in enumerate(self.antimony_strs):
             clean_stg = stg.strip()
             if len(clean_stg) == 0:
                 continue
-            if not clean_stg.startswith(COMMENT_STR):
+            if not clean_stg.startswith(cn.COMMENT_STR):
                 self.insert_pos = idx
                 break
 
@@ -39,20 +33,11 @@ class AntimonyBuilder(object):
         Args:
             stg: str
         """
-        self.antimony_strs.insert(self.insert_pos, stg)
+        if not self._initialized_output:
+            self._initialized_output = True
+            self.antimony_strs.append("\n//--------------Aded by ControlSBML-----------------")
+        self.antimony_strs.append(stg)
         self.insert_pos += 1
-
-    def startModification(self):
-        """
-        Record the beginning of modifications to the antimony file.
-        """
-        self._insert(START_STR)
-
-    def endModification(self):
-        """
-        Record the beginning of modifications to the antimony file.
-        """
-        self._insert(END_STR)
 
     def makeBoundarySpecies(self, species_name):
         """
@@ -61,6 +46,13 @@ class AntimonyBuilder(object):
         """
         self.boundary_species.append(species_name)
         self._insert("const %s" % species_name)
+
+    def makeComment(self, comment):
+        """
+        Args:
+            comment: str
+        """
+        self._insert("%s %s" % (cn.COMMENT_STR, comment))
 
     def makeParameterNameForBoundaryReaction(self, species_name):
         """
@@ -106,15 +98,17 @@ class AntimonyBuilder(object):
             kf: float
         """
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
-        # suffix, suffix, suffix, output_name
-        # suffix, suffix, suffix
-        # suffix, suffix
-        # input_name, suffix, suffix, suffix, suffix
+        # 
         if kf is not None:
             statement = "filter%s' = -%f*filter%s + %f*%s" % (
-                suffix, kf, kf, output_name
+                suffix, kf, suffix, kf, output_name
             )
             self._insert(statement)
+            statement = "filter%s = %s" % (suffix, output_name)
+            self._insert(statement) 
+        else:
+            statement = "filter%s := %s" % (suffix, output_name)
+            self._insert(statement) 
         statement = "control_error%s := reference%s - filter%s" % (
             suffix, suffix, suffix
         )
@@ -124,7 +118,7 @@ class AntimonyBuilder(object):
         )
         self._insert(statement)
         if kp is not None:
-            statement = "%s = %f*control_error%s" % (
+            statement = "%s := %f*control_error%s" % (
                 input_name, kp, suffix)
         else:
             statement = "%s = 0" % input_name
@@ -132,15 +126,13 @@ class AntimonyBuilder(object):
             statement = statement + "+ %f*integral_control_error%s" % (ki, suffix)
         self._insert(statement)
         # Initialization statements
-        statement = "filter%s := %s" % (suffix, output_name)
-        self._insert(statement) 
         statement = "integral_control_error%s = 0" % suffix
         self._insert(statement)
         statement = "reference%s = 0" % suffix
         self._insert(statement)
     
-    def makeStaircase(self, input_name, times=cn.TIMES, initial_value=DEFAULT_INITIAL_VALUE,
-                 num_step=DEFAULT_NUM_STEP, final_value=DEFAULT_FINAL_VALUE):
+    def makeStaircase(self, input_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
+                 num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE):
         """
         Adds events for the staircase.
         Args:

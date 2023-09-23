@@ -1,3 +1,10 @@
+New architecture
+  0. Archive deprecated files and their tests
+  1. More tests
+  2. Remove initialization hack
+  3. Add noise and disturbance
+  4. Connect with other controlSBML features
+
  metformin example 
  design algorithm: find design parameters that create a closed loop
     transfer function with low rmse

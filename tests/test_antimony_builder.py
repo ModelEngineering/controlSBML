@@ -9,8 +9,8 @@ import unittest
 import tellurium as te
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 LINEAR_MDL = """
 // Illustrate Antimony File
 S1 -> S2; k1*$S1
@@ -49,37 +49,25 @@ class TestAntimonyBuilder(unittest.TestCase):
        self.assertTrue(isinstance(self.builder.antimony, str))
        self.check()
 
-    def testStartModification(self):
-       if IGNORE_TEST:
-           return
-       self.builder.startModification()
-       self.assertEqual(self.builder.antimony_strs[2], ab.START_STR)
-       self.check()
-
-    def testEndModification(self):
-       if IGNORE_TEST:
-           return
-       self.builder.endModification()
-       self.assertEqual(self.builder.antimony_strs[2], ab.END_STR)
-       self.check()
-
     def testMakeBoundarySpecies(self):
        if IGNORE_TEST:
            return
-       self.builder.startModification()
        self.builder.makeBoundarySpecies("S1")
-       self.builder.endModification()
-       self.assertTrue("const" in self.builder.antimony_strs[3])
+       self.assertTrue("const" in self.builder.antimony_strs[-1])
        self.check()
 
     def testMakeBoundaryReaction(self):
        if IGNORE_TEST:
            return
-       self.builder.startModification()
        self.builder.makeBoundaryReaction("S1")
-       self.builder.endModification()
-       self.assertTrue("->" in self.builder.antimony_strs[3])
+       self.assertTrue("->" in self.builder.antimony_strs[-2])
        self.check()
+
+    def testMakeComment(self):
+       if IGNORE_TEST:
+           return
+       self.builder.makeComment("comment")
+       self.assertTrue("comment" in self.builder.antimony_strs[-1])
 
     def testMakeStaircase(self):
        if IGNORE_TEST:
@@ -87,19 +75,15 @@ class TestAntimonyBuilder(unittest.TestCase):
        self.builder.startModification()
        self.builder.makeBoundarySpecies("S1")
        value_arr = self.builder.makeStaircase("S1", initial_value=2)
-       self.builder.endModification()
-       self.assertTrue("at " in self.builder.antimony_strs[4])
+       self.assertTrue("at " in self.builder.antimony_strs[-1])
        self.assertEqual(len(value_arr), len(cn.TIMES))
        self.check()
     
     def testMakeStaircase(self):
-       #if IGNORE_TEST:
-       #    return
-       self.builder.startModification()
+       if IGNORE_TEST:
+           return
        self.builder.makeBoundarySpecies("S1")
        self.builder.makeSISOClosedLoop("S1", "S3", kp=1)
-       self.builder.endModification()
-       import pdb; pdb.set_trace()
        self.check()
        
 
