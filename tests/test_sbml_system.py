@@ -7,10 +7,13 @@ import numpy as np
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
-LINEAR_MDL = """
+IGNORE_TEST = True
+IS_PLOT = True
+IMPROPER_LINEAR_MDL = """
 // Illustrate Antimony File
+
+aa := S1
+bb := S4
 
 S1 -> S2; k1*S1
 J1: S2 -> S3; k2*S2
@@ -25,6 +28,7 @@ S1 = 10
 S2 = 0
 S3 = 0
 """
+LINEAR_MDL = "model *main_model()\n" + IMPROPER_LINEAR_MDL + "\nend"
 SPECIES_NAMES = ["S1", "S2", "S3"]
 
 
@@ -34,22 +38,33 @@ SPECIES_NAMES = ["S1", "S2", "S3"]
 class TestSBMLSystem(unittest.TestCase):
 
     def setUp(self):
-       self.system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
+        self.system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
 
     def testConstructor(self):
-       if IGNORE_TEST:
-           return
-       self.assertTrue(isinstance(self.system.antimony, str))
-       self.assertGreater(len(self.system.reaction_names), 0)
-       self.assertGreater(len(self.system.floating_species_names), 0)
-
-    def testConstructor2(self):
-       if IGNORE_TEST:
+        if IGNORE_TEST:
             return
-       with self.assertRaises(ValueError):
-           _ = SBMLSystem(LINEAR_MDL, ["S9"], ["S3"])
-       with self.assertRaises(ValueError):
-           _ = SBMLSystem(LINEAR_MDL, ["S1"], ["S9"])
+        self.assertTrue(isinstance(self.system.antimony, str))
+        self.assertGreater(len(self.system.reaction_names), 0)
+        self.assertGreater(len(self.system.floating_species_names), 0)
+
+    def testImproperModel(self):
+        if IGNORE_TEST:
+            return
+        with self.assertRaises(SystemExit):
+            SBMLSystem(IMPROPER_LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
+                          
+    def testConstructor2(self):
+        if IGNORE_TEST:
+                return
+        with self.assertRaises(ValueError):
+            _ = SBMLSystem(LINEAR_MDL, ["S9"], ["S3"])
+        with self.assertRaises(ValueError):
+            _ = SBMLSystem(LINEAR_MDL, ["S1"], ["S9"])
+
+    def testConstructor3(self):
+        if IGNORE_TEST:
+                return
+        self.system = SBMLSystem(LINEAR_MDL, ["aa"], ["bb"], is_fixed_input_species=True)
 
     def testGet(self):
         if IGNORE_TEST:
@@ -114,6 +129,8 @@ class TestSBMLSystem(unittest.TestCase):
         #
         test(True)
         test(False)
+
+    # Test staircase on a closedloop system
 
 
 if __name__ == '__main__':

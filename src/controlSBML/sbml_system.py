@@ -15,7 +15,8 @@ REFERENCE = "reference"
 
 class SBMLSystem(object):
 
-    def __init__(self, model_reference, input_names, output_names, is_fixed_input_species=False):
+    def __init__(self, model_reference, input_names, output_names, is_fixed_input_species=False,
+                 control_module_name=cn.DEFAULT_MODULE_NAME):
         """
         model_reference: str
             string, SBML file or Roadrunner object
@@ -24,6 +25,8 @@ class SBMLSystem(object):
         output_names: list-str
             output species
         is_fixed_input_species: bool (input species are fixed)
+        control_module_name: str
+            name of the control module
         """
         # First initializations
         self.model_reference = model_reference
@@ -31,9 +34,18 @@ class SBMLSystem(object):
         self.output_names = output_names
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
-        self.floating_species_names = list(set(self.roadrunner.getFloatingSpeciesIds()))
+        # Verify that the main model is a module
+        if self.roadrunner.model.getModelName() == "__main":
+            msgs.error("Models must be modular models.")
         self.antimony = self.roadrunner.getAntimony()
-        self.antimony_builder = AntimonyBuilder(self.antimony, self.floating_species_names)
+        self.symbol_dct = self._makeSymbolDct()
+        self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
+        #
+        self.floating_species_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_FLOATING_SPECIES]
+        self.boundary_species_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_BOUNDARY_SPECIES]
+        self.reaction_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_REACTION]
+        self.parameter_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_PARAMETER]
+        #
         for name in self.input_names:
             if name in self.floating_species_names:
                 if is_fixed_input_species:
@@ -41,23 +53,41 @@ class SBMLSystem(object):
                 else:
                     self.antimony_builder.makeBoundaryReaction(name)
         # Handle inputs/outputs
-        stoichiometry_mat = self.roadrunner.getFullStoichiometryMatrix()
-        self.floating_species_names = list(self.roadrunner.getFloatingSpeciesIds())
-        self.reaction_names = list(stoichiometry_mat.colnames)
-        self.parameter_names = list(self.roadrunner.getGlobalParameterIds())
         self.num_input = len(self.input_names)
         self.num_output = len(self.output_names)
         # Validation checks
-        invalid_names = self._invalidInputNames()
+        invalid_names = self._verifyInputNames()
         if len(invalid_names) > 0:
             text = "Inputs must be a species, parameter, or compartment."
             text += "   Invalid names are: %s" % str(invalid_names)
             raise ValueError(text)
-        invalid_names = self._invalidOutputNames()
+        invalid_names = self._verifyOutputNames()
         if len(invalid_names) > 0:
             text = "Outputs must be species or fluxes."
             text += "The following outputs are invalid: %s" % str(invalid_names)
             raise ValueError(text)
+        
+    def _makeSymbolDct(self):
+        """
+        Returns
+        -------
+        dict
+            key: str (symbol name)
+            value: str (symbol type)
+        """
+        symbol_dct = {}
+        stoichiometry_mat = self.roadrunner.getFullStoichiometryMatrix()
+        for name in self.roadrunner.getFloatingSpeciesIds():
+            symbol_dct[name] = cn.TYPE_FLOATING_SPECIES
+        for name in self.roadrunner.model.getBoundarySpeciesIds():
+            symbol_dct[name] = cn.TYPE_BOUNDARY_SPECIES
+        for name in stoichiometry_mat.colnames:
+            symbol_dct[name] = cn.TYPE_REACTION
+        for name in self.roadrunner.getGlobalParameterIds():
+            symbol_dct[name] = cn.TYPE_PARAMETER
+        for name in self.roadrunner.getAssignmentRuleIds():
+            symbol_dct[name] = cn.TYPE_ASSIGNMENT
+        return symbol_dct
         
     def _isExistingName(self, name, names):
         if name in self.roadrunner.keys():
@@ -65,7 +95,7 @@ class SBMLSystem(object):
         names.append(name)
         return False
         
-    def _invalidInputNames(self):
+    def _verifyInputNames(self):
         """
         Verifies that the input names are valid.
 
@@ -87,7 +117,7 @@ class SBMLSystem(object):
                 invalid_names.append(name)
         return invalid_names
     
-    def _invalidOutputNames(self):
+    def _verifyOutputNames(self):
         """
         Verifies that the output names are valid.
 
@@ -98,6 +128,12 @@ class SBMLSystem(object):
         invalid_names = []
         for name in self.output_names:
             if not self._isExistingName(name, invalid_names):
+                continue
+            if name in self.reaction_names:
+                invalid_names.append(name)
+                continue
+            if name in self.boundary_species_names:
+                invalid_names.append(name)
                 continue
             try:
                 # Must be able to retrieve a value

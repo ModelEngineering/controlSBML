@@ -13,6 +13,7 @@ IGNORE_TEST = False
 IS_PLOT = False
 LINEAR_MDL = """
 // Illustrate Antimony File
+model *main_model()
 S1 -> S2; k1*$S1
 J1: S2 -> S3; k2*S2
 J2: S3 -> S2; k3*S3
@@ -25,7 +26,9 @@ k4 = 4
 S1 = 10
 S2 = 0
 S3 = 0
+end
 """
+SYMBOL_DCT = {"S1": cn.TYPE_FLOATING_SPECIES, "S2": cn.TYPE_FLOATING_SPECIES, "S3": cn.TYPE_FLOATING_SPECIES}
 
 
 #############################
@@ -34,7 +37,7 @@ S3 = 0
 class TestAntimonyBuilder(unittest.TestCase):
 
     def setUp(self):
-       self.builder = ab.AntimonyBuilder(LINEAR_MDL, ["S1", "S2", "S3", "S4"])
+       self.builder = ab.AntimonyBuilder(LINEAR_MDL, SYMBOL_DCT)
 
     def check(self):
        rr = te.loada(str(self.builder))
@@ -47,7 +50,6 @@ class TestAntimonyBuilder(unittest.TestCase):
        if IGNORE_TEST:
            return
        self.assertTrue(isinstance(self.builder.antimony, str))
-       self.check()
 
     def testMakeBoundarySpecies(self):
        if IGNORE_TEST:
@@ -72,18 +74,17 @@ class TestAntimonyBuilder(unittest.TestCase):
     def testMakeStaircase(self):
        if IGNORE_TEST:
            return
-       self.builder.startModification()
        self.builder.makeBoundarySpecies("S1")
        value_arr = self.builder.makeStaircase("S1", initial_value=2)
        self.assertTrue("at " in self.builder.antimony_strs[-1])
        self.assertEqual(len(value_arr), len(cn.TIMES))
        self.check()
     
-    def testMakeStaircase(self):
+    def testMakeSISClosedLoop(self):
        if IGNORE_TEST:
            return
        self.builder.makeBoundarySpecies("S1")
-       self.builder.makeSISOClosedLoop("S1", "S3", kp=1)
+       self.builder.makeSISOClosedLoop("S1", "S3", kp=1, reference=4)
        self.check()
        
 

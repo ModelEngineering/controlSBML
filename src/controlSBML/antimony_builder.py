@@ -3,30 +3,40 @@
 import controlSBML.constants as cn
 
 import numpy as np
+import tellurium as te
 
 
 class AntimonyBuilder(object):
 
-    def __init__(self, antimony, species_names):
+    def __init__(self, antimony, symbol_dct, control_module_name=cn.DEFAULT_MODULE_NAME):
         """
         Args:
             antimony: str (Antimony)
+            symbol_dct: dict
+                key: str (symbol name)
+                value: str (symbol type)
         """
         self.antimony = antimony
-        self.species_names = species_names
+        self.symbol_dct = symbol_dct
+        self.control_module_name = control_module_name
         self.antimony_strs = antimony.split("\n")
-        self.boundary_species = []
         self._initialized_output = False
-        for idx, stg in enumerate(self.antimony_strs):
-            clean_stg = stg.strip()
-            if len(clean_stg) == 0:
-                continue
-            if not clean_stg.startswith(cn.COMMENT_STR):
-                self.insert_pos = idx
-                break
+        # Find the main module
+        rr = te.loada(antimony)
+        self.main_module_name = rr.model.getModelName()
+
+    @property
+    def floating_species_names(self):
+        return [k for k, v in self.symbol_dct.items() if v == cn.TYPE_FLOATING_SPECIES]
+
+    @property
+    def boundary_species_names(self):
+        return [k for k, v in self.symbol_dct.items() if v == cn.TYPE_BOUNDARY_SPECIES]
 
     def __repr__(self):
-        return "\n".join(self.antimony_strs)
+        outputs = list(self.antimony_strs)
+        outputs.append("end")
+        return "\n".join(outputs)
 
     def addStatement(self, stg):
         """
@@ -35,16 +45,21 @@ class AntimonyBuilder(object):
         """
         if not self._initialized_output:
             self._initialized_output = True
-            self.antimony_strs.append("\n//--------------Aded by ControlSBML-----------------")
+            self.antimony_strs.append("\nmodule *%s()" % self.control_module_name)
+            statement = "M: %s()" % self.main_module_name
+            self.antimony_strs.append(statement)
+            for name in self.symbol_dct.keys():
+                statement = "M.%s is %s" % (name, name)
+                self.antimony_strs.append(statement)
+            self.antimony_strs.append("")
         self.antimony_strs.append(stg)
-        self.insert_pos += 1
 
     def makeBoundarySpecies(self, species_name):
         """
         Args:
             species_name: str
         """
-        self.boundary_species.append(species_name)
+        self.symbol_dct[species_name] = cn.TYPE_BOUNDARY_SPECIES
         self.addStatement("const %s" % species_name)
 
     def makeComment(self, comment):
@@ -139,7 +154,7 @@ class AntimonyBuilder(object):
         Args:
             input_name: str
         """
-        if (input_name in self.species_names) and (input_name not in self.boundary_species):
+        if input_name not in self.boundary_species_names:
             name = self.makeParameterNameForBoundaryReaction(input_name)
         else:
             name = input_name
