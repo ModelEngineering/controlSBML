@@ -42,8 +42,10 @@ that has an input named "S1" and an output named "S3" would be named "control_er
 """
 
 import controlSBML.constants as cn
+from controlSBML import util
 
 import numpy as np
+import re
 import tellurium as te
 
 IN = "_in"
@@ -52,7 +54,7 @@ OT = "_ot"
 
 class AntimonyBuilder(object):
 
-    def __init__(self, antimony, symbol_dct, control_module_name=cn.DEFAULT_MODULE_NAME):
+    def __init__(self, antimony, symbol_dct=None, control_module_name=cn.DEFAULT_MODULE_NAME):
         """
         Args:
             antimony: str (Antimony)
@@ -61,13 +63,26 @@ class AntimonyBuilder(object):
                 value: str (symbol type)
         """
         self.antimony = antimony
-        self.symbol_dct = symbol_dct
         self.control_module_name = control_module_name
         self.antimony_strs = antimony.split("\n")
         self._initialized_output = False
         # Find the main module
         rr = te.loada(antimony)
-        self.main_module_name = rr.model.getModelName()
+        if symbol_dct is None:
+            symbol_dct = util.makeRoadrunnerSymbolDct(rr)
+        self.symbol_dct = symbol_dct
+        self.main_model_name = self._getModelName()
+
+    def _getModelName(self):
+        # Finds the name of the top level model
+        model_name = None
+        for line in self.antimony_strs:
+            result = re.search("model .*[*].*()", line)
+            if result:
+                start_pos = line.find("*") + 1
+                end_pos = line.find("(")
+                model_name = line[start_pos:end_pos]
+        return model_name
 
     def _getSetOfType(self, antimony_type):
         return [k for k, v in self.symbol_dct.items() if v == antimony_type]
@@ -81,12 +96,16 @@ class AntimonyBuilder(object):
         return self._getSetOfType(cn.TYPE_BOUNDARY_SPECIES)
 
     @property
-    def boundary_species_names(self):
-        return self._getSetOfType(cn.TYPE_BOUNDARY_SPECIES)
-
-    @property
     def reaction_names(self):
         return self._getSetOfType(cn.TYPE_REACTION)
+    
+    @property
+    def parameter_names(self):
+        return self._getSetOfType(cn.TYPE_PARAMETER)
+    
+    @property
+    def assignment_names(self):
+        return self._getSetOfType(cn.TYPE_ASSIGNMENT)
 
     def __repr__(self):
         outputs = list(self.antimony_strs)
@@ -101,7 +120,7 @@ class AntimonyBuilder(object):
         if not self._initialized_output:
             self._initialized_output = True
             self.antimony_strs.append("\nmodule *%s()" % self.control_module_name)
-            statement = "M: %s()" % self.main_module_name
+            statement = "M: %s()" % self.main_model_name
             self.antimony_strs.append(statement)
             for name in self.symbol_dct.keys():
                 statement = "M.%s is %s" % (name, name)

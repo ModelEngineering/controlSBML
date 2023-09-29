@@ -11,9 +11,8 @@ import tellurium as te
 
 IGNORE_TEST = False
 IS_PLOT = False
-LINEAR_MDL = """
-// Illustrate Antimony File
-model *main_model()
+MODEL_NAME = "main_model"
+INCOMPLETE_LINEAR_MDL = """
 S1 -> S2; k1*$S1
 J1: S2 -> S3; k2*S2
 J2: S3 -> S2; k3*S3
@@ -26,9 +25,12 @@ k4 = 4
 S1 = 10
 S2 = 0
 S3 = 0
-end
 """
+LINEAR_MDL = "model *%s()\n" % MODEL_NAME + INCOMPLETE_LINEAR_MDL + "end"
 SYMBOL_DCT = {"S1": cn.TYPE_FLOATING_SPECIES, "S2": cn.TYPE_FLOATING_SPECIES, "S3": cn.TYPE_FLOATING_SPECIES}
+rr = te.loadSBMLModel(cn.MTOR_URL)
+MTOR_MDL = rr.getAntimony()
+MTOR_NAME = "Varusai2018___Dynamic_modelling_of_the_mTOR_signalling_network_reveals_complex_emergent_behaviours_conferred_by_DEPTOR"
 
 
 #############################
@@ -37,7 +39,14 @@ SYMBOL_DCT = {"S1": cn.TYPE_FLOATING_SPECIES, "S2": cn.TYPE_FLOATING_SPECIES, "S
 class TestAntimonyBuilder(unittest.TestCase):
 
     def setUp(self):
-       self.builder = ab.AntimonyBuilder(LINEAR_MDL, SYMBOL_DCT)
+        if IGNORE_TEST:
+            return
+        self.init()
+
+    def init(self):
+        if "builder" in dir(self):
+            return
+        self.builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
 
     def check(self):
         rr = te.loada(str(self.builder))
@@ -46,35 +55,56 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IS_PLOT:
             rr.plot()
         return data
+    
+    def testProperties(self):
+        if IGNORE_TEST:
+            return
+        builder = ab.AntimonyBuilder(MTOR_MDL)
+        self.assertGreater(len(builder.floating_species_names), 0)
+        self.assertEqual(len(builder.boundary_species_names), 0)
+        self.assertGreater(len(builder.reaction_names), 0)
+        self.assertGreater(len(builder.parameter_names), 0)
 
     def testConstructor(self):
-       if IGNORE_TEST:
-           return
-       self.assertTrue(isinstance(self.builder.antimony, str))
+        if IGNORE_TEST:
+            return
+        self.init()
+        self.assertTrue(isinstance(self.builder.antimony, str))
+        self.assertEqual(self.builder.main_model_name, MODEL_NAME)
+
+    def testGetModelName(self):
+        if IGNORE_TEST:
+            return
+        builder = ab.AntimonyBuilder(MTOR_MDL)
+        self.assertEqual(builder.main_model_name, MTOR_NAME)
 
     def testMakeBoundarySpecies(self):
-       if IGNORE_TEST:
-           return
-       self.builder.makeBoundarySpecies("S1")
-       self.assertTrue("const" in self.builder.antimony_strs[-1])
-       self.check()
+        if IGNORE_TEST:
+            return
+        self.init()
+        self.builder.makeBoundarySpecies("S1")
+        self.assertTrue("const" in self.builder.antimony_strs[-1])
+        self.check()
 
     def testMakeBoundaryReaction(self):
-       if IGNORE_TEST:
-           return
-       self.builder.makeBoundaryReaction("S1")
-       self.assertTrue("->" in self.builder.antimony_strs[-2])
-       self.check()
+        if IGNORE_TEST:
+            return
+        self.init()
+        self.builder.makeBoundaryReaction("S1")
+        self.assertTrue("->" in self.builder.antimony_strs[-2])
+        self.check()
 
     def testMakeComment(self):
-       if IGNORE_TEST:
-           return
-       self.builder.makeComment("comment")
-       self.assertTrue("comment" in self.builder.antimony_strs[-1])
+        if IGNORE_TEST:
+            return
+        self.init()
+        self.builder.makeComment("comment")
+        self.assertTrue("comment" in self.builder.antimony_strs[-1])
 
     def testMakeAdditionStatement(self):
         if IGNORE_TEST:
             return
+        self.init()
         self.builder.makeAdditionStatement("S1", "S2", "S3")
         result = re.search("S1.*:=.*S2.*\+.*S3", self.builder.antimony_strs[-1])
         self.assertTrue(result)
@@ -95,6 +125,7 @@ class TestAntimonyBuilder(unittest.TestCase):
     def testMakeFilterElement(self):
         if IGNORE_TEST:
             return
+        self.init()
         filter_in, filter_ot = self.builder.makeFilterElement(1.0, suffix="_S1_S3")
         sin_ot = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
         self.builder.makeAdditionStatement(filter_in, sin_ot)
@@ -111,6 +142,7 @@ class TestAntimonyBuilder(unittest.TestCase):
     def testMakePIController(self):
         if IGNORE_TEST:
             return
+        self.init()
         name_in, name_ot = self.builder.makePIControllerElement(kp=7, suffix="_S1_S3")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
@@ -119,23 +151,26 @@ class TestAntimonyBuilder(unittest.TestCase):
     def testMakeSISOClosedLoopSystem(self):
         if IGNORE_TEST:
             return
+        self.init()
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10, setpoint=5,
                            noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20)
         self.check()
 
     def testMakeStaircase(self):
-       if IGNORE_TEST:
-           return
-       self.builder.makeBoundarySpecies("S1")
-       value_arr = self.builder.makeStaircase("S1", initial_value=2)
-       self.assertTrue("at " in self.builder.antimony_strs[-1])
-       self.assertEqual(len(value_arr), len(cn.TIMES))
-       self.check()
+        if IGNORE_TEST:
+            return
+        self.init()
+        self.builder.makeBoundarySpecies("S1")
+        value_arr = self.builder.makeStaircase("S1", initial_value=2)
+        self.assertTrue("at " in self.builder.antimony_strs[-1])
+        self.assertEqual(len(value_arr), len(cn.TIMES))
+        self.check()
     
     def testMakeSISClosedLoop(self):
         if IGNORE_TEST:
             return
+        self.init()
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10000, ki=1, setpoint=4)
         data = self.check()

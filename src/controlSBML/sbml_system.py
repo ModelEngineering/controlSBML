@@ -7,6 +7,7 @@ from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML.timeseries import Timeseries
 from controlSBML import util
 
+import re
 import tellurium as te
 
 
@@ -50,6 +51,7 @@ class SBMLSystem(object):
         # Validation checks
         invalid_names = self._verifyInputNames()
         if len(invalid_names) > 0:
+            import pdb; pdb.set_trace()
             text = "Inputs must be a species, parameter, or compartment."
             text += "   Invalid names are: %s" % str(invalid_names)
             raise ValueError(text)
@@ -59,6 +61,13 @@ class SBMLSystem(object):
             text += "The following outputs are invalid: %s" % str(invalid_names)
             raise ValueError(text)
         
+    def model_name(self):
+        model_name = self.roadrunner.model.getModelName()
+        if not " " in model_name:
+            return model_name
+        else:
+            return self.antimony_builder.model_name
+        
     def _makeSymbolDct(self):
         """
         Returns
@@ -67,19 +76,11 @@ class SBMLSystem(object):
             key: str (symbol name)
             value: str (symbol type)
         """
-        symbol_dct = {}
-        stoichiometry_mat = self.roadrunner.getFullStoichiometryMatrix()
-        for name in self.roadrunner.getFloatingSpeciesIds():
-            symbol_dct[name] = cn.TYPE_FLOATING_SPECIES
-        for name in self.roadrunner.model.getBoundarySpeciesIds():
-            symbol_dct[name] = cn.TYPE_BOUNDARY_SPECIES
-        for name in stoichiometry_mat.colnames:
-            symbol_dct[name] = cn.TYPE_REACTION
-        for name in self.roadrunner.getGlobalParameterIds():
-            symbol_dct[name] = cn.TYPE_PARAMETER
-        for name in self.roadrunner.getAssignmentRuleIds():
-            symbol_dct[name] = cn.TYPE_ASSIGNMENT
-        return symbol_dct
+        symbol_dct = util.makeRoadrunnerSymbolDct(self.roadrunner)
+        names = list(self.input_names)
+        names.extend(self.output_names)
+        final_symbol_dct = {k: v for k, v in symbol_dct.items() if k in names}
+        return final_symbol_dct
         
     def _isExistingName(self, name, names):
         if name in self.roadrunner.keys():
@@ -269,6 +270,9 @@ class SBMLSystem(object):
         self.antimony_builder.makeComment("Staircase: %s->%s" % (input_name, output_name))
         self.antimony_builder.makeStaircase(input_name, times=times, initial_value=initial_value,
                                             num_step=num_step, final_value=final_value)
-        ts = self._simulate(start_time=times[0], end_time=times[-1], num_point=len(times),
-                            is_steady_state=is_steady_state)
+        try:
+            ts = self._simulate(start_time=times[0], end_time=times[-1], num_point=len(times),
+                                is_steady_state=is_steady_state)
+        except Exception as exp:
+            import pdb; pdb.set_trace()
         return ts

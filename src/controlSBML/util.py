@@ -537,6 +537,32 @@ def compareSingleArgumentFunctions(func1, func2, arg_min, arg_max, num_point=100
         return True
     else:
         return False
+    
+    
+def makeRoadrunnerSymbolDct(roadrunner):
+    """
+    Creates a symbol dictory for the roadrunner model.
+
+    Args:
+        roadrunner: ExtendedRoadrunner
+    Returns: dict
+        key: str (symbol name)
+        value: str (symbol type)
+    """
+    symbol_dct = {}
+    stoichiometry_mat = roadrunner.getFullStoichiometryMatrix()
+    for name in roadrunner.getFloatingSpeciesIds():
+        symbol_dct[name] = cn.TYPE_FLOATING_SPECIES
+    for name in roadrunner.model.getBoundarySpeciesIds():
+        symbol_dct[name] = cn.TYPE_BOUNDARY_SPECIES
+    for name in stoichiometry_mat.colnames:
+        symbol_dct[name] = cn.TYPE_REACTION
+    for name in roadrunner.getGlobalParameterIds():
+        symbol_dct[name] = cn.TYPE_PARAMETER
+    for name in roadrunner.getAssignmentRuleIds():
+        symbol_dct[name] = cn.TYPE_ASSIGNMENT
+    #
+    return symbol_dct
 
 
 ############### CLASSES ################
