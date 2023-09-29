@@ -35,26 +35,18 @@ class SBMLSystem(object):
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
         # Verify that the main model is a module
-        if self.roadrunner.model.getModelName() == "__main":
+        if self.roadrunner.model.getModelName() == cn.DEFAULT_ROADRUNNER_MODULE:
             msgs.error("Models must be modular models.")
         self.antimony = self.roadrunner.getAntimony()
         self.symbol_dct = self._makeSymbolDct()
         self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
-        #
-        self.floating_species_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_FLOATING_SPECIES]
-        self.boundary_species_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_BOUNDARY_SPECIES]
-        self.reaction_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_REACTION]
-        self.parameter_names = [n for n, t in self.symbol_dct.items() if t == cn.TYPE_PARAMETER]
-        #
+        # Add boundary information depending on the type of input
         for name in self.input_names:
-            if name in self.floating_species_names:
+            if name in self.antimony_builder.floating_species_names:
                 if is_fixed_input_species:
                     self.antimony_builder.makeBoundarySpecies(name)
                 else:
                     self.antimony_builder.makeBoundaryReaction(name)
-        # Handle inputs/outputs
-        self.num_input = len(self.input_names)
-        self.num_output = len(self.output_names)
         # Validation checks
         invalid_names = self._verifyInputNames()
         if len(invalid_names) > 0:
@@ -107,7 +99,7 @@ class SBMLSystem(object):
         for name in self.input_names:
             if not self._isExistingName(name, invalid_names):
                 continue
-            if name in self.reaction_names:
+            if name in self.antimony_builder.reaction_names:
                 invalid_names.append(name)
                 continue
             try:
@@ -129,10 +121,10 @@ class SBMLSystem(object):
         for name in self.output_names:
             if not self._isExistingName(name, invalid_names):
                 continue
-            if name in self.reaction_names:
+            if name in self.antimony_builder.reaction_names:
                 invalid_names.append(name)
                 continue
-            if name in self.boundary_species_names:
+            if name in self.antimony_builder.boundary_species_names:
                 invalid_names.append(name)
                 continue
             try:
@@ -251,11 +243,11 @@ class SBMLSystem(object):
         comment = "Closed loop: %s -> %s" % (input_name, output_name)
         self.antimony_builder.makeComment(comment)
         #
-        if self.is_fixed_input_species and (input_name in self.floating_species_names):
+        if self.is_fixed_input_species and (input_name in self.antimony_builder.floating_species_names):
             new_input_name = input_name
         else:
             new_input_name = self.antimony_builder.makeParameterNameForBoundaryReaction(input_name)
-        self.antimony_builder.makeSISOClosedLoop(new_input_name, output_name, kp=kp, ki=ki, kf=kf, reference=reference)
+        self.antimony_builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, reference=reference)
         # Run the simulation
         return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=True)
     

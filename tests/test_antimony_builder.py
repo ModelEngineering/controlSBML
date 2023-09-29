@@ -4,7 +4,7 @@ from controlSBML import antimony_builder as ab
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import os
+import re
 import unittest
 import tellurium as te
 
@@ -40,11 +40,12 @@ class TestAntimonyBuilder(unittest.TestCase):
        self.builder = ab.AntimonyBuilder(LINEAR_MDL, SYMBOL_DCT)
 
     def check(self):
-       rr = te.loada(str(self.builder))
-       data = rr.simulate()
-       self.assertTrue(len(data) > 0)
-       if IS_PLOT:
-          rr.plot()
+        rr = te.loada(str(self.builder))
+        data = rr.simulate(0,20, 2000, selections=["time", "S1", "S2", "S3"])
+        self.assertTrue(len(data) > 0)
+        if IS_PLOT:
+            rr.plot()
+        return data
 
     def testConstructor(self):
        if IGNORE_TEST:
@@ -71,6 +72,58 @@ class TestAntimonyBuilder(unittest.TestCase):
        self.builder.makeComment("comment")
        self.assertTrue("comment" in self.builder.antimony_strs[-1])
 
+    def testMakeAdditionStatement(self):
+        if IGNORE_TEST:
+            return
+        self.builder.makeAdditionStatement("S1", "S2", "S3")
+        result = re.search("S1.*:=.*S2.*\+.*S3", self.builder.antimony_strs[-1])
+        self.assertTrue(result)
+        self.builder.makeAdditionStatement("S2", "S3", is_assignment=False)
+        result = re.search("S2.* =.*S3", self.builder.antimony_strs[-1])
+        self.assertTrue(result)
+        self.check()
+
+    def testMakeSinusoidSignal(self):
+        if IGNORE_TEST:
+            return
+        ot_name = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
+        result = re.search("%s.*=.*1.*sin.*2" % ot_name, self.builder.antimony_strs[-1])
+        self.assertTrue(result)
+        self.builder.makeAdditionStatement("S1", ot_name)
+        self.check()
+
+    def testMakeFilterElement(self):
+        if IGNORE_TEST:
+            return
+        filter_in, filter_ot = self.builder.makeFilterElement(1.0, suffix="_S1_S3")
+        sin_ot = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
+        self.builder.makeAdditionStatement(filter_in, sin_ot)
+        self.check()
+
+    def testMakeControlErrorSignal(self):
+        if IGNORE_TEST:
+            return
+        signal_ot = self.builder.makeControlErrorSignal(-7, "S3", suffix="_S1_S3")
+        result = re.search("%s.*:=.*7.*S3" % signal_ot, self.builder.antimony_strs[-1])
+        self.assertTrue(result)
+        self.check()
+    
+    def testMakePIController(self):
+        if IGNORE_TEST:
+            return
+        name_in, name_ot = self.builder.makePIControllerElement(kp=7, suffix="_S1_S3")
+        self.builder.makeAdditionStatement("S1", name_ot)
+        self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
+        self.check()
+
+    def testMakeSISOClosedLoopSystem(self):
+        if IGNORE_TEST:
+            return
+        self.builder.makeBoundarySpecies("S1")
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10, setpoint=5,
+                           noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20)
+        self.check()
+
     def testMakeStaircase(self):
        if IGNORE_TEST:
            return
@@ -81,11 +134,12 @@ class TestAntimonyBuilder(unittest.TestCase):
        self.check()
     
     def testMakeSISClosedLoop(self):
-       if IGNORE_TEST:
-           return
-       self.builder.makeBoundarySpecies("S1")
-       self.builder.makeSISOClosedLoop("S1", "S3", kp=1, reference=4)
-       self.check()
+        if IGNORE_TEST:
+            return
+        self.builder.makeBoundarySpecies("S1")
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10000, ki=1, setpoint=4)
+        data = self.check()
+        self.assertTrue(np.isclose(data["S3"][-1], 4, atol=0.01))   
        
 
 if __name__ == '__main__':

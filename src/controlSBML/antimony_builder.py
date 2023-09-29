@@ -1,9 +1,53 @@
-"""Constructors Antimony to support control analysis and design."""
+"""
+Constructors Antimony to support control analysis and design.
+
+:Author: Joseph L. Hellerstein
+:Date: 2023-09-01
+:Email: joseph.hellerstein@gmail.com
+:License: MIT
+
+AntimonyBuilder creates Antimony code to construct control structures for design and analysis. Among
+these are:
+  PI controllers
+  filters
+  noise generators
+Also provided is a mechanism for system identification by creating a staircase function.
+
+Code is generated and placed in a new model module.
+
+We use the following terms:
+    signal: Something that generates data
+    element: A component of a system with an input and an output
+    system: A collection of elements
+
+The following names are used for elements of a closed loop system:
+  control_error: the difference between the setpoint and the output
+  controller_in: the input to the controller
+  controller_ot: the output of the controller
+  filter_in: the input to the filter
+  filter_ot: the output of the filter
+
+Elements are connected by addition/subtraction. For example, we connect the filter output to the
+control_error by the statement:
+  control_error := filter_ot
+This is an Antimony "assignment statement". It means that the values are equal for all time.
+makeAdditionStatement(name1, name2, name3, ...) creates the statement:
+  name1 := name2 + name3 + ...  
+If a name is preceded by a "-" then it is subtracted.
+
+The accommodate the presence of multiple controllers, the names of the elements are suffixed. A common
+approach is the use the names of the input and output. For example, the control_error for a controller
+that has an input named "S1" and an output named "S3" would be named "control_error_S1_S3".
+
+"""
 
 import controlSBML.constants as cn
 
 import numpy as np
 import tellurium as te
+
+IN = "_in"
+OT = "_ot"
 
 
 class AntimonyBuilder(object):
@@ -25,18 +69,29 @@ class AntimonyBuilder(object):
         rr = te.loada(antimony)
         self.main_module_name = rr.model.getModelName()
 
+    def _getSetOfType(self, antimony_type):
+        return [k for k, v in self.symbol_dct.items() if v == antimony_type]
+
     @property
     def floating_species_names(self):
-        return [k for k, v in self.symbol_dct.items() if v == cn.TYPE_FLOATING_SPECIES]
+        return self._getSetOfType(cn.TYPE_FLOATING_SPECIES)
 
     @property
     def boundary_species_names(self):
-        return [k for k, v in self.symbol_dct.items() if v == cn.TYPE_BOUNDARY_SPECIES]
+        return self._getSetOfType(cn.TYPE_BOUNDARY_SPECIES)
+
+    @property
+    def boundary_species_names(self):
+        return self._getSetOfType(cn.TYPE_BOUNDARY_SPECIES)
+
+    @property
+    def reaction_names(self):
+        return self._getSetOfType(cn.TYPE_REACTION)
 
     def __repr__(self):
         outputs = list(self.antimony_strs)
         outputs.append("end")
-        return "\n".join(outputs)
+        return "\n".join([str(o) for o in outputs])
 
     def addStatement(self, stg):
         """
@@ -101,51 +156,178 @@ class AntimonyBuilder(object):
         """
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
         return "%s%s" % (generic_name, suffix)
+    
+    def makeAdditionStatement(self, *pargs, is_assignment=True):
+        """
+        Creates an addition statement that looks for a leanding "-".
 
-    def makeSISOClosedLoop(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None, reference=0):
+        Args:
+            *pargs: str
+            is_assignment: bool (True means that the statement is an assignment statement)
+        """
+        statement = pargs[0]
+        if is_assignment:
+            statement += " := "
+        else:
+            statement += " = "
+        for idx, argument in enumerate(pargs[1:]):
+            argument_str = str(argument)
+            if argument_str[0] == "-":
+                if idx == 0:
+                    statement += " -" + argument_str[1:]
+                else:
+                    statement += " - " + argument_str[1:]
+            else:
+                if idx > 0:
+                    statement += " + " + argument_str
+                else:
+                    statement += argument_str
+        self.addStatement(statement) 
+
+    def makeSinusoidSignal(self, amplitude, frequency, prefix="sinusoid", suffix=""):
+        """
+        Makes a sinusoid. The created variable is prefix + suffix + "_ot"
+        Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
+
+        Args:
+            amplitude: float
+            frequency: float
+            prefix: str (beginning of the name)
+            suffix: str (ending of the name)
+        Returns:
+            str: name of the sinusoid
+        """
+        self.addStatement("")
+        self.makeComment("Make sinusoid: amplitude=%s, frequency=%s" % (str(amplitude), str(frequency)))
+        name = prefix +  suffix +  OT
+        statement = "%s := %f*sin(2*pi*%f*time)" % (name, amplitude, frequency)
+        self.addStatement(statement) 
+        return name
+    
+    def _makeInputOutputNames(self, prefix, suffix):
+        base_name = prefix + suffix
+        name_in = base_name + IN
+        name_ot = base_name + OT
+        return name_in, name_ot
+    
+    def makeFilterElement(self, kf, prefix="filter", suffix=""):
+        """
+        Makes a filter. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
+        Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
+
+        Args:
+            kf: float
+            prefix: str (beginning of the name)
+            suffix: str (ending of the name)
+        Returns:
+            str: name of the filter input
+            str: name of the filter output
+        Usage:
+            suffix = "_S1_S3"
+            name_in, name_ot = self.makeFilter(0.5, suffix=suffix)
+            self.makeAddition(name_in, "S3")   # S3 is the output of the system
+            self.makeAddition("control_error", setpoint, "-"+name_ot)
+        """
+        self.addStatement("")
+        self.makeComment("Filter: kf=%s" % (str(kf)))
+        name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
+        if kf is not None:
+            statement = "%s' =  -%f*%s + %f*%s" % (name_ot, kf, name_ot, kf, name_in)
+            self.addStatement(statement)
+            self.makeAdditionStatement(name_ot, 0, is_assignment=False)   # Initialize the filter output
+        else:
+            self.makeAdditionStatement(name_ot, name_in)
+        return name_in, name_ot
+    
+    def makeControlErrorSignal(self, setpoint, forward_output_name, prefix="control_error", suffix=""):
+        """
+        Constructs the control error variable.
+
+        Args:
+            setpoint: float/str
+            forward_output_name: str (Output for which the setpoint is compared)
+        Returns:
+            str (name of the control error)
+        Usage:
+            suffix = "_S1_S3"
+            control_error_name = self.makeControlError(setpoint, "S3", suffix=suffix)   # S3 is the output of the system
+        """
+        name_ot = prefix + suffix + OT
+        statement = "%s := %s - %s" % (name_ot, str(setpoint), forward_output_name)
+        self.addStatement(statement)
+        return name_ot
+    
+    def makePIControllerElement(self, kp=None, ki=None, prefix="controller", suffix=""):
+        """
+        Makes a PI controller. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
+        Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
+
+        Args:
+            kp: float
+            ki: float
+            prefix: str (beginning of the name)
+            suffix: str (ending of the name)
+        Returns:
+            str: name of the controller input
+            str: name of the controller output
+        Usage:
+            suffix = "_S1_S3"
+            name_in, name_ot = self.makeController(kp=1, suffix=suffix)
+            control_error_name = self.makeControlError(setpoint, "S3", suffix=suffix)   # S3 is the output of the system
+            self.makeAddition(name_in, control_error_name)  # control_error is input to the controller
+            self.makeAddition("S1", name_ot)   # S1 is the input to the system and is set by the controller
+        """
+        self.addStatement("")
+        self.makeComment("PI Controller: kp=%s, ki=%s" % (str(kp), str(ki)))
+        name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
+        # Make the integral of the control error
+        integral_error_name = prefix + "_integral_error" + suffix
+        statement = "%s' = %s" % (integral_error_name, name_in)
+        self.addStatement(statement)
+        self.makeAdditionStatement(integral_error_name, 0, is_assignment=False)   #  integral_error_name = 0
+        # Construct the control law
+        if kp is not None:
+            statement = "%s := %f*%s" % (name_ot, kp, name_in)
+        else:
+            statement = "%s = 0" % name_ot
+        if ki is not None:
+            statement = statement + "+ %f*%s" % (ki, integral_error_name)
+        self.addStatement(statement)
+        return name_in, name_ot
+
+    def makeSISOClosedLoopSystem(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None, setpoint=0,
+                           noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20):
         """
         Args:
-            input_name: str
-            output_name: str
+            input_name: str (input to system)
+            output_name: str (output from system)
             kp: float
             ki: float
             kd: float
             kf: float
+            setpoint: float (setpoint)
+            noise_amplitude: float (Amplitude of the additions to the output)
+            noise_frequency: float (Frequency of the additions to the output)
+            disturbance_amplitude: float (Amplitude of the disturbance)
+            disturbance_frequency: float (Frequency of the disturbance)
         """
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
-        # 
-        if kf is not None:
-            statement = "filter%s' = -%f*filter%s + %f*%s" % (
-                suffix, kf, suffix, kf, output_name
-            )
-            self.addStatement(statement)
-            statement = "filter%s = %s" % (suffix, output_name)
-            self.addStatement(statement) 
-        else:
-            statement = "filter%s := %s" % (suffix, output_name)
-            self.addStatement(statement) 
-        statement = "control_error%s := reference%s - filter%s" % (
-            suffix, suffix, suffix
-        )
-        self.addStatement(statement)
-        statement = "integral_control_error%s' = control_error%s" % (
-            suffix, suffix
-        )
-        self.addStatement(statement)
-        if kp is not None:
-            statement = "%s := %f*control_error%s" % (
-                input_name, kp, suffix)
-        else:
-            statement = "%s = 0" % input_name
-        if ki is not None:
-            statement = statement + "+ %f*integral_control_error%s" % (ki, suffix)
-        self.addStatement(statement)
-        # Initialization statements
-        statement = "integral_control_error%s = 0" % suffix
-        self.addStatement(statement)
-        statement = "reference%s = %f" % (suffix, reference)
-        self.addStatement(statement)
-
+        prefix = "sisoCL"
+        def sfx(name):
+            return "%s%s" % (name, suffix)
+        # Make the elements of the closed loop
+        noise_ot = self.makeSinusoidSignal(noise_amplitude, noise_frequency, prefix="noise", suffix=suffix)
+        disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)
+        filter_in, filter_ot = self.makeFilterElement(kf, prefix="filter", suffix=suffix)
+        controller_in, controller_ot = self.makePIControllerElement(kp, ki, prefix="controller", suffix=suffix)
+        control_error_name = self.makeControlErrorSignal(setpoint, filter_ot, prefix="control_error", suffix=suffix)
+        # Connect the pieces by specifying assignment statements
+        self.addStatement("")
+        self.makeComment("Connect the elements of the closed loop")
+        self.makeAdditionStatement(controller_in, control_error_name)
+        self.makeAdditionStatement(input_name, controller_ot, disturbance_ot)
+        self.makeAdditionStatement(filter_in, output_name, noise_ot)
+    
     def _makeInputManipulationName(self, input_name):
         """
         Constructs the name of the input that is being manipulated since floating species can be manipulated
