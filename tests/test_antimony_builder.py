@@ -70,13 +70,13 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.assertTrue(isinstance(self.builder.antimony, str))
-        self.assertEqual(self.builder.main_model_name, MODEL_NAME)
+        self.assertEqual(self.builder.parent_model_name, MODEL_NAME)
 
     def testGetModelName(self):
         if IGNORE_TEST:
             return
         builder = ab.AntimonyBuilder(MTOR_MDL)
-        self.assertEqual(builder.main_model_name, MTOR_NAME)
+        self.assertEqual(builder.parent_model_name, MTOR_NAME)
 
     def testMakeBoundarySpecies(self):
         if IGNORE_TEST:

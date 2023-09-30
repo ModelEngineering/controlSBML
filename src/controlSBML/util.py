@@ -538,7 +538,6 @@ def compareSingleArgumentFunctions(func1, func2, arg_min, arg_max, num_point=100
     else:
         return False
     
-    
 def makeRoadrunnerSymbolDct(roadrunner):
     """
     Creates a symbol dictory for the roadrunner model.

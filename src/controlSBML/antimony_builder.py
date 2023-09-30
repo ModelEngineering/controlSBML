@@ -71,7 +71,7 @@ class AntimonyBuilder(object):
         if symbol_dct is None:
             symbol_dct = util.makeRoadrunnerSymbolDct(rr)
         self.symbol_dct = symbol_dct
-        self.main_model_name = self._getModelName()
+        self.parent_model_name = self._getModelName()
 
     def _getModelName(self):
         # Finds the name of the top level model
@@ -120,7 +120,7 @@ class AntimonyBuilder(object):
         if not self._initialized_output:
             self._initialized_output = True
             self.antimony_strs.append("\nmodule *%s()" % self.control_module_name)
-            statement = "M: %s()" % self.main_model_name
+            statement = "M: %s()" % self.parent_model_name
             self.antimony_strs.append(statement)
             for name in self.symbol_dct.keys():
                 statement = "M.%s is %s" % (name, name)

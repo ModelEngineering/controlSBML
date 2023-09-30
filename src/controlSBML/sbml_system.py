@@ -36,11 +36,15 @@ class SBMLSystem(object):
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
         # Verify that the main model is a module
-        if self.roadrunner.model.getModelName() == cn.DEFAULT_ROADRUNNER_MODULE:
-            msgs.error("Models must be modular models.")
-        self.antimony = self.roadrunner.getAntimony()
+        self.antimony = self._getAntimony()
         self.symbol_dct = self._makeSymbolDct()
-        self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
+        try:
+            self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
+        except Exception as exp:
+            import pdb; pdb.set_trace()
+            pass
+        if self.antimony_builder.parent_model_name in [None, cn.DEFAULT_ROADRUNNER_MODULE]:
+            msgs.error("Cannot find the name of the parent model. Is it a modular model?")
         # Add boundary information depending on the type of input
         for name in self.input_names:
             if name in self.antimony_builder.floating_species_names:
@@ -51,7 +55,6 @@ class SBMLSystem(object):
         # Validation checks
         invalid_names = self._verifyInputNames()
         if len(invalid_names) > 0:
-            import pdb; pdb.set_trace()
             text = "Inputs must be a species, parameter, or compartment."
             text += "   Invalid names are: %s" % str(invalid_names)
             raise ValueError(text)
@@ -60,6 +63,20 @@ class SBMLSystem(object):
             text = "Outputs must be species or fluxes."
             text += "The following outputs are invalid: %s" % str(invalid_names)
             raise ValueError(text)
+        
+    def _getAntimony(self):
+        """
+        Extracts antimony from the roadrunner object. Cleans it as necessary.
+
+        Returns:
+            str
+        """
+        antimony = self.roadrunner.getAntimony()
+        # FIXME: Handle this better?
+        if "unknown_model_qual" in antimony:
+            msgs.warn("Antimony contains 'unknown_model_qual' which is not supported by tellurium. Replaced with 'description'.")
+            antimony = antimony.replace(" unknown_model_qual ", " description ")
+        return antimony
         
     def model_name(self):
         model_name = self.roadrunner.model.getModelName()
@@ -275,4 +292,5 @@ class SBMLSystem(object):
                                 is_steady_state=is_steady_state)
         except Exception as exp:
             import pdb; pdb.set_trace()
+            pass
         return ts
