@@ -287,10 +287,6 @@ class SBMLSystem(object):
         self.antimony_builder.makeComment("Staircase: %s->%s" % (input_name, output_name))
         self.antimony_builder.makeStaircase(input_name, times=times, initial_value=initial_value,
                                             num_step=num_step, final_value=final_value)
-        try:
-            ts = self._simulate(start_time=times[0], end_time=times[-1], num_point=len(times),
-                                is_steady_state=is_steady_state)
-        except Exception as exp:
-            import pdb; pdb.set_trace()
-            pass
+        ts = self._simulate(start_time=times[0], end_time=times[-1], num_point=len(times),
+                            is_steady_state=is_steady_state)
         return ts
