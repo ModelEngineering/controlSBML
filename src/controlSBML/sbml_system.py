@@ -41,8 +41,7 @@ class SBMLSystem(object):
         try:
             self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
         except Exception as exp:
-            import pdb; pdb.set_trace()
-            pass
+            msgs.error("Cannot create AntimonyBuilder: %s" % exp)
         if self.antimony_builder.parent_model_name in [None, cn.DEFAULT_ROADRUNNER_MODULE]:
             msgs.error("Cannot find the name of the parent model. Is it a modular model?")
         # Add boundary information depending on the type of input
@@ -236,7 +235,10 @@ class SBMLSystem(object):
             self.roadrunner = te.loada(str(self.antimony_builder))
         if is_steady_state:
             self.setSteadyState()
-        data = self.roadrunner.simulate(start_time, end_time, num_point)
+        selections = list(self.input_names)
+        selections.extend(self.output_names)
+        selections.insert(0, cn.TIME)
+        data = self.roadrunner.simulate(start_time, end_time, num_point, selections=selections)
         ts = Timeseries(data)
         return ts
     

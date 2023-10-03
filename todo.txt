@@ -1,3 +1,12 @@
+Bugs
+  "Stoichiometry matrix does not exist for this model" -- 379
+  "Cannot create AntimonyBuilder: Antimony: Error in model string, line 27:  syntax error, unexpected element name, expecting number or '('" -- 386
+  "438: Processing BIOMD0000000439.xml
+Error for BIOMD0000000439.xml: Antimony: Error in model string, line 253:  1 SBML error(s) when creating module 'controlSBMLModel'.  libAntimony tries to catch these errors before libSBML complains, but sometimes cannot.  Error message(s) from libSBML:
+
+A UnitDefinition object must have the required attribute 'id' and may have the optional attributes 'metaid', 'sboTerm' and 'name'. No other attributes from the SBML Level 3 Core namespace are permitted on a UnitDefinition object. -- 439
+Reference: L3V1 Section 4.4
+ The required attribute 'id' is missing."
 New architecture
   0. Archive deprecated files and their tests
   1. More tests

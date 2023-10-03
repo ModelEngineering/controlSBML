@@ -117,13 +117,14 @@ class AntimonyBuilder(object):
         Args:
             stg: str
         """
+        model_prefix = "xxM"
         if not self._initialized_output:
             self._initialized_output = True
             self.antimony_strs.append("\nmodule *%s()" % self.control_module_name)
-            statement = "M: %s()" % self.parent_model_name
+            statement = "%s: %s()" % (model_prefix, self.parent_model_name)
             self.antimony_strs.append(statement)
             for name in self.symbol_dct.keys():
-                statement = "M.%s is %s" % (name, name)
+                statement = "%s.%s is %s" % (model_prefix, name, name)
                 self.antimony_strs.append(statement)
             self.antimony_strs.append("")
         self.antimony_strs.append(stg)

@@ -6,7 +6,7 @@ import warnings
 def error(text):
   print("***Error. Reason follows.")
   print("   %s" % text)
-  sys.exit()
+  raise ValueError("Cannot continue")
 
 def warn(text):
   new_text = "\n\n***Warning*** %s" % text

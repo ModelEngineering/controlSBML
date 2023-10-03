@@ -16,6 +16,9 @@ MODEL_DIR = os.path.join(MODEL_DIR, "SBMLModel")
 MODEL_DIR = os.path.join(MODEL_DIR, "data")
 INPUT_COLOR = "red"
 OUTPUT_COLOR = "blue"
+IGNORE_FILES = ["BIOMD0000000075.xml", "BIOMD0000000081.xml", "BIOMD0000000353.xml",
+                  "BIOMD0000000573.xml",
+                  "BIOMD0000000627.xml"]
 
 
 def getValidNames(names):
@@ -25,7 +28,11 @@ def doStaircase(filename, input_name=None, output_name=None, initial_value=0,
                 end_time=20, final_value=10):
     # Initializations
     path = os.path.join(MODEL_DIR, filename)
-    roadrunner = makeRoadrunner(path)
+    try:
+        roadrunner = makeRoadrunner(path)
+    except Exception as error:
+        print("Error for %s: %s" % (filename, error))
+        return
     if (input_name is None) or (output_name is None):
         floating_species = roadrunner.getFloatingSpeciesIds()
         floating_species = getValidNames(floating_species)
@@ -35,7 +42,7 @@ def doStaircase(filename, input_name=None, output_name=None, initial_value=0,
             return
         input_name = floating_species[0]
     if output_name is None:
-        if len(floating_species) < 1:
+        if len(floating_species) < 2:
             print("Only one floating species for %s" % filename)
             return
         output_name = floating_species[1]  
@@ -66,12 +73,16 @@ def main(start=0, end=None):
     filenames = [f for f in os.listdir(MODEL_DIR) if f.endswith(".xml")]
     filenames.sort()
     for idx, filename in enumerate(filenames):
-        print("%d: Processing %s" % (idx, filename))
+        if filename in IGNORE_FILES:
+            print("%d: Ignoring %s" % (idx, filename))
+            continue
         if idx < start:
+            print("%d: Skipping %s" % (idx, filename))
             continue
         if (end is not None) and (idx >= end):
             break
+        print("%d: Processing %s" % (idx, filename))
         doStaircase(filename)
 
 if __name__ == '__main__':
-    main(end=25)
+    main(start=620, end=None)
