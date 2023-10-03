@@ -4,6 +4,7 @@ data/*.xml
 dist/
 sym
 *.swo
+*.png
 docs/build/
 .ipynb_*
 ./todo.txt

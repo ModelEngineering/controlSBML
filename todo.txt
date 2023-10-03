@@ -1,3 +1,4 @@
+Are negative values of boundaries (rate rule or species) handled correctly?
 Bugs
   "Stoichiometry matrix does not exist for this model" -- 379
   "Cannot create AntimonyBuilder: Antimony: Error in model string, line 27:  syntax error, unexpected element name, expecting number or '('" -- 386

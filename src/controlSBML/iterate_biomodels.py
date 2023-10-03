@@ -8,32 +8,41 @@ import zipfile
 ARCHIVE_PATH = os.path.dirname(os.path.abspath(__file__))
 ARCHIVE_PATH = os.path.join(ARCHIVE_PATH, "temp_biomodels.zip")
 # The following models have defects and should be ignored.
-IGNORE_FILES = ["BIOMD0000000075.xml", "BIOMD0000000081.xml", "BIOMD0000000353.xml",
-                  "BIOMD0000000573.xml",
-                  "BIOMD0000000627.xml"]
+IGNORE_FILES = ["BIOMD0000000075", "BIOMD0000000081", "BIOMD0000000353", "BIOMD000000023",
+                 "BIOMD0000000573", "BIOMD0000000627"]
+IGNORE_FILES = ["BIOMD0000000056",
+                "BIOMD0000000075",
+                "BIOMD0000000081",
+                "BIOMD0000000255",
+                 ]
 
-def iterateBiomodels(start=0, end=1000000, is_report=False):
+def iterateBiomodels(start=0, end=1000000, is_report=False, checkerFunctions=None):
     """Iterate over Biomodels SBML files.
     Args:
         start_num: int
         end_num: int
         is_report: bool (report progress)
+        checkerFunctions: list-Function
+            input: filename (w/o extension), contents
+            output: str (if len > 0, then skip the file)
 
     Yields
     ------
     str - name of SBML file
     str - contents of SBML file
     """
+    if checkerFunctions is None:
+        checkerFunctions = []
     with zipfile.ZipFile(ARCHIVE_PATH, "r") as archive:
         for name in archive.namelist():
-            if not name.endswith(".xml"):
+            filename, extension = os.path.splitext(name)
+            if not extension == ".xml":
                 continue
-            if name in IGNORE_FILES:
+            if filename in IGNORE_FILES:
                 if is_report:
                     print("Ignoring %s" % name)
                 continue
-            model_num = name.split(".")[0]
-            model_num = int(model_num[5:])
+            model_num = int(filename[5:])
             if model_num < start:
                 if is_report:
                     print("Skipping %s" % name)
@@ -42,6 +51,19 @@ def iterateBiomodels(start=0, end=1000000, is_report=False):
                 if is_report:
                     print("Skipping %s" % name)
                 break
-            print("Acquiring %s" % name)
+            # Get the contents
             contents = archive.read(name)
-            yield name, contents.decode()
+            contents = contents.decode()
+            # Handle checker functions
+            failed_check = False
+            for func in checkerFunctions:
+                result = func(filename, contents)
+                if len(result) > 0:
+                    failed_check = True
+                    if is_report:
+                        print("%s: %s" % (result, name))
+                    break 
+            if failed_check:
+                continue
+            print("Processing %s" % name)
+            yield name, contents
