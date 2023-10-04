@@ -254,6 +254,8 @@ class SBMLSystem(object):
             ki float
             kf: float
             reference: float (setpoint)
+        Returns:
+            Timeseries
         """
         if input_name is None:
             input_name = self.input_names[0]

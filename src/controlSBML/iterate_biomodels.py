@@ -14,6 +14,8 @@ IGNORE_FILES = ["BIOMD0000000056",
                 "BIOMD0000000075",
                 "BIOMD0000000081",
                 "BIOMD0000000255",
+                "BIOMD0000000353",
+                "BIOMD0000000437",
                  ]
 
 def iterateBiomodels(start=0, end=1000000, is_report=False, checkerFunctions=None):
@@ -23,7 +25,7 @@ def iterateBiomodels(start=0, end=1000000, is_report=False, checkerFunctions=Non
         end_num: int
         is_report: bool (report progress)
         checkerFunctions: list-Function
-            input: filename (w/o extension), contents
+            input: filename, contents
             output: str (if len > 0, then skip the file)
 
     Yields
@@ -57,7 +59,7 @@ def iterateBiomodels(start=0, end=1000000, is_report=False, checkerFunctions=Non
             # Handle checker functions
             failed_check = False
             for func in checkerFunctions:
-                result = func(filename, contents)
+                result = func(name, contents)
                 if len(result) > 0:
                     failed_check = True
                     if is_report:

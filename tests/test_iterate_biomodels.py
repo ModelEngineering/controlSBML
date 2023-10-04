@@ -36,7 +36,7 @@ class TestIterateBiomodels(unittest.TestCase):
         if IGNORE_TEST:
             return
         def checker(filename, contents):
-            if "BIOMD0000000001" in filename:
+            if "BIOMD0000000001.xml" in filename:
                 return "Model #1 is skipped"
             else:
                 return ""
