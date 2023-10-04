@@ -16,8 +16,8 @@ REFERENCE = "reference"
 
 class SBMLSystem(object):
 
-    def __init__(self, model_reference, input_names, output_names, is_fixed_input_species=False,
-                 control_module_name=cn.DEFAULT_MODULE_NAME):
+    def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,
+                 control_module_name=cn.DEFAULT_MODULE_NAME, model_id="model"):
         """
         model_reference: str
             string, SBML file or Roadrunner object
@@ -28,13 +28,20 @@ class SBMLSystem(object):
         is_fixed_input_species: bool (input species are fixed)
         control_module_name: str
             name of the control module
+        model_id: str (identifier of the model)
         """
+        if input_names is None:
+            input_names = []
+        if output_names is None:
+            output_names = []
         # First initializations
         self.model_reference = model_reference
-        self.input_names = input_names
-        self.output_names = output_names
+        self.model_id = model_id
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
+        # Validate the input and output names
+        self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
+        self.output_names = [self.makeOutputName(n, self.roadrunner) for n in input_names]
         # Verify that the main model is a module
         self.antimony = self._getAntimony()
         self.symbol_dct = self._makeSymbolDct()
@@ -51,17 +58,6 @@ class SBMLSystem(object):
                     self.antimony_builder.makeBoundarySpecies(name)
                 else:
                     self.antimony_builder.makeBoundaryReaction(name)
-        # Validation checks
-        invalid_names = self._verifyInputNames()
-        if len(invalid_names) > 0:
-            text = "Inputs must be a species, parameter, or compartment."
-            text += "   Invalid names are: %s" % str(invalid_names)
-            raise ValueError(text)
-        invalid_names = self._verifyOutputNames()
-        if len(invalid_names) > 0:
-            text = "Outputs must be species or fluxes."
-            text += "The following outputs are invalid: %s" % str(invalid_names)
-            raise ValueError(text)
         
     def _getAntimony(self):
         """
@@ -103,54 +99,72 @@ class SBMLSystem(object):
             return True
         names.append(name)
         return False
-        
-    def _verifyInputNames(self):
-        """
-        Verifies that the input names are valid.
 
-        Returns
-        -------
-        bool
+    @staticmethod
+    def _getValidNames(names):
+        return [n for n in names if not n in ["at", "in"]]
+
+    @staticmethod
+    def _getName(names, name, name_type):
+        """"
+        Finds a valid name for input or output.
+
+        names: list-str (permitted names)
         """
-        invalid_names = []
-        for name in self.input_names:
-            if not self._isExistingName(name, invalid_names):
-                continue
-            if name in self.antimony_builder.reaction_names:
-                invalid_names.append(name)
-                continue
-            try:
-                value = self.get(name)
-                self.set({name: value})
-            except Exception:
-                invalid_names.append(name)
-        return invalid_names
+        valid_names = SBMLSystem._getValidNames(names)
+        if len(valid_names) == 0:
+            msgs.error("No %s name." % (name_type))
+        if name is None:
+            name = valid_names[0]
+        if not name in valid_names:
+            msgs.error("name %s not in %s" % (name, valid_names))
+        return name
+
+    @classmethod
+    def makeInputName(cls, name, roadrunner):
+        """
+        Finds valid name to use for model input. Checks validity of input names.
+
+        Args:
+            name: str
+            roadrunner: ExtendedRoadrunner 
+        Returns:
+            str (valid input name)
+        """
+        # Find the valid input and output names. Input and output should be different.
+        input_names = roadrunner.getFloatingSpeciesIds()
+        input_names.extend(roadrunner.getBoundarySpeciesIds())
+        input_names.extend(roadrunner.getAssignmentRuleIds())
+        input_names.extend(roadrunner.getGlobalParameterIds())
+        new_input_name = cls._getName(input_names, name, name_type="input")
+        return new_input_name
     
-    def _verifyOutputNames(self):
+    @classmethod
+    def makeOutputName(cls, name, roadrunner, input_names=None):
         """
-        Verifies that the output names are valid.
+        Finds valid name to use for model output. Checks validity of output names.
 
-        Returns
-        -------
-        bool
+        Args:
+            name: str
+            roadrunner: ExtendedRoadrunner
+            input_names: list-str (name of input. If None, then not checked to see if output is differs from input)
+        Returns:
+            str (valid input name)
         """
-        invalid_names = []
-        for name in self.output_names:
-            if not self._isExistingName(name, invalid_names):
-                continue
-            if name in self.antimony_builder.reaction_names:
-                invalid_names.append(name)
-                continue
-            if name in self.antimony_builder.boundary_species_names:
-                invalid_names.append(name)
-                continue
-            try:
-                # Must be able to retrieve a value
-                _ = self.get(name)
-            except RuntimeError:
-                invalid_names.append(name)
-        return invalid_names
-
+        if input_names is None:
+            input_names = []
+        output_names = roadrunner.getFloatingSpeciesIds()
+        output_names.extend(roadrunner.getAssignmentRuleIds())
+        output_names.extend(roadrunner.getReactionIds())
+        new_name = cls._getName(output_names, name, name_type="output")
+        for _ in input_names:
+            if new_name in input_names:
+                output_names.remove(new_name)
+                new_name = cls._getName(output_names, name, name_type="output")
+            else:
+                break
+        return new_name
+    
     def get(self, name):
         """
         Provides the roadrunner values for a name.

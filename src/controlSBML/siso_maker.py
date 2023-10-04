@@ -16,6 +16,7 @@ from controlSBML.sbml_system import SBMLSystem
 from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML.iterate_biomodels import iterateBiomodels
 from controlSBML.make_roadrunner import makeRoadrunner
+from controlSBML import msgs
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,11 +32,11 @@ PNG_EXT = ".png"
 
 class SISOMaker(object):
 
-    def __init__(self, model_id, model, input_name=None, output_name=None, end_time=20):
+    def __init__(self, model, model_id="model", input_name=None, output_name=None, end_time=20):
         """
         Args:
+            model: model reference (URL, SBML, Antimony, XML)
             model_id: str (identifier of model)
-            model: model reference
             input_name: str
             output_name: str
             end_time: float
@@ -49,30 +50,10 @@ class SISOMaker(object):
         except Exception as error:
             print("Error for %s: %s" % (self.filename, error))
             return
-        self.input_name, self.output_name = self._makeInputOutput(input_name, output_name)
+        self.input_name = SBMLSystem.makeInputName(input_name, self.roadrunner)
+        self.output_name = SBMLSystem.makeOutputName(output_name, self.roadrunner, input_names=[self.input_name])
         self.system, self.times = self._makeSystem()
         self.times = None
-
-    def _makeInputOutput(self, input_name, output_name):
-        def getValidNames(names):
-            return [n for n in names if not n in ["at", "in"]]
-        #
-        if (input_name is None) or (output_name is None):
-            names = self.roadrunner.getFloatingSpeciesIds()
-            names.extend(self.roadrunner.getGlobalParameterIds())
-            names.extend(self.roadrunner.getAssignmentRuleIds())
-            valid_names = getValidNames(names)
-        if input_name is None:
-            if len(valid_names) < 1:
-                print("No valid_names for %s" % self.filename)
-                return
-            new_input_name = valid_names[0]
-        if output_name is None:
-            if len(valid_names) < 2:
-                print("Only one floating species for %s" % filename)
-                return
-            new_output_name = valid_names[1]
-        return new_input_name, new_output_name
 
     def _makeSystem(self):
         """
@@ -85,19 +66,16 @@ class SISOMaker(object):
         system = SBMLSystem(self.roadrunner, [self.input_name], [self.output_name], is_fixed_input_species=False)
         times = np.linspace(0, self.end_time, 10*self.end_time)
         return system, times
-    
-    def makeStaircase(self):
-        pass
-
-    def makeClosedLoop(self):
-        pass
 
     @staticmethod
     def _checkFile(filename, _, suffix=STAIRCASE_SFX):
-        """Checks if the file has already been processed.
+        """
+        Checks if a file exists for the analysis done.
+
         Args:
             filename: str (filename with extension)
             extension: str (extension to check for)
+
         Returns:
             str
         """
@@ -171,19 +149,26 @@ class SISOMaker(object):
         plt.savefig(plot_filename)
 
     @classmethod
+    def runModel(cls, model, **kwargs):
+        """
+        Constructs staircase and closed loop plots for a model.
+            model__staircase.png, model_closedloop.png
+        Args:
+            model: model reference (URL, SBML, Antimony, XML)
+            kwargs: keyword arguments for SISOMaker
+        """
+        maker = cls(model, **kwargs)
+        maker._makeSystem()
+        maker.makeStaircase()
+        maker.makeClosedLoop()
+    
+    @classmethod
     def runBiomodels(cls, start=0, end=1e5, is_report=True, end_time=20):
         """
-        Verifies files in BioModels
+        Makes models for all models in BioModels
         """
-        verifier = cls(filename, model, is_report=is_report, end_time=end_time)
-        checkFunctions = [verifier._checkStaircase, verifier._checkClosedloop]
+        maker = cls(filename, model, is_report=is_report, end_time=end_time)
+        checkFunctions = [maker._checkStaircase, maker._checkClosedloop]
         iterator = iterateBiomodels(start=start, end=end, is_report=is_report, checkerFunctions=checkFunctions)
         for filename, model in iterator:
-            verifier = cls(filename, model)
-            verifier._makeSystem()
-            verifier.makeStaircase()
-            verifier.makeClosedLoop()
-
-
-if __name__ == '__main__':
-    SISOMaker.runBiomodels(start=1)
+            cls.runModel(model, model_id=filename)
