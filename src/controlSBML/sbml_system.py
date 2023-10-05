@@ -41,7 +41,7 @@ class SBMLSystem(object):
         self.roadrunner = makeRoadrunner(self.model_reference)
         # Validate the input and output names
         self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
-        self.output_names = [self.makeOutputName(n, self.roadrunner) for n in input_names]
+        self.output_names = [self.makeOutputName(n, self.roadrunner) for n in output_names]
         # Verify that the main model is a module
         self.antimony = self._getAntimony()
         self.symbol_dct = self._makeSymbolDct()

@@ -1,11 +1,11 @@
 """
-Makes a SISO model of a system with plots and defaults for staircase and closed loop designs.
+SISOMaker creates a default SBMLSystem for an SBML model to verify that the SBMLSystem works for the SBML.
+This consists of: (a) create an SBMLSystem; (b) create a staircase response,
+(c) and construct a closed loop system and simulate it.
 
 Usage:
     from controlSBML.siso_maker import SISOMaker
-    maker = SISOMaker(model_id, model)
-    maker.makeStaircase()
-    maker.makeClosedLoop()
+    SBMLMaker.run(model_reference)
 
     To run on all of BioModels:
         SISOMaker.runBiomodels(start=1)
@@ -53,7 +53,6 @@ class SISOMaker(object):
         self.input_name = SBMLSystem.makeInputName(input_name, self.roadrunner)
         self.output_name = SBMLSystem.makeOutputName(output_name, self.roadrunner, input_names=[self.input_name])
         self.system, self.times = self._makeSystem()
-        self.times = None
 
     def _makeSystem(self):
         """
@@ -92,7 +91,7 @@ class SISOMaker(object):
     def _checkClosedloop(self):
         return self._checkFile(suffix=CLOSED_LOOP_SFX)
 
-    def makeStaircase(self, initial_value=0, final_value=10):
+    def makeStaircase(self, initial_value=0, final_value=10, is_show=False):
         """
         Creates a staircase response and a plot. Creates the file
         <filename>_staircase.png.
@@ -105,7 +104,7 @@ class SISOMaker(object):
             ts = self.system.simulateStaircase(self.input_name, self.output_name, times=self.times,
                                                final_value=final_value, num_step=5, is_steady_state=False)
         except Exception as error:
-            print("Error in staricase for %s: %s" % (self.filename, error))
+            print("Error in staricase for %s: %s" % (self.model_id, error))
             return
         # Make the plot
         plot_filename = self.model_id + STAIRCASE_SFX + PNG_EXT
