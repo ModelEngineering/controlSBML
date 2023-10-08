@@ -132,7 +132,7 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
 ################## CLASSES ####################
 class SISOTransferFunctionBuilder(object):
 
-    def __init__(self, sys, input_name=None, output_name=None):
+    def __init__(self, sbml_system, input_name=None, output_name=None):
         """
         Parameters
         ----------
@@ -141,34 +141,14 @@ class SISOTransferFunctionBuilder(object):
         output_name: str
         """
         #
-        self.sys = sys
+        self.system = sbml_system
         self.input_name = input_name
         self.output_name = output_name
         if self.input_name is None:
-            self.input_name = sys.input_labels[0]
+            self.input_name = sbml_system.input_names[0]
         if self.output_name is None:
-            self.output_name = sys.output_labels[0]
+            self.output_name = sbml_system.output_names[0]
 
-    @staticmethod
-    def getStaircaseArr(time_series):
-        """
-        Extracts the staircase array.
-
-        Parameters
-        ----------
-        time_series: Timeseries
-
-        Returns
-        -------
-        np.array
-        """
-        columns = list(time_series.columns)
-        sel_columns = [c for c in columns if STAIRCASE in c]
-        if len(sel_columns) != 1:
-            raise ValueError("Invalid staircase timeseries")
-        column = sel_columns[0]
-        return time_series[column].values
-    
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def makeStaircaseResponse(self, staircase=Staircase(), mgr=None,
            is_steady_state=True, **kwargs):
@@ -193,25 +173,30 @@ class SISOTransferFunctionBuilder(object):
         # Handle the options. If an option manager is specified, then caller handles figure generation.
         if mgr is None:
             mgr = OptionManager(kwargs)
-        #
+        # Construct the time
         start_time = mgr.options.get(cn.O_START_TIME)
         end_time = mgr.options.get(cn.O_END_TIME)
-        points_per_time = mgr.options.get(cn.O_POINTS_PER_TIME)
-        # Construct the staircase inputs
-        staircase.num_point = (end_time-start_time)*points_per_time + 1
-        staircase_arr = staircase.staircase_arr
+        points_per_time = staircase.num_point/(end_time - start_time)
+        mgr.options[cn.O_POINTS_PER_TIME] = points_per_time
+        times = util.makeSimulationTimes(start_time=start_time, end_time=end_time, points_per_time=points_per_time)
         # Do the simulations
-        if is_steady_state:
-            success = self.sys.setSteadyState()
-            if not success:
-                msgs.warn("Could not find a steady state. Using current state.")
-        result_ts = ss.simulateSystem(self.sys, u_vec=staircase_arr,
-               start_time=start_time, output_names=[self.output_name],
-               is_steady_state=True,
-               end_time=end_time, points_per_time=points_per_time)
+        result_ts = self.system.simulateStaircase(self.input_name, self.output_name, times=times,
+                                                initial_value=staircase.initial_value, num_step=staircase.num_step,
+                                                final_value=staircase.final_value, is_steady_state=is_steady_state,
+                                                inplace=False)
         staircase_name = "%s_%s" % (self.input_name, STAIRCASE)
+        staircase_arr= staircase.staircase_arr
+        staircase_arr = np.concatenate([staircase_arr, [staircase_arr[-1]]])
         result_ts[staircase_name] = staircase_arr
+        del result_ts[self.input_name]
         return result_ts
+
+    @staticmethod 
+    def setYAxColor(ax, position, color):
+        # Set the colors of the labels, axes, and spines
+        ax.tick_params(axis='y', labelcolor=color)
+        ax.spines[position].set_color(color)
+        ax.yaxis.label.set_color(color)
     
     @classmethod
     @Expander(cn.KWARGS, cn.PLOT_KWARGS)
@@ -234,12 +219,6 @@ class SISOTransferFunctionBuilder(object):
         -------
         util.PlotResult
         """
-        # Set the colors of the labels, axes, and spines
-        def setYAxColor(ax, position, color):
-            ax.tick_params(axis='y', labelcolor=color)
-            ax.spines[position].set_color(color)
-            ax.yaxis.label.set_color(color)
-        #
         # Handle the options. If an option manager is specified, then caller handles figure generation.
         if mgr is None:
             mgr = OptionManager(kwargs)
@@ -264,8 +243,8 @@ class SISOTransferFunctionBuilder(object):
         times = np.array(response_ts.index)/cn.MS_IN_SEC
         ax2.plot(times, staircase_ts, color=cn.INPUT_COLOR,
             linestyle="--")
-        setYAxColor(ax, "left", cn.SIMULATED_COLOR)
-        setYAxColor(ax2, "right", cn.INPUT_COLOR)
+        cls.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
+        cls.setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax2.set_ylabel(staircase_name)
         mgr.doPlotOpts()
         ax.legend([])
@@ -425,6 +404,8 @@ class SISOTransferFunctionBuilder(object):
             title = latex
         else:
             title = mgr.plot_opts[cn.O_TITLE]
+        cls.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
+        cls.setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax.set_title(title, y=0.2, pad=-14, fontsize=14, loc="right")
         mgr.doPlotOpts()
         ax.legend([output_name, cn.O_PREDICTED], loc="upper left")

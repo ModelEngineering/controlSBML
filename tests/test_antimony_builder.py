@@ -13,7 +13,7 @@ IGNORE_TEST = False
 IS_PLOT = False
 MODEL_NAME = "main_model"
 INCOMPLETE_LINEAR_MDL = """
-S1 -> S2; k1*$S1
+S1 -> S2; k1*S1
 J1: S2 -> S3; k2*S2
 J2: S3 -> S2; k3*S3
 J3: S2 -> ; k4*S2
@@ -48,8 +48,10 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
 
-    def check(self):
-        rr = te.loada(str(self.builder))
+    def check(self, builder=None):
+        if builder is None:
+            builder = self.builder
+        rr = te.loada(str(builder))
         data = rr.simulate(0,20, 2000, selections=["time", "S1", "S2", "S3"])
         self.assertTrue(len(data) > 0)
         if IS_PLOT:
@@ -111,7 +113,6 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeAdditionStatement("S2", "S3", is_assignment=False)
         result = re.search("S2.* =.*S3", self.builder.antimony_strs[-1])
         self.assertTrue(result)
-        self.check()
 
     def testMakeSinusoidSignal(self):
         if IGNORE_TEST:
@@ -119,6 +120,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         ot_name = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
         result = re.search("%s.*=.*1.*sin.*2" % ot_name, self.builder.antimony_strs[-1])
         self.assertTrue(result)
+        self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", ot_name)
         self.check()
 
@@ -144,6 +146,7 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         name_in, name_ot = self.builder.makePIControllerElement(kp=7, suffix="_S1_S3")
+        self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check()
@@ -160,12 +163,20 @@ class TestAntimonyBuilder(unittest.TestCase):
     def testMakeStaircase(self):
         if IGNORE_TEST:
             return
-        self.init()
-        self.builder.makeBoundarySpecies("S1")
-        value_arr = self.builder.makeStaircase("S1", initial_value=2)
-        self.assertTrue("at " in self.builder.antimony_strs[-1])
-        self.assertEqual(len(value_arr), len(cn.TIMES))
-        self.check()
+        def test(is_fixed_input_species):
+            builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
+            if is_fixed_input_species:
+                builder.makeBoundarySpecies("S1")
+            else:
+                builder.makeBoundaryReaction("S1")
+            value_arr = builder.makeStaircase("S1", initial_value=2)
+            self.assertTrue("at " in builder.antimony_strs[-1])
+            self.assertEqual(len(value_arr), len(cn.TIMES))
+            self.check(builder=builder)
+            return builder
+        #
+        _ = test(True)
+        _ = test(False)
     
     def testMakeSISClosedLoop(self):
         if IGNORE_TEST:
@@ -174,7 +185,17 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10000, ki=1, setpoint=4)
         data = self.check()
-        self.assertTrue(np.isclose(data["S3"][-1], 4, atol=0.01))   
+        self.assertTrue(np.isclose(data["S3"][-1], 4, atol=0.01))
+
+    def testCopyAndEqual(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        builder = self.builder.copy()
+        self.assertTrue(builder == self.builder)
+        #
+        builder.makeBoundarySpecies("S1")
+        self.assertFalse(builder == self.builder)
        
 
 if __name__ == '__main__':

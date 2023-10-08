@@ -1,6 +1,7 @@
-import controlSBML as ctl
 import controlSBML.constants as cn
+import controlSBML as ctl
 import controlSBML.siso_transfer_function_builder as stb
+from controlSBML.sbml_system import SBMLSystem
 from controlSBML.staircase import Staircase
 import controlSBML.util as util
 import helpers
@@ -14,7 +15,7 @@ import tempfile
 
 
 IGNORE_TEST = False
-IS_PLOT = False 
+IS_PLOT = False
 PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
@@ -22,6 +23,8 @@ POINTS_PER_TIME = int(1.0 / DT)
 NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
 LINEAR_MDL = """
+// Illustrate Antimony File
+model *linear()
 J0:  -> S1; k1
 J1: S1 -> S2; S1
 J2: S2 -> ; S2
@@ -29,13 +32,17 @@ J2: S2 -> ; S2
 k1 = 5
 S1 = 10
 S2 = 0
+end
 """
 rr = te.loada(LINEAR_MDL)
 INPUT_NAME = "S1"
 OUTPUT_NAME = "S2"
-ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
-builder = ctlsb.makeSISOTransferFunctionBuilder()
-LINEAR_TS = builder.makeStaircaseResponse(staircase=Staircase(final_value=10), is_plot=False)
+INITIAL_VALUE = 2
+FINAL_VALUE = 15
+STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE)
+SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
+RESPONSE_TS = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, end_time=50)
 
 
 #############################
@@ -67,9 +74,9 @@ class TestFunctions(unittest.TestCase):
     def testCalculateTransferFunctionResiduals(self):
         if IGNORE_TEST:
             return
-        times = LINEAR_TS.times
-        data_in = (times, LINEAR_TS["S1_staircase"].values)
-        data_out = LINEAR_TS[OUTPUT_NAME].values
+        times = list(RESPONSE_TS.index)
+        data_in = (times, RESPONSE_TS["S1_staircase"].values)
+        data_out = RESPONSE_TS["S2"].values
         parameters = stb._makeParameters(3, 3)
         residuals = stb._calculateTransferFunctionResiduals(parameters, data_in,
               data_out)
@@ -97,11 +104,11 @@ class TestNonlinearIOSystem(unittest.TestCase):
             cn.PLOT_DIR = cn.TEST_DIR
         else:
             cn.PLOT_DIR= tempfile.mkdtemp()
-        self.ctlsb = ctl.ControlSBML(LINEAR_MDL,
-              input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
-        self.sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb,
-               do_simulate_on_update=do_simulate_on_update)
-        self.builder = stb.SISOTransferFunctionBuilder(self.sys)
+        self.system = SYSTEM
+        self.initial_value = INITIAL_VALUE
+        self.final_value = FINAL_VALUE
+        self.builder = BUILDER
+        self.response_ts = RESPONSE_TS
 
     def removeFiles(self):
         if IS_PLOT:
@@ -128,25 +135,25 @@ class TestNonlinearIOSystem(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        response_ts = self.builder.makeStaircaseResponse(end_time=100, staircase=Staircase(final_value=10))
-        self.assertTrue(isinstance(response_ts, ctl.Timeseries))
-        diff = set(response_ts.columns).symmetric_difference(["S2", "S1_staircase"])
-        self.assertTrue(len(diff) == 0)
+        diff = set(self.response_ts.columns) - set(["S2", "S1_staircase"])
+        self.assertEqual(len(diff), 0)
+        self.assertGreater(len(self.response_ts), 0)
+        self.assertEqual(self.response_ts["S1_staircase"].values[0], self.initial_value)
+        self.assertEqual(self.response_ts["S1_staircase"].values[-1], self.final_value)
 
     def testPlotStaircaseResponse(self):
         if IGNORE_TEST:
             return
         self.init()
-        response_ts = self.builder.makeStaircaseResponse(end_time=100, staircase=Staircase(final_value=10))
-        plot_result = self.builder.plotStaircaseResponse(response_ts, is_plot=IS_PLOT)
+        plot_result = self.builder.plotStaircaseResponse(self.response_ts, is_plot=IS_PLOT)
         self.assertTrue(isinstance(plot_result, util.PlotResult))
 
     def testFitTransferFunction(self):
         if IGNORE_TEST:
             return
         self.init()
-        sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb, is_fixed_input_species=True)
-        builder = stb.SISOTransferFunctionBuilder(sys)
+        system = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
+        builder = stb.SISOTransferFunctionBuilder(system)
         fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
               end_time=100)
         if IS_PLOT:
@@ -155,11 +162,10 @@ class TestNonlinearIOSystem(unittest.TestCase):
         self.assertLess(fitter_result.rms_residuals, 0.2)
 
     def testFitTransferFunctionTimes(self):
-        #if IGNORE_TEST:
-        #    return
-        self.init()
-        sys = ctl.NonlinearIOSystem("test_sys", self.ctlsb, is_fixed_input_species=True)
-        builder = stb.SISOTransferFunctionBuilder(sys)
+        if IGNORE_TEST:
+            return
+        system = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
+        builder = stb.SISOTransferFunctionBuilder(system)
         fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
               end_time=100, fit_start_time=10, fit_end_time=40)
         if IS_PLOT:
@@ -170,17 +176,18 @@ class TestNonlinearIOSystem(unittest.TestCase):
     def testPlotFitTransferFunction(self):
         if IGNORE_TEST:
             return
-        self.init()
-        fitter_result = self.builder.fitTransferFunction(4, 4,
+        system = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
+        builder = stb.SISOTransferFunctionBuilder(system)
+        fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
               end_time=50)
-        self.builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT)
+        builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT, figsize=(5,5))
 
     def testFitTransferFunction2(self):
         if IGNORE_TEST:
             return
-        ctlsb = ctl.ControlSBML(cn.WOLF_URL,
-              input_names=["at"], output_names=["s6"])
-        builder = ctlsb.makeSISOTransferFunctionBuilder(is_fixed_input_species=False)
+        system = ctl.SBMLSystem(cn.WOLF_URL,
+              input_names=["na"], output_names=["s6"])
+        builder = stb.SISOTransferFunctionBuilder(system)
         staircase = Staircase(initial_value=50, final_value=100)
         fitter_result = builder.fitTransferFunction(1, 2, staircase=staircase,
               end_time=5)

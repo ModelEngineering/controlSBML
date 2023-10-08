@@ -538,6 +538,14 @@ def compareSingleArgumentFunctions(func1, func2, arg_min, arg_max, num_point=100
     else:
         return False
     
+def allEqual(list1, list2):
+    if len(list1) != len(list2):
+        return False
+    for l1, l2 in zip(list1, list2):
+        if l1 != l2:
+            return False
+    return True
+    
 def makeRoadrunnerSymbolDct(roadrunner):
     """
     Creates a symbol dictory for the roadrunner model.

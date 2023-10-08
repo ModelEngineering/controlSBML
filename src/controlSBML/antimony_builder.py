@@ -63,26 +63,92 @@ class AntimonyBuilder(object):
                 value: str (symbol type)
         """
         self.antimony = antimony
-        self.control_module_name = control_module_name
         self.antimony_strs = antimony.split("\n")
+        self.control_module_name = self._calculateControlModuleName(control_module_name)
         self._initialized_output = False
         # Find the main module
         rr = te.loada(antimony)
         if symbol_dct is None:
             symbol_dct = util.makeRoadrunnerSymbolDct(rr)
-        self.symbol_dct = symbol_dct
-        self.parent_model_name = self._getModelName()
+        self.symbol_dct = dict(symbol_dct)
+        self.parent_model_name = self.findParentModels()[0]  # Use the first parent model
 
-    def _getModelName(self):
+    def _calculateControlModuleName(self, control_module_name):
+        """
+        Ensures a unique name for the control module.
+
+        Args:
+            control_module_name: str (provided on input)
+        Returns:
+            str: name of the control module
+        """
+        model_names = self.findParentModels()
+        new_control_module_name = control_module_name
+        for _ in model_names:
+            if new_control_module_name in model_names:
+                new_control_module_name += "_"
+            else:
+                break
+        return new_control_module_name
+
+    def copy(self):
+        """
+        Returns:
+            AntimonyBuilder
+        """
+        builder = AntimonyBuilder(self.antimony, symbol_dct=self.symbol_dct.copy(),
+                               control_module_name=self.control_module_name)
+        builder.antimony_strs = list(self.antimony_strs)
+        builder._initialized_output = self._initialized_output
+        builder.symbol_dct = dict(self.symbol_dct)
+        builder.parent_model_name = self.parent_model_name
+        return builder
+    
+    def __eq__(self, other):
+        is_equal = True
+        is_debug = False
+        is_equal &= self.antimony == other.antimony
+        if is_debug:
+            print("Failed 1")
+        is_equal &= util.allEqual(self.antimony_strs, other.antimony_strs)
+        if is_debug:
+            print("Failed 2")
+        is_equal &= self._initialized_output == other._initialized_output
+        if is_debug:
+            print("Failed 3")
+        is_equal = is_equal and (all([self.symbol_dct[k] == other.symbol_dct[k] for k in self.symbol_dct.keys()]))
+        if is_debug:
+            print("Failed 4")
+        is_equal = is_equal and (all([self.symbol_dct[k] == other.symbol_dct[k] for k in other.symbol_dct.keys()]))
+        if is_debug:
+            print("Failed 5")
+        is_equal &= self.parent_model_name == other.parent_model_name
+        if is_debug:
+            print("Failed 6")
+        return is_equal
+    
+    def _extractModelName(self, line):
+        # Extracts the name of the model from the line
+        start_pos = line.find("*") + 1
+        end_pos = line.find("(")
+        if (start_pos < 0) or (end_pos < 0) or (end_pos < start_pos):
+            raise RuntimeError("Unable to extract model name from line: %s" % line)
+        return line[start_pos:end_pos]
+
+    def findParentModels(self):
+        """
+        Finds the names of all models in the Antimony string.
+
+        Returns:
+            list-str
+        """
         # Finds the name of the top level model
-        model_name = None
+        model_names = []
         for line in self.antimony_strs:
             result = re.search("model .*[*].*()", line)
             if result:
-                start_pos = line.find("*") + 1
-                end_pos = line.find("(")
-                model_name = line[start_pos:end_pos]
-        return model_name
+                model_names.append(self._extractModelName(line))
+        return model_names
 
     def _getSetOfType(self, antimony_type):
         return [k for k, v in self.symbol_dct.items() if v == antimony_type]
@@ -93,7 +159,9 @@ class AntimonyBuilder(object):
 
     @property
     def boundary_species_names(self):
-        return self._getSetOfType(cn.TYPE_BOUNDARY_SPECIES)
+        names = self._getSetOfType(cn.TYPE_BOUNDARY_SPECIES)
+        names = list(set(names))
+        return names
 
     @property
     def reaction_names(self):
@@ -153,6 +221,7 @@ class AntimonyBuilder(object):
 
     def makeBoundaryReaction(self, species_name):
         """
+        Makes a boundary reaction to regulate a species concentration.
         Args:
             species_name: str
         """
@@ -348,10 +417,10 @@ class AntimonyBuilder(object):
         self.makeAdditionStatement(input_name, controller_ot, disturbance_ot)
         self.makeAdditionStatement(filter_in, output_name, noise_ot)
     
-    def _makeInputManipulationName(self, input_name):
+    def getInputManipulationName(self, input_name):
         """
         Constructs the name of the input that is being manipulated since floating species can be manipulated
-        by a boundary reaction.
+        by a boundary reaction rate.
 
         Args:
             input_name: str
@@ -376,14 +445,14 @@ class AntimonyBuilder(object):
             array-float: values
         """
         # Initialize the input
-        name = self._makeInputManipulationName(input_name)
+        name = self.getInputManipulationName(input_name)
         statement = "%s = %f" % (name, initial_value)
         self.addStatement(statement)
         # Add events
-        point_per_step = int(len(times)/num_step)
-        step_size = (final_value - initial_value)/num_step
+        point_per_step = int(len(times)/(num_step+1))
+        step_size = (final_value - initial_value)/(num_step)
         values = []
-        for nstep in range(num_step):
+        for nstep in range(num_step + 1):
             values.extend([initial_value + nstep*step_size]*point_per_step)
             break_time = times[nstep*point_per_step]
             break_value = initial_value + nstep*step_size

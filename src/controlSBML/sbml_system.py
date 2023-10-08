@@ -7,7 +7,6 @@ from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML.timeseries import Timeseries
 from controlSBML import util
 
-import re
 import tellurium as te
 
 
@@ -39,6 +38,7 @@ class SBMLSystem(object):
         self.model_id = model_id
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
+        self.control_module_name = control_module_name
         # Validate the input and output names
         self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
         self.output_names = [self.makeOutputName(n, self.roadrunner) for n in output_names]
@@ -58,6 +58,50 @@ class SBMLSystem(object):
                     self.antimony_builder.makeBoundarySpecies(name)
                 else:
                     self.antimony_builder.makeBoundaryReaction(name)
+
+    def copy(self):
+        model_reference = str(self)
+        system = SBMLSystem(self.model_reference, input_names=self.input_names, output_names=self.output_names,
+                            is_fixed_input_species=self.is_fixed_input_species, model_id=self.model_id,
+                            control_module_name=self.control_module_name)
+        system.antimony_builder = self.antimony_builder.copy()
+        system.symbol_dct = dict(self.symbol_dct)
+        return system
+    
+    def __eq__(self, other):
+        is_debug = False
+        is_equal = True
+        is_equal = is_equal and (self.model_reference == other.model_reference)
+        if is_debug:
+            print("Failed 1")
+        is_equal = is_equal and (self.model_id == other.model_id)
+        if is_debug:
+            print("Failed 2")
+        is_equal = is_equal and (self.input_names == other.input_names)
+        if is_debug:
+            print("Failed 3")
+        is_equal = is_equal and (self.is_fixed_input_species == other.is_fixed_input_species)
+        if is_debug:
+            print("Failed 4")
+        is_equal = is_equal and (util.allEqual(self.input_names, other.input_names))
+        if is_debug:
+            print("Failed 3")
+        is_equal = is_equal and (util.allEqual(self.output_names, other.output_names))
+        if is_debug:
+            print("Failed 4")
+        is_equal = is_equal and (self.antimony == other.antimony)
+        if is_debug:
+            print("Failed 5")
+        is_equal = is_equal and (self.antimony_builder == other.antimony_builder)
+        if is_debug:
+            print("Failed 6")
+        is_equal = is_equal and (all([self.symbol_dct[k] == other.symbol_dct[k] for k in self.symbol_dct.keys()]))
+        if is_debug:
+            print("Failed 7")
+        is_equal = is_equal and (all([self.symbol_dct[k] == other.symbol_dct[k] for k in other.symbol_dct.keys()]))
+        if is_debug:
+            print("Failed 8")
+        return is_equal
         
     def _getAntimony(self):
         """
@@ -230,7 +274,7 @@ class SBMLSystem(object):
             self.setSteadyState()
         return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=False)
     
-    def _simulate(self, start_time, end_time, num_point, is_steady_state=False, is_reload=True):
+    def _simulate(self, start_time, end_time, num_point, antimony_builder=None, is_steady_state=False, is_reload=True):
         """
         Simulates the system the roadrunner object.
 
@@ -239,14 +283,17 @@ class SBMLSystem(object):
         start_time: float
         end_time: float
         num_point: int
+        antimoney_builder: AntimonyBuilder
         is_steady_state: bool (start the simulation at steady state)
 
         Returns
         -------
         DataFrame
         """
+        if antimony_builder is None:
+            antimony_builder = self.antimony_builder
         if is_reload:
-            self.roadrunner = te.loada(str(self.antimony_builder))
+            self.roadrunner = te.loada(str(antimony_builder))
         if is_steady_state:
             self.setSteadyState()
         selections = list(self.input_names)
@@ -288,7 +335,7 @@ class SBMLSystem(object):
         return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=True)
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
-                 num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE, is_steady_state=True):
+                 num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE, is_steady_state=True, inplace=True):
         """
         Adds events for the staircase.
         Args:
@@ -298,13 +345,18 @@ class SBMLSystem(object):
             final_value: float (value for final step)
             num_step: int (number of steps in staircase)
             num_point_in_step: int (number of points in each step)
+            inplace: bool (update the existing model with the Staircase statements)
         Returns:
             Timeseries
         """
-        self.antimony_builder.addStatement("")
-        self.antimony_builder.makeComment("Staircase: %s->%s" % (input_name, output_name))
-        self.antimony_builder.makeStaircase(input_name, times=times, initial_value=initial_value,
+        if inplace:
+            builder = self.antimony_builder
+        else:
+            builder = self.antimony_builder.copy()
+        builder.addStatement("")
+        builder.makeComment("Staircase: %s->%s" % (input_name, output_name))
+        builder.makeStaircase(input_name, times=times, initial_value=initial_value,
                                             num_step=num_step, final_value=final_value)
-        ts = self._simulate(start_time=times[0], end_time=times[-1], num_point=len(times),
+        ts = self._simulate(start_time=times[0], antimony_builder=builder, end_time=times[-1], num_point=len(times),
                             is_steady_state=is_steady_state)
         return ts

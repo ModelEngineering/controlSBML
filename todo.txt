@@ -1,3 +1,5 @@
+General plot for plotting closed loop
+Incorporate general staircase and closed loop plots into make_siso.
 Are negative values of boundaries (rate rule or species) handled correctly?
 Bugs
   "Stoichiometry matrix does not exist for this model" -- 379

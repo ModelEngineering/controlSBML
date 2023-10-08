@@ -130,6 +130,16 @@ class TestSBMLSystem(unittest.TestCase):
         test(True)
         test(False)
 
+    def testCopyAndEqual(self):
+        if IGNORE_TEST:
+            return
+        system = self.system.copy()
+        self.assertTrue(system == self.system)
+        #
+        times = np.linspace(0, 50, 500)
+        _ = system.simulateStaircase("S1", "S3", times=times, final_value=10, num_step=5, is_steady_state=False)
+        self.assertFalse(system == self.system)
+
     # Test staircase on a closedloop system
 
 
