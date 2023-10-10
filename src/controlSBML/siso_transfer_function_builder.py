@@ -11,7 +11,6 @@ import controlSBML.constants as cn
 import controlSBML as ctl
 from controlSBML import msgs
 from controlSBML import util
-import controlSBML.simulate_system as ss
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.staircase import Staircase
 

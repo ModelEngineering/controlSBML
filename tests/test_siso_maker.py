@@ -3,8 +3,8 @@ from controlSBML.siso_maker import SISOMaker
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 IMPROPER_LINEAR_MDL = """
 // Illustrate Antimony File
 
