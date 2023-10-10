@@ -3,8 +3,8 @@ from controlSBML.siso_maker import SISOMaker
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 IMPROPER_LINEAR_MDL = """
 // Illustrate Antimony File
 
@@ -52,6 +52,16 @@ class TestModelMaker(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.maker.makeClosedLoop(is_plot=IS_PLOT)
+
+    def testRunModel(self):
+        if IGNORE_TEST:
+            return
+        self.maker.runModel(LINEAR_MDL, is_plot=IS_PLOT)
+
+    def testRunBiomodels(self):
+        #if IGNORE_TEST:
+        #    return
+        self.maker.runBiomodels(start=0, end=5, is_report=True, end_time=20)
 
 
 if __name__ == '__main__':

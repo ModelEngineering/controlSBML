@@ -53,10 +53,10 @@ class SISOMaker(object):
             return
         self.input_name = SBMLSystem.makeInputName(input_name, self.roadrunner)
         self.output_name = SBMLSystem.makeOutputName(output_name, self.roadrunner, input_names=[self.input_name])
-        self.system, self.times = self._makeSystem()
+        self.system, self.times = self.makeSystem()
         self.builder = SISOTransferFunctionBuilder(self.system)
 
-    def _makeSystem(self):
+    def makeSystem(self):
         """
         Creates a SISO system for the model.
 
@@ -69,7 +69,7 @@ class SISOMaker(object):
         return system, times
 
     @staticmethod
-    def _checkFile(filename, _, suffix=STAIRCASE_SFX):
+    def _checkFile(filename, suffix=STAIRCASE_SFX):
         """
         Checks if a file exists for the analysis done.
 
@@ -80,18 +80,20 @@ class SISOMaker(object):
         Returns:
             str
         """
-        base_filename = iterateBiomodels._makeBasefilename(filename)
+        base_filename = filename.split(".")[0]
         plot_name = base_filename + suffix + PNG_EXT
         if os.path.isfile(plot_name):
             return ("Already processed")
         else:
             return ""
+
+    @classmethod
+    def _checkStaircase(cls, filename, _):
+        return cls._checkFile(filename, suffix=STAIRCASE_SFX)
         
-    def _checkStaircase(self):
-        return self._checkFile(suffix=STAIRCASE_SFX)
-        
-    def _checkClosedloop(self):
-        return self._checkFile(suffix=CLOSED_LOOP_SFX)
+    @classmethod
+    def _checkClosedloop(cls, filename, _):
+        return cls._checkFile(filename, suffix=CLOSED_LOOP_SFX)
 
     def makeStaircase(self, initial_value=0, final_value=10, is_show=False, **kwargs):
         """
@@ -137,7 +139,7 @@ class SISOMaker(object):
             plt.show()
 
     @classmethod
-    def runModel(cls, model, **kwargs):
+    def runModel(cls, model, is_plot=True, **kwargs):
         """
         Constructs staircase and closed loop plots for a model.
             model__staircase.png, model_closedloop.png
@@ -146,17 +148,17 @@ class SISOMaker(object):
             kwargs: keyword arguments for SISOMaker
         """
         maker = cls(model, **kwargs)
-        maker._makeSystem()
-        maker.makeStaircase()
-        maker.makeClosedLoop()
+        maker.makeSystem()
+        maker.makeStaircase(is_plot=is_plot)
+        maker.makeClosedLoop(is_plot=is_plot)
     
     @classmethod
     def runBiomodels(cls, start=0, end=1e5, is_report=True, end_time=20):
         """
         Makes models for all models in BioModels
         """
-        maker = cls(filename, model, is_report=is_report, end_time=end_time)
-        checkFunctions = [maker._checkStaircase, maker._checkClosedloop]
+        checkFunctions = [cls._checkStaircase, cls._checkClosedloop]
         iterator = iterateBiomodels(start=start, end=end, is_report=is_report, checkerFunctions=checkFunctions)
         for filename, model in iterator:
-            cls.runModel(model, model_id=filename)
+            model_id = filename.split(".")[0]
+            cls.runModel(model, model_id=model_id, is_plot=False)
