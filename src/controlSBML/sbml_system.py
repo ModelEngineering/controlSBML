@@ -7,6 +7,7 @@ from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML.timeseries import Timeseries
 from controlSBML import util
 
+import matplotlib.pyplot as plt
 import tellurium as te
 
 
@@ -48,9 +49,9 @@ class SBMLSystem(object):
         try:
             self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
         except Exception as exp:
-            msgs.error("Cannot create AntimonyBuilder: %s" % exp)
+            raise ValueError("Cannot create AntimonyBuilder: %s" % exp)
         if self.antimony_builder.parent_model_name in [None, cn.DEFAULT_ROADRUNNER_MODULE]:
-            msgs.error("Cannot find the name of the parent model. Is it a modular model?")
+            raise ValueError("Cannot find the name of the parent model. Is it a modular model?")
         # Add boundary information depending on the type of input
         for name in self.input_names:
             if name in self.antimony_builder.floating_species_names:
@@ -157,11 +158,11 @@ class SBMLSystem(object):
         """
         valid_names = SBMLSystem._getValidNames(names)
         if len(valid_names) == 0:
-            msgs.error("No %s name." % (name_type))
+            raise ValueError("No %s name." % (name_type))
         if name is None:
             name = valid_names[0]
         if not name in valid_names:
-            msgs.error("name %s not in %s" % (name, valid_names))
+            raise ValueError("name %s not in %s" % (name, valid_names))
         return name
 
     @classmethod
@@ -303,7 +304,7 @@ class SBMLSystem(object):
         ts = Timeseries(data)
         return ts
     
-    def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, reference=1,
+    def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, setpoint=1,
                                start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, is_steady_state=False):
         """
         Simulates a closed loop system.
@@ -314,7 +315,7 @@ class SBMLSystem(object):
             kp: float
             ki float
             kf: float
-            reference: float (setpoint)
+            setpoint: float (setpoint)
         Returns:
             Timeseries
         """
@@ -326,13 +327,14 @@ class SBMLSystem(object):
         comment = "Closed loop: %s -> %s" % (input_name, output_name)
         self.antimony_builder.makeComment(comment)
         #
-        if self.is_fixed_input_species and (input_name in self.antimony_builder.floating_species_names):
+        if input_name in self.antimony_builder.boundary_species_names:
             new_input_name = input_name
         else:
             new_input_name = self.antimony_builder.makeParameterNameForBoundaryReaction(input_name)
-        self.antimony_builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, reference=reference)
+        self.antimony_builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint)
         # Run the simulation
-        return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=True)
+        return self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
+                              is_reload=True)
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
                  num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE, is_steady_state=True, inplace=True):
@@ -360,3 +362,25 @@ class SBMLSystem(object):
         ts = self._simulate(start_time=times[0], antimony_builder=builder, end_time=times[-1], num_point=len(times),
                             is_steady_state=is_steady_state)
         return ts
+    
+    def plotSISOClosedLoop(self, timeseries, setpoint, **kwargs):
+        """
+        Plots the results of a closed lop simulation. Input and output are defined in the SBMLSystem constructor.
+
+        Args:
+            timeseries: Timeseries
+            setpoint: float
+            kwargs: dict (kwargs for plotOneTS)
+        """
+        if "is_plot" in kwargs.keys():
+            is_plot = kwargs["is_plot"]
+            kwargs["is_plot"] = False
+        plot_result = util.plotOneTS(timeseries, ax2=0, **kwargs)
+        ax = plot_result.ax
+        times = timeseries.index/cn.MS_IN_SEC
+        ax.plot(times, [setpoint]*len(times), color="red", linestyle="--")
+        legends = list(timeseries.columns)
+        legends.append("setpoint")
+        ax.legend(legends)
+        if is_plot:
+            plt.show()

@@ -71,6 +71,8 @@ class AntimonyBuilder(object):
         if symbol_dct is None:
             symbol_dct = util.makeRoadrunnerSymbolDct(rr)
         self.symbol_dct = dict(symbol_dct)
+        if len(self.findParentModels()) == 0:
+            raise ValueError("Unable to find parent model in Antimony string:\n%s" % antimony)
         self.parent_model_name = self.findParentModels()[0]  # Use the first parent model
 
     def _calculateControlModuleName(self, control_module_name):
@@ -132,6 +134,7 @@ class AntimonyBuilder(object):
         start_pos = line.find("*") + 1
         end_pos = line.find("(")
         if (start_pos < 0) or (end_pos < 0) or (end_pos < start_pos):
+            import pdb; pdb.set_trace()
             raise RuntimeError("Unable to extract model name from line: %s" % line)
         return line[start_pos:end_pos]
 
@@ -401,9 +404,6 @@ class AntimonyBuilder(object):
             disturbance_frequency: float (Frequency of the disturbance)
         """
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
-        prefix = "sisoCL"
-        def sfx(name):
-            return "%s%s" % (name, suffix)
         # Make the elements of the closed loop
         noise_ot = self.makeSinusoidSignal(noise_amplitude, noise_frequency, prefix="noise", suffix=suffix)
         disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)

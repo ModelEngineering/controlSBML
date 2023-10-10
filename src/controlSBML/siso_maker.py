@@ -129,7 +129,7 @@ class SISOMaker(object):
         try:
             ts = self.system.simulateSISOClosedLoop(input_name=self.input_name, output_name=self.output_name,
                                                     setpoint=setpoint, times=self.times,
-                                           kp=1, ki=None, kf=None, reference=1, is_steady_state=False)
+                                           kp=1, ki=None, kf=None, setpoint=1, is_steady_state=False)
         except Exception as error:
             print("Error in closed loop for %s: %s" % (self.filename, error))
             return

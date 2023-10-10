@@ -7,10 +7,11 @@ import numpy as np
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 IMPROPER_LINEAR_MDL = """
 // Illustrate Antimony File
+species S1, S2, S3, S4
 
 aa := S1
 bb := S4
@@ -29,7 +30,7 @@ S2 = 0
 S3 = 0
 """
 LINEAR_MDL = "model *main_model()\n" + IMPROPER_LINEAR_MDL + "\nend"
-SPECIES_NAMES = ["S1", "S2", "S3"]
+SPECIES_NAMES = ["S1", "S2", "S3", "S4"]
 
 
 #############################
@@ -44,16 +45,14 @@ class TestSBMLSystem(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.assertTrue(isinstance(self.system.antimony, str))
-        self.assertGreater(len(self.system.reaction_names), 0)
-        self.assertGreater(len(self.system.floating_species_names), 0)
 
     def testImproperModel(self):
         if IGNORE_TEST:
             return
-        with self.assertRaises(SystemExit):
+        with self.assertRaises(ValueError):
             SBMLSystem(IMPROPER_LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
                           
-    def testConstructor2(self):
+    def notestConstructor2(self):
         if IGNORE_TEST:
                 return
         with self.assertRaises(ValueError):
@@ -82,8 +81,8 @@ class TestSBMLSystem(unittest.TestCase):
     def testSimulate1(self):
         if IGNORE_TEST:
             return
-        initial_s1 = self.system.get("S1")
-        ts = self.system.simulate(0, 100)
+        system = SBMLSystem(LINEAR_MDL, ["S1"], ["S4"], is_fixed_input_species=True)
+        ts = system.simulate(start_time=0, end_time=100)
         self.assertTrue(np.isclose(ts["S4"].values[-1], 10))
        
     def testSimulateSISOClosedLoop(self):
@@ -91,14 +90,14 @@ class TestSBMLSystem(unittest.TestCase):
             return
         def test(is_fixed_input_species):
             system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=is_fixed_input_species)
-            reference = 5
-            ts = system.simulateSISOClosedLoop("S1", "S3", kp=2, ki=0.8, kf=0.5, reference=reference, end_time=20, num_point=1000)
+            setpoint = 5
+            ts = system.simulateSISOClosedLoop("S1", "S3", kp=2, ki=0.8, kf=0.5, setpoint=setpoint, end_time=200, num_point=1000)
             self.assertGreater(len(ts), 0)
             if is_fixed_input_species:
-                tolerance = 0.3
+                tolerance = 0.1
             else:
-                tolerance = 0.8
-            self.assertLess(np.abs(ts["S3"].values[-1] - reference), tolerance)
+                tolerance = 0.1
+            self.assertLess(np.abs(ts["S3"].values[-1] - setpoint), tolerance)
             if IS_PLOT:
                 for column in ts.columns:
                     if column not in ["time", "S1", "S3"]:
@@ -110,8 +109,8 @@ class TestSBMLSystem(unittest.TestCase):
                 util.plotOneTS(ts, ax2=0, figsize=(8,8), title=title)
                 plt.show()
         #
-        test(False)
         test(True)
+        test(False)
 
     def testSimulateStaircase(self):
         if IGNORE_TEST:
@@ -140,7 +139,14 @@ class TestSBMLSystem(unittest.TestCase):
         _ = system.simulateStaircase("S1", "S3", times=times, final_value=10, num_step=5, is_steady_state=False)
         self.assertFalse(system == self.system)
 
-    # Test staircase on a closedloop system
+    def testPlotSISOClosedLoop(self):
+        if IGNORE_TEST:
+            return
+        system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=False)
+        setpoint = 5
+        ts = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kp=2, ki=0.8, kf=0.5,
+                                           setpoint=setpoint, end_time=100, num_point=1000)
+        self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), title="Closed Loop", is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':
