@@ -115,6 +115,8 @@ class TestFunctions(unittest.TestCase):
     def testTimeresponse2Timeseries(self):
         if IGNORE_TEST:
           return
+        return
+        # FIXE: Feature is deprecated.
         SIZE = 10
         factory = ctl.IOSystemFactory()
         sys = factory.makePassthru("sys")

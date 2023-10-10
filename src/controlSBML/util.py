@@ -2,7 +2,6 @@ import controlSBML.constants as cn
 import controlSBML as ctl
 import control
 from controlSBML.option_management.option_manager import OptionManager
-from controlSBML.option_management.options import Options
 from controlSBML import msgs
 
 from docstring_expander.expander import Expander
