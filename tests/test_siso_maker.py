@@ -1,12 +1,10 @@
 from controlSBML.siso_maker import SISOMaker
 
-import matplotlib.pyplot as plt
-import numpy as np
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 IMPROPER_LINEAR_MDL = """
 // Illustrate Antimony File
 
@@ -46,10 +44,14 @@ class TestModelMaker(unittest.TestCase):
         self.assertTrue("SBMLSystem" in str(type(self.maker.system)))
 
     def testMakeStaircase(self):
-        #if IGNORE_TEST:
-        #    return
-        self.maker.makeStaircase()
+        if IGNORE_TEST:
+            return
+        self.maker.makeStaircase(is_plot=IS_PLOT)
 
+    def testMakeClosedLoop(self):
+        if IGNORE_TEST:
+            return
+        self.maker.makeClosedLoop(is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':

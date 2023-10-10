@@ -13,15 +13,16 @@ Usage:
 
 from controlSBML import constants as cn
 from controlSBML.sbml_system import SBMLSystem
+from controlSBML.staircase import Staircase
 from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML.iterate_biomodels import iterateBiomodels
 from controlSBML.make_roadrunner import makeRoadrunner
-from controlSBML import msgs
+from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
+from controlSBML import util
 
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import tellurium as te
 
 INPUT_COLOR = "red"
 OUTPUT_COLOR = "blue"
@@ -53,6 +54,7 @@ class SISOMaker(object):
         self.input_name = SBMLSystem.makeInputName(input_name, self.roadrunner)
         self.output_name = SBMLSystem.makeOutputName(output_name, self.roadrunner, input_names=[self.input_name])
         self.system, self.times = self._makeSystem()
+        self.builder = SISOTransferFunctionBuilder(self.system)
 
     def _makeSystem(self):
         """
@@ -91,7 +93,7 @@ class SISOMaker(object):
     def _checkClosedloop(self):
         return self._checkFile(suffix=CLOSED_LOOP_SFX)
 
-    def makeStaircase(self, initial_value=0, final_value=10, is_show=False):
+    def makeStaircase(self, initial_value=0, final_value=10, is_show=False, **kwargs):
         """
         Creates a staircase response and a plot. Creates the file
         <filename>_staircase.png.
@@ -100,52 +102,39 @@ class SISOMaker(object):
             initial_value (int, optional): _description_. Defaults to 0.
             final_value (int, optional): _description_. Defaults to 10.
         """
+        staircase = Staircase(initial_value=initial_value, final_value=final_value)
         try:
-            ts = self.system.simulateStaircase(self.input_name, self.output_name, times=self.times,
-                                               final_value=final_value, num_step=5, is_steady_state=False)
+            ts = self.builder.makeStaircaseResponse(staircase=staircase)
         except Exception as error:
             print("Error in staricase for %s: %s" % (self.model_id, error))
             return
         # Make the plot
+        is_plot, new_kwargs = util.setNoPlot(kwargs)
+        self.builder.plotStaircaseResponse(ts, title=self.model_id, **new_kwargs)
         plot_filename = self.model_id + STAIRCASE_SFX + PNG_EXT
-        inputs = ts[self.input_name].values
-        outputs = ts[self.output_name].values
-        times = ts.index/1000
-        _, ax = plt.subplots(1)
-        ax.scatter(times, outputs, color=OUTPUT_COLOR)
-        ax2 = ax.twinx()
-        ax2.plot(times, inputs, color=INPUT_COLOR)
-        ax2.set_ylabel(self.input_name, color=INPUT_COLOR)
-        ax.set_ylabel(self.output_name, color=OUTPUT_COLOR)
-        ax.set_xlabel("time")
-        ax.set_title(self.model_id)
         plt.savefig(plot_filename)
+        if is_plot:
+            plt.show()
 
-    def makeClosedLoop(self, setpoint=1):
+    def makeClosedLoop(self, setpoint=1, **kwargs):
         """
         Creates a close loop system and a companion step response plot.
         <filename>_closedloop.png.
         """
         try:
             ts = self.system.simulateSISOClosedLoop(input_name=self.input_name, output_name=self.output_name,
-                                                    setpoint=setpoint, times=self.times,
-                                           kp=1, ki=None, kf=None, setpoint=1, is_steady_state=False)
+                                                    setpoint=setpoint,
+                                           kp=1, ki=None, kf=None, is_steady_state=False)
         except Exception as error:
-            print("Error in closed loop for %s: %s" % (self.filename, error))
+            print("Error in closed loop for %s: %s" % (self.model_id, error))
             return
         # Make the plot
+        is_plot, new_kwargs = util.setNoPlot(kwargs)
+        self.system.plotSISOClosedLoop(ts, setpoint=setpoint, figsize=(5,5), title=self.model_id, **new_kwargs)
         plot_filename = self.model_id + CLOSED_LOOP_SFX + PNG_EXT
-        outputs = ts[self.output_name].values
-        inputs = np.repeat(reference, len(outputs))
-        times = ts.index/1000
-        _, ax = plt.subplots(1)
-        ax.scatter(times, outputs, color=OUTPUT_COLOR)
-        ax.plot(times, inputs, color=INPUT_COLOR)
-        ax.set_ylabel(self.input_name, color=INPUT_COLOR)
-        ax.set_ylabel(self.output_name, color=OUTPUT_COLOR)
-        ax.set_xlabel("time")
-        ax.set_title(self.model_id)
         plt.savefig(plot_filename)
+        if is_plot:
+            plt.show()
 
     @classmethod
     def runModel(cls, model, **kwargs):

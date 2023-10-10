@@ -467,17 +467,22 @@ def latexifyTransferFunction(tf, num_decimal=2):
         latex = r'$0$'
     return latex
 
-def setNoPlot(kwargs):
+def setNoPlot(kwargs, default=False):
     """
     Sets the is_plot option to False.
 
     Parameters
     ----------
+    is_plot: value of is_plot (default if not provided)
     kwargs: dict
     """
     new_kwargs = dict(kwargs)
+    if cn.O_IS_PLOT in kwargs.keys():
+        is_plot = kwargs[cn.O_IS_PLOT]
+    else:
+        is_plot = default
     new_kwargs[cn.O_IS_PLOT] = False
-    return new_kwargs
+    return is_plot, new_kwargs
 
 def cleanTimes(times):
     """

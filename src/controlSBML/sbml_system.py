@@ -372,10 +372,9 @@ class SBMLSystem(object):
             setpoint: float
             kwargs: dict (kwargs for plotOneTS)
         """
-        if "is_plot" in kwargs.keys():
-            is_plot = kwargs["is_plot"]
-            kwargs["is_plot"] = False
-        plot_result = util.plotOneTS(timeseries, ax2=0, **kwargs)
+        is_plot, new_kwargs = util.setNoPlot(kwargs)
+        new_kwargs["is_plot"] = False
+        plot_result = util.plotOneTS(timeseries, ax2=0, **new_kwargs)
         ax = plot_result.ax
         times = timeseries.index/cn.MS_IN_SEC
         ax.plot(times, [setpoint]*len(times), color="red", linestyle="--")
