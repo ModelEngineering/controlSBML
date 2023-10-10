@@ -562,13 +562,16 @@ def makeRoadrunnerSymbolDct(roadrunner):
         value: str (symbol type)
     """
     symbol_dct = {}
-    stoichiometry_mat = roadrunner.getFullStoichiometryMatrix()
     for name in roadrunner.getFloatingSpeciesIds():
         symbol_dct[name] = cn.TYPE_FLOATING_SPECIES
     for name in roadrunner.model.getBoundarySpeciesIds():
         symbol_dct[name] = cn.TYPE_BOUNDARY_SPECIES
-    for name in stoichiometry_mat.colnames:
-        symbol_dct[name] = cn.TYPE_REACTION
+    try:
+        stoichiometry_mat = roadrunner.getFullStoichiometryMatrix()
+        for name in stoichiometry_mat.colnames:
+            symbol_dct[name] = cn.TYPE_REACTION
+    except Exception as exxp:
+         msgs.warn("Could not get stoichiometry matrix. No reactions found.: %s" % exxp)
     for name in roadrunner.getGlobalParameterIds():
         symbol_dct[name] = cn.TYPE_PARAMETER
     for name in roadrunner.getAssignmentRuleIds():

@@ -45,12 +45,10 @@ class SISOMaker(object):
         self.model_id = model_id
         self.model = model
         self.end_time = end_time
-        #
         try:
             self.roadrunner = makeRoadrunner(model)
         except Exception as error:
-            print("Error for %s: %s" % (self.filename, error))
-            return
+            raise ValueError("Error for %s: %s" % (self.model_id, error))
         self.input_name = SBMLSystem.makeInputName(input_name, self.roadrunner)
         self.output_name = SBMLSystem.makeOutputName(output_name, self.roadrunner, input_names=[self.input_name])
         self.system, self.times = self.makeSystem()
@@ -108,8 +106,7 @@ class SISOMaker(object):
         try:
             ts = self.builder.makeStaircaseResponse(staircase=staircase)
         except Exception as error:
-            print("Error in staricase for %s: %s" % (self.model_id, error))
-            return
+            raise ValueError("Error in staricase for %s: %s" % (self.model_id, error))
         # Make the plot
         is_plot, new_kwargs = util.setNoPlot(kwargs)
         self.builder.plotStaircaseResponse(ts, title=self.model_id, **new_kwargs)
@@ -128,8 +125,7 @@ class SISOMaker(object):
                                                     setpoint=setpoint,
                                            kp=1, ki=None, kf=None, is_steady_state=False)
         except Exception as error:
-            print("Error in closed loop for %s: %s" % (self.model_id, error))
-            return
+            raise ValueError("Error in closed loop for %s: %s" % (self.model_id, error))
         # Make the plot
         is_plot, new_kwargs = util.setNoPlot(kwargs)
         self.system.plotSISOClosedLoop(ts, setpoint=setpoint, figsize=(5,5), title=self.model_id, **new_kwargs)
@@ -161,4 +157,8 @@ class SISOMaker(object):
         iterator = iterateBiomodels(start=start, end=end, is_report=is_report, checkerFunctions=checkFunctions)
         for filename, model in iterator:
             model_id = filename.split(".")[0]
-            cls.runModel(model, model_id=model_id, is_plot=False)
+            try:
+                cls.runModel(model, model_id=model_id, is_plot=False)
+            except Exception as error:
+                print("Error for %s: %s" % (filename, error))
+                continue
