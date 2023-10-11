@@ -8,14 +8,13 @@ import zipfile
 ARCHIVE_PATH = os.path.dirname(os.path.abspath(__file__))
 ARCHIVE_PATH = os.path.join(ARCHIVE_PATH, "temp_biomodels.zip")
 # The following models have defects and should be ignored.
-IGNORE_FILES = ["BIOMD0000000075", "BIOMD0000000081", "BIOMD0000000353", "BIOMD000000023",
-                 "BIOMD0000000573", "BIOMD0000000627"]
 IGNORE_FILES = ["BIOMD0000000056",
                 "BIOMD0000000075",
                 "BIOMD0000000081",
                 "BIOMD0000000255",
                 "BIOMD0000000353",
                 "BIOMD0000000437",
+                "BIOMD0000001061",
                  ]
 
 def iterateBiomodels(start=0, end=1000000, is_report=False, checkerFunctions=None):

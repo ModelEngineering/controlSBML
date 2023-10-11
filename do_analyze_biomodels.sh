@@ -24,6 +24,5 @@ for ((i=1;i<=$NUMPROC;i++)); do
     FIRST=$(( $j * $NUMMODELS ))
     FIRST=$(( $FIRST + 1 ))
     LAST=$(( $i * $NUMMODELS ))
-    echo $i, $j, $FIRST, $LAST
     python scripts/process_biomodels.py --first $FIRST --last $LAST &> /tmp/biomodels_${FIRST}_${LAST}.out &
 done
