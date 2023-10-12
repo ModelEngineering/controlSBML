@@ -121,7 +121,7 @@ class SISOMaker(object):
         <filename>_closedloop.png.
         """
         try:
-            ts = self.system.simulateSISOClosedLoop(input_name=self.input_name, output_name=self.output_name,
+            ts, _ = self.system.simulateSISOClosedLoop(input_name=self.input_name, output_name=self.output_name,
                                                     setpoint=setpoint,
                                            kp=1, ki=None, kf=None, is_steady_state=False)
         except Exception as error:

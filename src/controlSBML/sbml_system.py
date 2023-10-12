@@ -17,7 +17,7 @@ REFERENCE = "reference"
 class SBMLSystem(object):
 
     def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,
-                 control_module_name=cn.DEFAULT_MODULE_NAME, model_id="model"):
+                 model_id="model"):
         """
         model_reference: str
             string, SBML file or Roadrunner object
@@ -26,8 +26,6 @@ class SBMLSystem(object):
         output_names: list-str
             output species
         is_fixed_input_species: bool (input species are fixed)
-        control_module_name: str
-            name of the control module
         model_id: str (identifier of the model)
         """
         if input_names is None:
@@ -39,7 +37,6 @@ class SBMLSystem(object):
         self.model_id = model_id
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
-        self.control_module_name = control_module_name
         # Validate the input and output names
         self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
         self.output_names = [self.makeOutputName(n, self.roadrunner) for n in output_names]
@@ -50,8 +47,6 @@ class SBMLSystem(object):
             self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
         except Exception as exp:
             raise ValueError("Cannot create AntimonyBuilder: %s" % exp)
-        if self.antimony_builder.parent_model_name in [None, cn.DEFAULT_ROADRUNNER_MODULE]:
-            raise ValueError("Cannot find the name of the parent model. Is it a modular model?")
         # Add boundary information depending on the type of input
         for name in self.input_names:
             if name in self.antimony_builder.floating_species_names:
@@ -63,8 +58,7 @@ class SBMLSystem(object):
     def copy(self):
         model_reference = str(self)
         system = SBMLSystem(self.model_reference, input_names=self.input_names, output_names=self.output_names,
-                            is_fixed_input_species=self.is_fixed_input_species, model_id=self.model_id,
-                            control_module_name=self.control_module_name)
+                            is_fixed_input_species=self.is_fixed_input_species, model_id=self.model_id)
         system.antimony_builder = self.antimony_builder.copy()
         system.symbol_dct = dict(self.symbol_dct)
         return system
@@ -198,9 +192,10 @@ class SBMLSystem(object):
         """
         if input_names is None:
             input_names = []
-        output_names = roadrunner.getFloatingSpeciesIds()
-        output_names.extend(roadrunner.getAssignmentRuleIds())
+        output_names = []
+        output_names.extend(roadrunner.getFloatingSpeciesIds())
         output_names.extend(roadrunner.getReactionIds())
+        output_names.extend(roadrunner.getAssignmentRuleIds())
         new_name = cls._getName(output_names, name, name_type="output")
         for _ in input_names:
             if new_name in input_names:
@@ -305,7 +300,8 @@ class SBMLSystem(object):
         return ts
     
     def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, setpoint=1,
-                               start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, is_steady_state=False):
+                               start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None,
+                               is_steady_state=False, inplace=False):
         """
         Simulates a closed loop system.
 
@@ -316,25 +312,31 @@ class SBMLSystem(object):
             ki float
             kf: float
             setpoint: float (setpoint)
+            inplace: bool (update the existing model with the closed loop statements)
         Returns:
             Timeseries
+            AntimonyBuilder
         """
         if input_name is None:
             input_name = self.input_names[0]
         if output_name is None:
             output_name = self.output_names[0]
-        self.antimony_builder.addStatement("")
+        if inplace:
+            builder = self.antimony_builder
+        else:
+            builder = self.antimony_builder.copy()
+        builder.addStatement("")
         comment = "Closed loop: %s -> %s" % (input_name, output_name)
-        self.antimony_builder.makeComment(comment)
+        builder.makeComment(comment)
         #
-        if input_name in self.antimony_builder.boundary_species_names:
+        if input_name in builder.boundary_species_names:
             new_input_name = input_name
         else:
-            new_input_name = self.antimony_builder.makeParameterNameForBoundaryReaction(input_name)
-        self.antimony_builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint)
+            new_input_name = builder.makeParameterNameForBoundaryReaction(input_name)
+        builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint)
         # Run the simulation
         return self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
-                              is_reload=True)
+                              antimony_builder=builder, is_reload=True), builder
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
                  num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE, is_steady_state=True, inplace=True):
@@ -350,6 +352,7 @@ class SBMLSystem(object):
             inplace: bool (update the existing model with the Staircase statements)
         Returns:
             Timeseries
+            AntimonyBuilder
         """
         if inplace:
             builder = self.antimony_builder
@@ -361,7 +364,7 @@ class SBMLSystem(object):
                                             num_step=num_step, final_value=final_value)
         ts = self._simulate(start_time=times[0], antimony_builder=builder, end_time=times[-1], num_point=len(times),
                             is_steady_state=is_steady_state)
-        return ts
+        return ts, builder
     
     def plotSISOClosedLoop(self, timeseries, setpoint, **kwargs):
         """

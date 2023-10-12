@@ -54,7 +54,7 @@ OT = "_ot"
 
 class AntimonyBuilder(object):
 
-    def __init__(self, antimony, symbol_dct=None, control_module_name=cn.DEFAULT_MODULE_NAME):
+    def __init__(self, antimony, symbol_dct=None):
         """
         Args:
             antimony: str (Antimony)
@@ -64,68 +64,47 @@ class AntimonyBuilder(object):
         """
         self.antimony = antimony
         self.antimony_strs = antimony.split("\n")
-        self.control_module_name = self._calculateControlModuleName(control_module_name)
+        self.insert_pos = self._findMainModelEndPosition()  ## Add
+        ##self.control_module_name = self._calculateControlModuleName(control_module_name)
         self._initialized_output = False
         # Find the main module
         rr = te.loada(antimony)
         if symbol_dct is None:
             symbol_dct = util.makeRoadrunnerSymbolDct(rr)
         self.symbol_dct = dict(symbol_dct)
-        if len(self.findParentModels()) == 0:
-            raise ValueError("Unable to find parent model in Antimony string:\n%s" % antimony)
-        self.parent_model_name = self.findParentModels()[0]  # Use the first parent model
-
-    def _calculateControlModuleName(self, control_module_name):
-        """
-        Ensures a unique name for the control module.
-
-        Args:
-            control_module_name: str (provided on input)
-        Returns:
-            str: name of the control module
-        """
-        model_names = self.findParentModels()
-        new_control_module_name = control_module_name
-        for _ in model_names:
-            if new_control_module_name in model_names:
-                new_control_module_name += "_"
-            else:
-                break
-        return new_control_module_name
 
     def copy(self):
         """
         Returns:
             AntimonyBuilder
         """
-        builder = AntimonyBuilder(self.antimony, symbol_dct=self.symbol_dct.copy(),
-                               control_module_name=self.control_module_name)
+        builder = AntimonyBuilder(self.antimony, symbol_dct=self.symbol_dct.copy())
         builder.antimony_strs = list(self.antimony_strs)
+        builder.insert_pos = self.insert_pos
         builder._initialized_output = self._initialized_output
         builder.symbol_dct = dict(self.symbol_dct)
-        builder.parent_model_name = self.parent_model_name
         return builder
     
     def __eq__(self, other):
         is_equal = True
         is_debug = False
         is_equal &= self.antimony == other.antimony
-        if is_debug:
+        if is_debug and (not is_equal):
             print("Failed 1")
         is_equal &= util.allEqual(self.antimony_strs, other.antimony_strs)
-        if is_debug:
+        if is_debug and (not is_equal):
             print("Failed 2")
         is_equal &= self._initialized_output == other._initialized_output
-        if is_debug:
+        if is_debug and (not is_equal):
             print("Failed 3")
         is_equal = is_equal and (all([self.symbol_dct[k] == other.symbol_dct[k] for k in self.symbol_dct.keys()]))
-        if is_debug:
+        if is_debug and (not is_equal):
             print("Failed 4")
         is_equal = is_equal and (all([self.symbol_dct[k] == other.symbol_dct[k] for k in other.symbol_dct.keys()]))
-        if is_debug:
+        if is_debug and (not is_equal):
             print("Failed 5")
-        is_equal &= self.parent_model_name == other.parent_model_name
-        if is_debug:
+        is_equal &= self.insert_pos == other.insert_pos
+        if is_debug and (not is_equal):
             print("Failed 6")
         return is_equal
     
@@ -138,20 +117,29 @@ class AntimonyBuilder(object):
             raise RuntimeError("Unable to extract model name from line: %s" % line)
         return line[start_pos:end_pos]
 
-    def findParentModels(self):
+    def _findMainModelEndPosition(self):
         """
-        Finds the names of all models in the Antimony string.
+        Finds the position of the end statement for the main model.
 
         Returns:
-            list-str
+            int (position in list of strings)
         """
         # Finds the name of the top level model
         model_names = []
-        for line in self.antimony_strs:
+        last_model_start = -1
+        for pos, line in enumerate(self.antimony_strs):
             result = re.search("model .*[*].*()", line)
             if result:
-                model_names.append(self._extractModelName(line))
-        return model_names
+                last_model_start = pos
+        if last_model_start < 0:
+            raise ValueError("Could not find a main model!")
+        # Finds the end of the top level model
+        for pos, line in enumerate(self.antimony_strs[last_model_start:]):
+            new_line = line.strip()
+            if new_line == "end":
+                return pos + last_model_start
+        raise ValueError("Could not find end of main model!")
+
 
     def _getSetOfType(self, antimony_type):
         return [k for k, v in self.symbol_dct.items() if v == antimony_type]
@@ -179,26 +167,23 @@ class AntimonyBuilder(object):
         return self._getSetOfType(cn.TYPE_ASSIGNMENT)
 
     def __repr__(self):
-        outputs = list(self.antimony_strs)
-        outputs.append("end")
-        return "\n".join([str(o) for o in outputs])
+        return "\n".join([str(o) for o in self.antimony_strs])
 
-    def addStatement(self, stg):
+    def addStatement(self, statement):
         """
         Args:
-            stg: str
+            statement: str
         """
-        model_prefix = "xxM"
+        def insert(stg, increment=1):
+            self.antimony_strs.insert(self.insert_pos, stg)
+            self.insert_pos += increment
+        #
         if not self._initialized_output:
             self._initialized_output = True
-            self.antimony_strs.append("\nmodule *%s()" % self.control_module_name)
-            statement = "%s: %s()" % (model_prefix, self.parent_model_name)
-            self.antimony_strs.append(statement)
-            for name in self.symbol_dct.keys():
-                statement = "%s.%s is %s" % (model_prefix, name, name)
-                self.antimony_strs.append(statement)
-            self.antimony_strs.append("")
-        self.antimony_strs.append(stg)
+            insert("")
+            insert("//vvvvvvvvvAdded by ControlSBMLvvvvvvvvvv")
+            insert("//^^^^^^^^^Added by ControlSBML^^^^^^^^^^", increment=0)
+        insert(statement)
 
     def makeBoundarySpecies(self, species_name):
         """

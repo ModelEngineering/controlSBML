@@ -91,7 +91,7 @@ class TestSBMLSystem(unittest.TestCase):
         def test(is_fixed_input_species):
             system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=is_fixed_input_species)
             setpoint = 5
-            ts = system.simulateSISOClosedLoop("S1", "S3", kp=2, ki=0.8, kf=0.5, setpoint=setpoint, end_time=200, num_point=1000)
+            ts, _ = system.simulateSISOClosedLoop("S1", "S3", kp=2, ki=0.8, kf=0.5, setpoint=setpoint, end_time=200, num_point=1000)
             self.assertGreater(len(ts), 0)
             if is_fixed_input_species:
                 tolerance = 0.1
@@ -118,7 +118,7 @@ class TestSBMLSystem(unittest.TestCase):
         times = np.linspace(0, 50, 500)
         def test(is_fixed_input_species):
             system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
-            ts = system.simulateStaircase("S1", "S3", times=times, final_value=10, num_step=5, is_steady_state=False)
+            ts, _ = system.simulateStaircase("S1", "S3", times=times, final_value=10, num_step=5, is_steady_state=False)
             self.assertGreater(len(ts), 0)
             variance = np.var(ts["S3"])
             self.assertFalse(np.isclose(variance, 0))
@@ -144,7 +144,7 @@ class TestSBMLSystem(unittest.TestCase):
             return
         system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=False)
         setpoint = 5
-        ts = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kp=2, ki=0.8, kf=0.5,
+        ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kp=2, ki=0.8, kf=0.5,
                                            setpoint=setpoint, end_time=100, num_point=1000)
         self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), title="Closed Loop", is_plot=IS_PLOT)
 

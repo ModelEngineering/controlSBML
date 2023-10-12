@@ -179,7 +179,7 @@ class SISOTransferFunctionBuilder(object):
         mgr.options[cn.O_POINTS_PER_TIME] = points_per_time
         times = util.makeSimulationTimes(start_time=start_time, end_time=end_time, points_per_time=points_per_time)
         # Do the simulations
-        result_ts = self.system.simulateStaircase(self.input_name, self.output_name, times=times,
+        result_ts, _ = self.system.simulateStaircase(self.input_name, self.output_name, times=times,
                                                 initial_value=staircase.initial_value, num_step=staircase.num_step,
                                                 final_value=staircase.final_value, is_steady_state=is_steady_state,
                                                 inplace=False)

@@ -72,20 +72,13 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.assertTrue(isinstance(self.builder.antimony, str))
-        self.assertEqual(self.builder.parent_model_name, MODEL_NAME)
-
-    def testGetModelName(self):
-        if IGNORE_TEST:
-            return
-        builder = ab.AntimonyBuilder(MTOR_MDL)
-        self.assertEqual(builder.parent_model_name, MTOR_NAME)
 
     def testMakeBoundarySpecies(self):
         if IGNORE_TEST:
             return
         self.init()
         self.builder.makeBoundarySpecies("S1")
-        self.assertTrue("const" in self.builder.antimony_strs[-1])
+        self.assertTrue("const" in self.getStatement())
         self.check()
 
     def testMakeBoundaryReaction(self):
@@ -93,32 +86,37 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.builder.makeBoundaryReaction("S1")
-        self.assertTrue("->" in self.builder.antimony_strs[-2])
+        self.assertTrue("->" in self.getStatement(pos=2))
         self.check()
+
+    def getStatement(self, pos=1, builder=None):
+        if builder is None:
+            builder = self.builder
+        return builder.antimony_strs[builder.insert_pos-pos]
 
     def testMakeComment(self):
         if IGNORE_TEST:
             return
         self.init()
         self.builder.makeComment("comment")
-        self.assertTrue("comment" in self.builder.antimony_strs[-1])
+        self.assertTrue("comment" in self.getStatement())
 
     def testMakeAdditionStatement(self):
         if IGNORE_TEST:
             return
         self.init()
         self.builder.makeAdditionStatement("S1", "S2", "S3")
-        result = re.search("S1.*:=.*S2.*\+.*S3", self.builder.antimony_strs[-1])
+        result = re.search("S1.*:=.*S2.*\+.*S3", self.getStatement())
         self.assertTrue(result)
         self.builder.makeAdditionStatement("S2", "S3", is_assignment=False)
-        result = re.search("S2.* =.*S3", self.builder.antimony_strs[-1])
+        result = re.search("S2.* =.*S3", self.getStatement())
         self.assertTrue(result)
 
     def testMakeSinusoidSignal(self):
         if IGNORE_TEST:
             return
         ot_name = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
-        result = re.search("%s.*=.*1.*sin.*2" % ot_name, self.builder.antimony_strs[-1])
+        result = re.search("%s.*=.*1.*sin.*2" % ot_name, self.getStatement())
         self.assertTrue(result)
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", ot_name)
@@ -137,7 +135,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         signal_ot = self.builder.makeControlErrorSignal(-7, "S3", suffix="_S1_S3")
-        result = re.search("%s.*:=.*7.*S3" % signal_ot, self.builder.antimony_strs[-1])
+        result = re.search("%s.*:=.*7.*S3" % signal_ot, self.getStatement())
         self.assertTrue(result)
         self.check()
     
@@ -170,7 +168,7 @@ class TestAntimonyBuilder(unittest.TestCase):
             else:
                 builder.makeBoundaryReaction("S1")
             value_arr = builder.makeStaircase("S1", initial_value=2)
-            self.assertTrue("at " in builder.antimony_strs[-1])
+            self.assertTrue("at " in self.getStatement(builder=builder))
             self.assertEqual(len(value_arr), len(cn.TIMES))
             self.check(builder=builder)
             return builder

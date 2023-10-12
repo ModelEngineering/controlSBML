@@ -15,6 +15,7 @@ IGNORE_FILES = ["BIOMD0000000056",
                 "BIOMD0000000353",
                 "BIOMD0000000437",
                 "BIOMD0000001061",
+                "BIOMD0000001064",
                  ]
 
 def iterateBiomodels(start=0, end=1000000, is_report=False, checkerFunctions=None):
