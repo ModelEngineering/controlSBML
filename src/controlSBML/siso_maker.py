@@ -159,6 +159,7 @@ class SISOMaker(object):
             model_id = filename.split(".")[0]
             try:
                 cls.runModel(model, model_id=model_id, is_plot=False)
+                print("Completed processing for %s" % model_id)
             except Exception as error:
                 print("Error for %s: %s" % (filename, error))
                 continue

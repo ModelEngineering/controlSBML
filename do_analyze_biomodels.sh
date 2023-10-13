@@ -6,14 +6,12 @@
 TOTALMODEL=1100
 if test "$1" = ""
 then
-    echo "empty"
     NUMPROC=1
 else
     NUMPROC=$1
 fi
 # Calculate the number of models processed in a batch
 NUMMODELS=$(( $TOTALMODEL / $NUMPROC ))
-echo $NUMMODELS
 # Start the batches
 for ((i=1;i<=$NUMPROC;i++)); do
     if test $i -gt $TOTALMODEL

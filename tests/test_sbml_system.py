@@ -1,6 +1,6 @@
-import controlSBML.constants as cn
 from controlSBML.sbml_system import SBMLSystem
 from controlSBML import util
+from controlSBML.timeseries import Timeseries
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -147,6 +147,13 @@ class TestSBMLSystem(unittest.TestCase):
         ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kp=2, ki=0.8, kf=0.5,
                                            setpoint=setpoint, end_time=100, num_point=1000)
         self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), title="Closed Loop", is_plot=IS_PLOT)
+
+    def testPlotModel(self):
+        if IGNORE_TEST:
+            return
+        system = SBMLSystem(LINEAR_MDL)
+        ts = system.plotModel()
+        self.assertTrue(isinstance(ts, Timeseries))
 
 
 if __name__ == '__main__':

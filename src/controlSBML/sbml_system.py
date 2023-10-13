@@ -299,6 +299,25 @@ class SBMLSystem(object):
         ts = Timeseries(data)
         return ts
     
+    def plotModel(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, **kwargs):
+        """
+        Plots the original model.
+
+        Args:
+            start_time: float
+            end_time: float
+            num_point: int
+            kwargs: dict (kwargs for plotOneTS)
+        Returns:
+            Timeseries
+        """
+        if num_point is None:
+            num_point = int(cn.POINTS_PER_TIME*(end_time - start_time))
+        data = self.roadrunner.simulate(start_time, end_time, num_point)
+        ts = Timeseries(data)
+        util.plotOneTS(ts, **kwargs)
+        return ts
+    
     def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, setpoint=1,
                                start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None,
                                is_steady_state=False, inplace=False):
