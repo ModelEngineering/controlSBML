@@ -373,7 +373,8 @@ class AntimonyBuilder(object):
         return name_in, name_ot
 
     def makeSISOClosedLoopSystem(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None, setpoint=0,
-                           noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20):
+                           noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20,
+                           initial_output_value=None):
         """
         Args:
             input_name: str (input to system)
@@ -387,8 +388,12 @@ class AntimonyBuilder(object):
             noise_frequency: float (Frequency of the additions to the output)
             disturbance_amplitude: float (Amplitude of the disturbance)
             disturbance_frequency: float (Frequency of the disturbance)
+            initial_input_value: float (initial value of the input)
         """
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
+        # Handle the initial value of the input
+        if initial_output_value is not None:
+            self.makeAdditionStatement(output_name, initial_output_value, is_assignment=False)
         # Make the elements of the closed loop
         noise_ot = self.makeSinusoidSignal(noise_amplitude, noise_frequency, prefix="noise", suffix=suffix)
         disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)

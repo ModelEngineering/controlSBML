@@ -8,6 +8,7 @@ from controlSBML.timeseries import Timeseries
 from controlSBML import util
 
 import matplotlib.pyplot as plt
+import pandas as pd
 import tellurium as te
 
 
@@ -41,10 +42,10 @@ class SBMLSystem(object):
         self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
         self.output_names = [self.makeOutputName(n, self.roadrunner) for n in output_names]
         # Verify that the main model is a module
-        self.antimony = self._getAntimony()
+        self.original_antimony = self._getAntimony()
         self.symbol_dct = self._makeSymbolDct()
         try:
-            self.antimony_builder = AntimonyBuilder(self.antimony, self.symbol_dct)
+            self.antimony_builder = AntimonyBuilder(self.original_antimony, self.symbol_dct)
         except Exception as exp:
             raise ValueError("Cannot create AntimonyBuilder: %s" % exp)
         # Add boundary information depending on the type of input
@@ -84,7 +85,7 @@ class SBMLSystem(object):
         is_equal = is_equal and (util.allEqual(self.output_names, other.output_names))
         if is_debug:
             print("Failed 4")
-        is_equal = is_equal and (self.antimony == other.antimony)
+        is_equal = is_equal and (self.original_antimony == other.original_antimony)
         if is_debug:
             print("Failed 5")
         is_equal = is_equal and (self.antimony_builder == other.antimony_builder)
@@ -313,14 +314,15 @@ class SBMLSystem(object):
         """
         if num_point is None:
             num_point = int(cn.POINTS_PER_TIME*(end_time - start_time))
-        data = self.roadrunner.simulate(start_time, end_time, num_point)
+        roadrunner = makeRoadrunner(self.model_reference)
+        data = roadrunner.simulate(start_time, end_time, num_point)
         ts = Timeseries(data)
         util.plotOneTS(ts, **kwargs)
         return ts
     
     def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, setpoint=1,
                                start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None,
-                               is_steady_state=False, inplace=False):
+                               is_steady_state=False, inplace=False, initial_input_value=None):
         """
         Simulates a closed loop system.
 
@@ -332,6 +334,7 @@ class SBMLSystem(object):
             kf: float
             setpoint: float (setpoint)
             inplace: bool (update the existing model with the closed loop statements)
+            initial_input_value: float (initial value of the input)
         Returns:
             Timeseries
             AntimonyBuilder
@@ -352,7 +355,8 @@ class SBMLSystem(object):
             new_input_name = input_name
         else:
             new_input_name = builder.makeParameterNameForBoundaryReaction(input_name)
-        builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint)
+        builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint,
+                                         initial_output_value=initial_input_value)
         # Run the simulation
         return self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
                               antimony_builder=builder, is_reload=True), builder
@@ -405,3 +409,72 @@ class SBMLSystem(object):
         ax.legend(legends)
         if is_plot:
             plt.show()
+
+    def printModel(self, is_updated_model=True):
+        """
+        Prints the antimony for the model.
+
+        Args:
+            is_updated_model: bool (include updates generated for system identification, closed loop design, ...)
+        """
+        if is_updated_model:
+            print(self.antimony_builder)
+        else:
+            print(self.original_antimony)
+
+    def getValidSymbols(self, is_input=True, is_str=True, is_updated_model=False):
+        """
+        Provides the names of valid input or ouput for the model.
+
+        Args:
+            is_input: bool (True: input, False: output)
+            is_str: bool (True: return as a string, False: return as a Series)
+            is_updated_model: bool (True: include updates generated for system identification, closed loop design, ...)
+
+        Returns:
+            pd.Series or str
+                index: type
+                value: list of symbol names
+        """
+        if is_updated_model:
+            roadrunner = self.roadrunner
+        else:
+            roadrunner = makeRoadrunner(self.model_reference)
+        #
+        symbol_dct = util.makeRoadrunnerSymbolDct(roadrunner)
+        if is_input:
+            valid_types = cn.VALID_INPUT_TYPES
+        else:
+            valid_types = cn.VALID_OUTPUT_TYPES
+        dct = {}
+        for rr_type in valid_types:
+            dct[rr_type] = ", ".join([k for k, v in symbol_dct.items() if v == rr_type])
+        ser = pd.Series(dct)
+        #
+        if not is_str:
+            return ser
+        outs = []
+        for rr_type in ser.index:
+            if len(ser[rr_type]) > 0:
+                out = rr_type + ":" + "\t" + ser[rr_type]
+                outs.append(out)
+        return "\n\n".join(outs)
+
+    def getValidInputs(self):
+        """
+        Provides the names of valid model inputs.
+
+        Returns:
+            str
+        """
+        return self.getValidSymbols(is_input=True, is_str=True)
+        
+
+    def getValidOutputs(self):
+        """
+        Provides the names of valid model inputs.
+
+        Returns:
+            str
+        """
+        return self.getValidSymbols(is_input=False, is_str=True)

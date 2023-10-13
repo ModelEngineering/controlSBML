@@ -1,9 +1,11 @@
 from controlSBML.sbml_system import SBMLSystem
 from controlSBML import util
+import controlSBML.constants as cn
 from controlSBML.timeseries import Timeseries
 
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 import unittest
 
 
@@ -44,7 +46,7 @@ class TestSBMLSystem(unittest.TestCase):
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        self.assertTrue(isinstance(self.system.antimony, str))
+        self.assertTrue(isinstance(self.system.original_antimony, str))
 
     def testImproperModel(self):
         if IGNORE_TEST:
@@ -152,8 +154,32 @@ class TestSBMLSystem(unittest.TestCase):
         if IGNORE_TEST:
             return
         system = SBMLSystem(LINEAR_MDL)
-        ts = system.plotModel()
+        ts = system.plotModel(is_plot=IS_PLOT)
         self.assertTrue(isinstance(ts, Timeseries))
+
+    def testGetValidSymbolsInput(self):
+        if IGNORE_TEST:
+            return
+        input_ser = self.system.getValidSymbols(is_input=True, is_str=False)
+        self.assertTrue(isinstance(input_ser, pd.Series))
+        self.assertTrue("S1" in input_ser.loc[cn.TYPE_FLOATING_SPECIES])
+        self.assertTrue("k1" in input_ser.loc[cn.TYPE_PARAMETER])
+        self.assertFalse("J1" in input_ser.index)
+        #
+        input_str = self.system.getValidInputs()
+        self.assertTrue(isinstance(input_str, str))
+
+    def testGetValidSymbolsOutput(self):
+        if IGNORE_TEST:
+            return
+        output_ser = self.system.getValidSymbols(is_input=False, is_str=False)
+        self.assertTrue(isinstance(output_ser, pd.Series))
+        self.assertTrue("S1" in output_ser.loc[cn.TYPE_FLOATING_SPECIES])
+        self.assertTrue("k1" in output_ser.loc[cn.TYPE_PARAMETER])
+        self.assertFalse("J1" in output_ser.index)
+        #
+        out_str = self.system.getValidOutputs()
+        self.assertTrue(isinstance(out_str, str))
 
 
 if __name__ == '__main__':

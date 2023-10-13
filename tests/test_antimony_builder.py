@@ -157,6 +157,10 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10, setpoint=5,
                            noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20)
         self.check()
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10, setpoint=5,
+                           noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20,
+                           initial_output_value=33)
+        self.check()
 
     def testMakeStaircase(self):
         if IGNORE_TEST:
