@@ -411,7 +411,7 @@ class SBMLSystem(object):
             raise ValueError("No %s name is specified." % name_type)
         return names[0]
     
-    def plotSISOClosedLoop(self, timeseries, setpoint, mgr=None, **kwargs):
+    def plotSISOClosedLoop(self, timeseries, setpoint, mgr=None, markers=None, **kwargs):
         """
         Plots the results of a closed lop simulation. Input and output are defined in the SBMLSystem constructor.
 
@@ -425,11 +425,17 @@ class SBMLSystem(object):
         is_plot, new_kwargs = util.setNoPlot(kwargs)
         if mgr is None:
             mgr = OptionManager(new_kwargs)
-        response_df = pd.DataFrame(timeseries[output_name])
         new_kwargs["is_plot"] = False
-        plot_result = util.plotOneTS(response_df, ax2=0, **new_kwargs)
-        # Do the plots
+        df = pd.DataFrame(timeseries[output_name], columns=[output_name])
+        plot_result = util.plotOneTS(df, ax2=0, colors=[cn.SIMULATED_COLOR], markers=markers, **new_kwargs)
         ax = plot_result.ax
+        ax.set_ylabel(output_name)
+        # Plot the setpoint
+        setpoint_arr = np.ones(len(timeseries))*setpoint
+        times = np.array(timeseries.index)/cn.MS_IN_SEC
+        ax.plot(times, setpoint_arr, color=cn.SIMULATED_COLOR,
+            linestyle="--")
+        # Do the plots
         mgr.plot_opts.set(cn.O_AX, ax)
         if mgr.plot_opts[cn.O_AX2] is None:
             ax2 = ax.twinx()
@@ -437,9 +443,7 @@ class SBMLSystem(object):
         else:
             ax2 = mgr.plot_opts[cn.O_AX2]
         # Plot the staircase
-        times = np.array(response_df.index)/cn.MS_IN_SEC
-        ax2.plot(times, timeseries[input_name], color=cn.INPUT_COLOR,
-            linestyle="--")
+        ax2.plot(times, timeseries[input_name], color=cn.INPUT_COLOR)
         self.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
         self.setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax2.set_ylabel(input_name)

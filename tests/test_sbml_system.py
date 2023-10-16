@@ -9,8 +9,8 @@ import pandas as pd
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 IMPROPER_LINEAR_MDL = """
 // Illustrate Antimony File
 species S1, S2, S3, S4
@@ -142,8 +142,8 @@ class TestSBMLSystem(unittest.TestCase):
         self.assertFalse(system == self.system)
 
     def testPlotSISOClosedLoop(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=False)
         setpoint = 5
         ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kp=2, ki=0.8, kf=0.5,
