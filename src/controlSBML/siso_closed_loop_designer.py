@@ -73,6 +73,9 @@ class SISOClosedLoopDesigner(object):
             self.times = np.linspace(0, 5, 50)
         else:
             self.times = times
+        self.start_time = self.times[0]
+        self.end_time = self.times[-1]
+        self.num_point = len(self.times)
         self.sign = sign
         # Internal state
         self.history = _History(self, is_history=is_history)
@@ -240,15 +243,10 @@ class SISOClosedLoopDesigner(object):
         """
         param_dct = {n: 0 for n in PARAM_NAMES}
         param_dct.update(self.get())
-        self.sbml_system.simulateSISOClosedLoop(one, kp=None, ki=None, kf=None, setpoint=1,
-                               start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None,
-                               is_steady_state=False, inplace=False):
-
-
-        self.siso.makePIDClosedLoopSystem(**param_dct)
-        self.closed_loop_system = self.siso.closed_loop_system
-        self.closed_loop_system_ts = self.siso.makeResponse(start_time=start_time, end_time=end_time, period=period,
-                                                           step_size=step_size)
+        k_dct = {k: param_dct[k] for k in ["kp", "ki", "kd", "kf"]}
+        self.sbml_system.simulateSISOClosedLoop(setpoint=1,
+                               start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
+                               is_steady_state=False, inplace=False, **k_dct)
         self.history.add()
         plot_result = util.plotOneTS(self.closed_loop_system_ts, markers=["", ""],
                                      xlabel="time", ax2=0, is_plot=False, **kwargs)

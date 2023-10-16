@@ -316,13 +316,16 @@ class AntimonyBuilder(object):
             self.makeAdditionStatement(name_ot, name_in)
         return name_in, name_ot
     
-    def makeControlErrorSignal(self, setpoint, forward_output_name, prefix="control_error", suffix=""):
+    def makeControlErrorSignal(self, setpoint, forward_output_name, sign, prefix="control_error", suffix=""):
         """
         Constructs the control error variable.
 
         Args:
             setpoint: float/str
             forward_output_name: str (Output for which the setpoint is compared)
+            sign: float
+            prefix: str (beginning of the name)
+            suffix: str (ending of the name)
         Returns:
             str (name of the control error)
         Usage:
@@ -330,7 +333,11 @@ class AntimonyBuilder(object):
             control_error_name = self.makeControlError(setpoint, "S3", suffix=suffix)   # S3 is the output of the system
         """
         name_ot = prefix + suffix + OT
-        statement = "%s := %s - %s" % (name_ot, str(setpoint), forward_output_name)
+        if sign == 1:
+            operator = "+"
+        else:
+            operator = "-"
+        statement = "%s := %s %s %s" % (name_ot, str(setpoint), operator, forward_output_name)
         self.addStatement(statement)
         return name_ot
     
@@ -374,7 +381,7 @@ class AntimonyBuilder(object):
 
     def makeSISOClosedLoopSystem(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None, setpoint=0,
                            noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20,
-                           initial_output_value=None):
+                           initial_output_value=None, sign=-1):
         """
         Args:
             input_name: str (input to system)
@@ -399,7 +406,8 @@ class AntimonyBuilder(object):
         disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)
         filter_in, filter_ot = self.makeFilterElement(kf, prefix="filter", suffix=suffix)
         controller_in, controller_ot = self.makePIControllerElement(kp, ki, prefix="controller", suffix=suffix)
-        control_error_name = self.makeControlErrorSignal(setpoint, filter_ot, prefix="control_error", suffix=suffix)
+        control_error_name = self.makeControlErrorSignal(setpoint, filter_ot, sign, prefix="control_error", 
+                                                         suffix=suffix)
         # Connect the pieces by specifying assignment statements
         self.addStatement("")
         self.makeComment("Connect the elements of the closed loop")

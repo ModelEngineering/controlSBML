@@ -319,10 +319,11 @@ class SBMLSystem(object):
         ts = Timeseries(data)
         util.plotOneTS(ts, **kwargs)
         return ts
-    
+
     def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, setpoint=1,
                                start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None,
-                               is_steady_state=False, inplace=False, initial_input_value=None):
+                               is_steady_state=False, inplace=False, initial_input_value=None,
+                               sign=-1):
         """
         Simulates a closed loop system.
 
@@ -335,6 +336,7 @@ class SBMLSystem(object):
             setpoint: float (setpoint)
             inplace: bool (update the existing model with the closed loop statements)
             initial_input_value: float (initial value of the input)
+            sign: float (sign of the feedback)
         Returns:
             Timeseries
             AntimonyBuilder
@@ -356,7 +358,7 @@ class SBMLSystem(object):
         else:
             new_input_name = builder.makeParameterNameForBoundaryReaction(input_name)
         builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint,
-                                         initial_output_value=initial_input_value)
+                                         initial_output_value=initial_input_value, sign=sign)
         # Run the simulation
         return self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
                               antimony_builder=builder, is_reload=True), builder

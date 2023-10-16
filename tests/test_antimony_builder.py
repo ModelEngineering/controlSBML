@@ -134,10 +134,18 @@ class TestAntimonyBuilder(unittest.TestCase):
     def testMakeControlErrorSignal(self):
         if IGNORE_TEST:
             return
-        signal_ot = self.builder.makeControlErrorSignal(-7, "S3", suffix="_S1_S3")
-        result = re.search("%s.*:=.*7.*S3" % signal_ot, self.getStatement())
-        self.assertTrue(result)
-        self.check()
+        self.init()
+        def test(sign):
+            signal_ot = self.builder.makeControlErrorSignal(-7, "S3", sign, suffix="_S1_S3")
+            if sign == -1:
+                result = re.search("%s.*:=.*7.*-.*S3" % signal_ot, self.getStatement())
+            else:
+                result = re.search("%s.*:=.*7.*\+.*S3" % signal_ot, self.getStatement())
+            self.assertTrue(result)
+            self.check()
+        #
+        test(-1)
+        test(1)
     
     def testMakePIController(self):
         if IGNORE_TEST:
