@@ -6,9 +6,11 @@ from controlSBML import msgs
 from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML.timeseries import Timeseries
 from controlSBML import util
+from controlSBML.option_management.option_manager import OptionManager
 
 import matplotlib.pyplot as plt
 import pandas as pd
+import numpy as np
 import tellurium as te
 
 
@@ -391,7 +393,25 @@ class SBMLSystem(object):
                             is_steady_state=is_steady_state)
         return ts, builder
     
-    def plotSISOClosedLoop(self, timeseries, setpoint, **kwargs):
+    @staticmethod 
+    def setYAxColor(ax, position, color):
+        # Set the colors of the labels, axes, and spines
+        ax.tick_params(axis='y', labelcolor=color)
+        ax.spines[position].set_color(color)
+        ax.yaxis.label.set_color(color)
+
+    def getName(self, is_input=True):
+        if is_input:
+            names = self.input_names
+            name_type ="input"
+        else:
+            names = self.output_names
+            name_type ="output"
+        if len(names) < 1:
+            raise ValueError("No %s name is specified." % name_type)
+        return names[0]
+    
+    def plotSISOClosedLoop(self, timeseries, setpoint, mgr=None, **kwargs):
         """
         Plots the results of a closed lop simulation. Input and output are defined in the SBMLSystem constructor.
 
@@ -400,15 +420,32 @@ class SBMLSystem(object):
             setpoint: float
             kwargs: dict (kwargs for plotOneTS)
         """
+        input_name = self.getName(is_input=True)
+        output_name = self.getName(is_input=False)
         is_plot, new_kwargs = util.setNoPlot(kwargs)
+        if mgr is None:
+            mgr = OptionManager(new_kwargs)
+        response_df = pd.DataFrame(timeseries[output_name])
         new_kwargs["is_plot"] = False
-        plot_result = util.plotOneTS(timeseries, ax2=0, **new_kwargs)
+        plot_result = util.plotOneTS(response_df, ax2=0, **new_kwargs)
+        # Do the plots
         ax = plot_result.ax
-        times = timeseries.index/cn.MS_IN_SEC
-        ax.plot(times, [setpoint]*len(times), color="red", linestyle="--")
-        legends = list(timeseries.columns)
-        legends.append("setpoint")
-        ax.legend(legends)
+        mgr.plot_opts.set(cn.O_AX, ax)
+        if mgr.plot_opts[cn.O_AX2] is None:
+            ax2 = ax.twinx()
+            mgr.plot_opts[cn.O_AX2] = ax2
+        else:
+            ax2 = mgr.plot_opts[cn.O_AX2]
+        # Plot the staircase
+        times = np.array(response_df.index)/cn.MS_IN_SEC
+        ax2.plot(times, timeseries[input_name], color=cn.INPUT_COLOR,
+            linestyle="--")
+        self.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
+        self.setYAxColor(ax2, "right", cn.INPUT_COLOR)
+        ax2.set_ylabel(input_name)
+        mgr.doPlotOpts()
+        ax.legend([])
+        mgr.doFigOpts()
         if is_plot:
             plt.show()
 
