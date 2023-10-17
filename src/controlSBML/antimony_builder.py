@@ -423,7 +423,8 @@ class AntimonyBuilder(object):
         Args:
             input_name: str
         """
-        if input_name not in self.boundary_species_names:
+        if (input_name in self.floating_species_names):
+            # The input is a floating species that is being controlled by a boundary reaction
             name = self.makeParameterNameForBoundaryReaction(input_name)
         else:
             name = input_name

@@ -104,7 +104,7 @@ class SISOMaker(object):
         """
         staircase = Staircase(initial_value=initial_value, final_value=final_value)
         try:
-            ts = self.builder.makeStaircaseResponse(staircase=staircase)
+            ts, _ = self.builder.makeStaircaseResponse(staircase=staircase)
         except Exception as error:
             raise ValueError("Error in staricase for %s: %s" % (self.model_id, error))
         # Make the plot

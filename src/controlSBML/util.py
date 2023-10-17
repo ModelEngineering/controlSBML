@@ -532,12 +532,12 @@ def compareSingleArgumentFunctions(func1, func2, arg_min, arg_max, num_point=100
         arg_min: float
         arg_max: float
         num_point: int
-        max_rmse: float (maximum root mean square error if the same)
+        max_mse: float (maximum root mean square error if the same)
     """
     values = np.linspace(arg_min, arg_max, num_point)
     squared_diff_arr = np.array([(func1(v) - func2(v))**2 for v in values])
-    rmse = np.sum(squared_diff_arr)/len(values)
-    if rmse < max_rmse**2:
+    mse = np.sum(squared_diff_arr)/len(values)
+    if mse < max_rmse**2:
         return True
     else:
         return False

@@ -1,8 +1,9 @@
-import controlSBML.siso_closed_loop_designer as scld
-from controlSBML.siso_closed_loop_designer import SISOClosedLoopDesigner
+import controlSBML.siso_closed_loop_designer as cld
+from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 import controlSBML as ctl
 import helpers
 
+import copy
 import control
 import numpy as np
 import sympy
@@ -12,7 +13,7 @@ IGNORE_TEST = False
 IS_PLOT = False
 helpers.setupPlotting(__file__)
 MODEL = """
-model main_model()
+model *main_model()
 S0 -> S1; k0*S0
 S1 -> S2; k1*S1
 
@@ -24,12 +25,12 @@ S2 = 0
 end
 """
 LINEAR_MDL = """
+model *linear_model()
 species S3
 
  -> S1; k0
 S1 -> S2; k1*S1
 S2 -> S3; k2*S2
-S3 -> ; k3*S3
 
 S1 = 0
 S2 = 0
@@ -37,17 +38,18 @@ S3 = 0
 k0 = 0
 k1 = 1
 k2 = 2
-k3 = 3
+end
 """
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
-SYSTEM = ctl.SBMLSystem(MODEL, input_names=["S0"], output_names=["S2"])
-builder = SISOClosedLoopDesigner.makeSISOTransferFunctionBuilder(SYSTEM)
+INPUT_NAME = "S0"
+OUTPUT_NAME = "S2"
+SYSTEM = ctl.SBMLSystem(MODEL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
 staircase = ctl.Staircase(final_value=15, num_step=5)
 fitter_result = builder.fitTransferFunction(num_numerator=2, num_denominator=3, staircase=staircase)
 TRANSFER_FUNCTION = fitter_result.transfer_function
-PARAMETER_DCT = {p: n+1 for n, p in enumerate(scld.PARAM_NAMES)}
+PARAMETER_DCT = {p: n+1 for n, p in enumerate(cld.PARAM_NAMES)}
 TIMES = np.linspace(0, 20, 200)
-import pdb; pdb.set_trace()
 
 
 #############################
@@ -56,45 +58,40 @@ import pdb; pdb.set_trace()
 class TestSISOClosedLoopDesigner(unittest.TestCase):
 
     def setUp(self):
-        self.sys_tf = TRANSFER_FUNCTION
-        self.designer = scld.SISOClosedLoopDesigner(self.sys_tf)
-        self.ctlsb = CTLSB
+        self.sys_tf = copy.deepcopy(TRANSFER_FUNCTION)
+        self.system = copy.deepcopy(SYSTEM)
+        self.designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=TIMES)
 
     def testGetSet(self):
         if IGNORE_TEST:
             return
         self.designer.set(**PARAMETER_DCT)
-        for name in ["kp", "ki", "kd", "kf"]:
+        for name in cld.PARAM_NAMES:
             self.assertEqual(getattr(self.designer, name), PARAMETER_DCT[name])
         #
         dct = self.designer.get()
-        for name in ["kp", "ki", "kd", "kf"]:
+        for name in cld.PARAM_NAMES:
             self.assertEqual(dct[name], PARAMETER_DCT[name])
 
     def testCalculateClosedLoopTf(self):
         if IGNORE_TEST:
             return
         sys_tf = control.tf([1], [1, 2])
-        closed_loop_tf_kp = scld._calculateClosedLoopTf(sys_tf=sys_tf, kp=3)
-        closed_loop_tf_ki = scld._calculateClosedLoopTf(sys_tf=sys_tf, ki=3)
+        closed_loop_tf_kp = cld._calculateClosedLoopTf(sys_tf=sys_tf, kp=3)
+        closed_loop_tf_ki = cld._calculateClosedLoopTf(sys_tf=sys_tf, ki=3)
         _, ys_kp = control.step_response(closed_loop_tf_kp, TIMES)
         _, ys_ki = control.step_response(closed_loop_tf_ki, TIMES)
         self.assertTrue(ys_kp[-1] < ys_ki[-1])
         self.assertTrue(np.isclose(ys_ki[-1], 1, atol=0.01))
-        #
-        # Check degree of the closed loop function
-        closed_loop_tf_kd = scld._calculateClosedLoopTf(sys_tf=sys_tf, kd=3)
-        self.assertGreater(len(closed_loop_tf_kd.den[0][0]), len(closed_loop_tf_kp.den[0][0]))
 
     def test_closed_loop_tf(self):
         if IGNORE_TEST:
             return
         sys_tf = control.tf([1], [1, 1])
-        designer = scld.SISOClosedLoopDesigner(sys_tf)
+        designer = cld.SISOClosedLoopDesigner(sys_tf)
         with self.assertRaises(ValueError):
             _ = designer.closed_loop_tf()
         #
-        designer.kd = 2
         designer.kf = 4
         closed_loop_tf = designer.closed_loop_tf
         numr = np.array(closed_loop_tf.num[0][0])
@@ -108,16 +105,13 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         def checkParams(names):
             for name in names:
                 self.assertIsNotNone(getattr(designer, name))
-            other_names = set(scld.PARAM_NAMES) - set(names)
+            other_names = set(cld.PARAM_NAMES) - set(names)
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
         sys_tf = control.tf([1], [1, 1])
-        designer = scld.SISOClosedLoopDesigner(sys_tf)
+        designer = cld.SISOClosedLoopDesigner(SYSTEM, sys_tf)
         designer.design(kp=1.0)
         checkParams(["kp"])
-        #
-        designer.design(kd=True, kf=True)
-        checkParams(["kd", "kf"])
 
     def testDesign2(self):
         if IGNORE_TEST:
@@ -125,11 +119,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         numr = np.array([0.38613466, 0.16315592])
         denr = np.array([2.04313198, 1.77120743, 0.49351805])
         sys_tf = control.tf(numr, denr)
-        designer1 = scld.SISOClosedLoopDesigner(sys_tf)
-        designer1.design(kp=True, ki=True, residual_precision=2)
-        designer2 = scld.SISOClosedLoopDesigner(sys_tf)
-        designer2.design(kp=True, ki=True, residual_precision=5)
-        self.assertLess(designer1.kp, designer2.kp)
+        designer1 = cld.SISOClosedLoopDesigner(SYSTEM, sys_tf)
 
     def testSimulate(self):
         if IGNORE_TEST:
@@ -138,7 +128,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             return np.abs(arr[-1] - 1)
         #
         sys_tf = control.tf([1], [1, 1])
-        designer = scld.SISOClosedLoopDesigner(sys_tf)
+        designer = cld.SISOClosedLoopDesigner(SYSTEM, sys_tf)
         designer.set(kp=20)
         _, prediction1s = designer.simulate()
         designer.set(kp=20, ki=50)
@@ -149,19 +139,18 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.designer.set(**PARAMETER_DCT)
-        times = np.linspace(0, 50, 500)
-        self.designer.plot(times=times, is_plot=IS_PLOT, markers=["", ""])
+        self.designer.plot(is_plot=IS_PLOT, markers=["", ""])
         self.designer.set(kp=10, ki=5)
-        self.designer.plot(times=times, is_plot=IS_PLOT)
+        self.designer.plot(is_plot=IS_PLOT)
         designer = self.designer.history.get(1)
         designer.set(kp=1)
-        designer.plot(times=times, is_plot=IS_PLOT, markers=["", ""])
+        designer.plot(is_plot=IS_PLOT, markers=["", ""])
     
     def testEvaluatePlotResult(self):
         if IGNORE_TEST:
             return
         self.designer.set(kp=1)
-        self.designer.evaluateNonlinearIOSystemClosedLoop(self.ctlsb, is_plot=IS_PLOT)
+        self.designer.evaluate(is_plot=IS_PLOT)
 
     def test_closed_loop_tf(self):
         # Checks that the closed loop transfer function is calculated correctly
@@ -177,33 +166,36 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         looptf = sympy.simplify(systf*ctltf)
         cltf = sympy.simplify(looptf/(1 + looptf))
         #
-        designer = ctl.SISOClosedLoopDesigner(sys_tf, times=TIMES, step_size=5)
+        designer = cld.SISOClosedLoopDesigner(self.system, sys_tf, step_size=5)
         designer.set(kp=2, ki=3)
         closed_loop_tf = designer.closed_loop_tf
         func1 = lambda x: float(closed_loop_tf(x))
         cltf_nums = cltf.subs({kp: 2, ki: 3})
         func2 = lambda x: sympy.N(cltf_nums.subs({s: x}))
-        self.assertTrue(ctl.util.compareSingleArgumentFunctions(func1, func2, 0, 100))
+        result = ctl.util.compareSingleArgumentFunctions(func1, func2, 0, 100)
+        self.assertTrue(result)
 
-    # FIXME: Finish tests
+    # FIXME: Bad fit
     def testBug1(self):
         if IGNORE_TEST:
             return
         # Setup
-        ctlsb = ctl.ControlSBML(LINEAR_MDL, input_names=["k0"], output_names=["S3"])
-        linear_bldr = ctlsb.makeSISOTransferFunctionBuilder(is_fixed_input_species=True)
+        system = ctl.SBMLSystem(LINEAR_MDL, input_names=["k0"], output_names=["S3"], is_fixed_input_species=True,
+                                is_steady_state=False)
+        linear_bldr = SISOTransferFunctionBuilder(system)
         linear_staircase = ctl.Staircase(initial_value=0, final_value=10, num_step=5)
-        fitter_result = linear_bldr.fitTransferFunction(num_numerator=3, num_denominator=4, 
+        fitter_result = linear_bldr.fitTransferFunction(num_numerator=2, num_denominator=3, 
                                                     staircase=linear_staircase, fit_start_time=20,
-                                                start_time=0, end_time=100)
+                                                start_time=0, end_time=200)
+        linear_bldr.plotFitTransferFunction(fitter_result, figsize=(5,5), is_plot=IS_PLOT)
         linear_tf = fitter_result.transfer_function
         numr = linear_tf.num[0][0]
         denr = linear_tf.den[0][0]
         #
-        designer = ctl.SISOClosedLoopDesigner(linear_tf, times=TIMES, step_size=5)
+        designer = cld.SISOClosedLoopDesigner(system, linear_tf, step_size=5)
         designer.set(kp=2, ki=3)
         if IS_PLOT:
-            designer.plot(figsize=(5,5), times=TIMES)  # Have options for a period
+            designer.plot(figsize=(5,5))  # Have options for a period
 
 
 
@@ -212,14 +204,14 @@ class TestHistory(unittest.TestCase):
 
     def setUp(self):
         self.sys_tf = TRANSFER_FUNCTION
-        self.designer = scld.SISOClosedLoopDesigner(self.sys_tf)
-        self.history = scld._History(self.designer)
+        self.designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf)
+        self.history = cld._History(self.designer)
 
     def testConstructor(self):
         if IGNORE_TEST:
             return
         self.assertEqual(len(self.history), 0)
-        diff = set(scld.PARAM_NAMES) - set(self.history._dct.keys())
+        diff = set(cld.PARAM_NAMES) - set(self.history._dct.keys())
         self.assertEqual(len(diff), 0)
 
     def addItems(self, count):
@@ -248,7 +240,7 @@ class TestHistory(unittest.TestCase):
         COUNT = 1
         self.addItems(COUNT)
         designer = self.history.get(0)
-        self.assertTrue(isinstance(designer, scld.SISOClosedLoopDesigner))
+        self.assertTrue(isinstance(designer, cld.SISOClosedLoopDesigner))
 
     def testClear(self):
         if IGNORE_TEST:

@@ -20,7 +20,7 @@ REFERENCE = "reference"
 class SBMLSystem(object):
 
     def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,
-                 model_id="model"):
+                 model_id="model", is_steady_state=False):
         """
         model_reference: str
             string, SBML file or Roadrunner object
@@ -30,6 +30,7 @@ class SBMLSystem(object):
             output species
         is_fixed_input_species: bool (input species are fixed)
         model_id: str (identifier of the model)
+        is_steady_state: bool (start the simulation at steady state)
         """
         if input_names is None:
             input_names = []
@@ -40,6 +41,7 @@ class SBMLSystem(object):
         self.model_id = model_id
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
+        self.is_steady_state = is_steady_state
         # Validate the input and output names
         self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
         self.output_names = [self.makeOutputName(n, self.roadrunner) for n in output_names]
@@ -251,7 +253,7 @@ class SBMLSystem(object):
                 pass
         return False
     
-    def simulate(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, is_steady_state=False):
+    def simulate(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, is_steady_state=None):
         """
         Simulates the system.
 
@@ -260,12 +262,14 @@ class SBMLSystem(object):
         start_time: float
         end_time: float
         num_point: int
-        is_steady_state: bool (start the simulation at steady state)
+        is_steady_state: bool (start the simulation at steady state, overrides constructor setting)
 
         Returns
         -------
         DataFrame
         """
+        if is_steady_state is None:
+            is_steady_state = self.is_steady_state
         if num_point is None:
             num_point = int(cn.POINTS_PER_TIME*(end_time - start_time))
         self.roadrunner.reset()

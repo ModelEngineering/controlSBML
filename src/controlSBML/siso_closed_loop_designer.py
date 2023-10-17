@@ -21,12 +21,11 @@ DEFAULT_INITIAL_VALUE = 1   # Default initial value for a
 STEP_SIZE = 1
 BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
-PARAM_NAMES = ["kp", "ki", "kd", "kf"]
+PARAM_NAMES = ["kp", "ki", "kf"]
 LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
 COL_KP = "kp"
 COL_KI = "ki"
-COL_KD = "kd"
 COL_KF = "kf"
 COL_RESIDUAL_RMSE = "residual_rmse"
 COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
@@ -58,15 +57,15 @@ def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign
 ##################################################################
 class SISOClosedLoopDesigner(object):
 
-    def __init__(self, sbml_system, sys_tf, times=None, step_size=STEP_SIZE, is_history=True, sign=-1):
+    def __init__(self, system, sys_tf, times=None, step_size=STEP_SIZE, is_history=True, sign=-1):
         """
         Args:
             sbml_system: SBMLSystem
             sys_tf: control.TransferFunction (open loop system)
             is_history: bool (if True, then history is maintained)
-            sign: int (if -1, then the residuals are multiplied by -1)
+            sign: int (-1: negative feedback; +1: positive feedback)
         """
-        self.sbml_system = sbml_system
+        self.system = system
         self.sys_tf = sys_tf
         self.step_size = step_size
         if times is None:
@@ -85,7 +84,6 @@ class SISOClosedLoopDesigner(object):
         self.kd = None
         self.kf = None
         self.closed_loop_system = None
-        self.closed_loop_system_ts = None
         self.residual_rmse = None
         self.minimizer_result = None
         #
@@ -96,8 +94,13 @@ class SISOClosedLoopDesigner(object):
 
     @property
     def closed_loop_tf(self):
-        return _calculateClosedLoopTf(sys_tf=self.sys_tf, kp=self.kp, ki=self.ki, kd=self.kd,
+        return _calculateClosedLoopTf(sys_tf=self.sys_tf, kp=self.kp, ki=self.ki,
                                       kf=self.kf, sign=self.sign)
+    
+    @property
+    def closed_loop_ts(self):
+        _, closed_loop_ts = self.simulate(transfer_function=self.closed_loop_tf)
+        return closed_loop_ts
     
     def set(self, kp=None, ki=None, kd=None, kf=None):
         """
@@ -113,7 +116,6 @@ class SISOClosedLoopDesigner(object):
             value = eval(name)
             self.__setattr__(name, value)
         self.closed_loop_system = None
-        self.closed_loop_system_ts = None
         self.history.add()
 
     def get(self):
@@ -243,12 +245,12 @@ class SISOClosedLoopDesigner(object):
         """
         param_dct = {n: 0 for n in PARAM_NAMES}
         param_dct.update(self.get())
-        k_dct = {k: param_dct[k] for k in ["kp", "ki", "kd", "kf"]}
-        self.sbml_system.simulateSISOClosedLoop(setpoint=1,
+        k_dct = {k: param_dct[k] for k in PARAM_NAMES}
+        simulated_ts, _ = self.system.simulateSISOClosedLoop(setpoint=1,
                                start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
                                is_steady_state=False, inplace=False, **k_dct)
         self.history.add()
-        plot_result = util.plotOneTS(self.closed_loop_system_ts, markers=["", ""],
+        plot_result = util.plotOneTS(simulated_ts, markers=["", ""],
                                      xlabel="time", ax2=0, is_plot=False, **kwargs)
         param_dct = self.get()
         text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
@@ -274,7 +276,6 @@ class _History(object):
         for name in PARAM_NAMES:
             self._dct[name] = []
         self._dct[COL_CLOSED_LOOP_SYSTEM] = []
-        self._dct[COL_CLOSED_LOOP_SYSTEM_TS] = []
         self._dct[COL_STEP_SIZE] = []
         self._dct[COL_RESIDUAL_RMSE] = []
 
@@ -284,7 +285,6 @@ class _History(object):
         for name in PARAM_NAMES:
             self._dct[name].append(self.designer.__getattribute__(name))
         self._dct[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
-        self._dct[COL_CLOSED_LOOP_SYSTEM_TS].append(self.designer.closed_loop_system_ts)
         self._dct[COL_STEP_SIZE].append(self.designer.step_size)
         self._dct[COL_RESIDUAL_RMSE].append(self.designer.residual_rmse)
 
@@ -316,13 +316,12 @@ class _History(object):
         dct = {}
         for name in self._dct.keys():
             dct[name] = self._dct[name][idx]
-        designer = SISOClosedLoopDesigner(self.designer.sys_tf,
+        designer = SISOClosedLoopDesigner(self.designer.system, self.designer.sys_tf,
                                           times=self.designer.times,
                                           step_size=STEP_SIZE)
         for name in PARAM_NAMES:
             designer.__setattr__(name, dct[name])
         designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]
-        designer.closed_loop_system_ts = dct[COL_CLOSED_LOOP_SYSTEM_TS]
         designer.residual_rmse = dct[COL_RESIDUAL_RMSE]
         designer.history.add()
         return designer

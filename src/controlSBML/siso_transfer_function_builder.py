@@ -168,6 +168,7 @@ class SISOTransferFunctionBuilder(object):
         ctl.Timeseries
             index: time (ms)
             columns: <output_name>, staircase
+        AntimonyBuilder
         """
         # Handle the options. If an option manager is specified, then caller handles figure generation.
         if mgr is None:
@@ -179,7 +180,7 @@ class SISOTransferFunctionBuilder(object):
         mgr.options[cn.O_POINTS_PER_TIME] = points_per_time
         times = util.makeSimulationTimes(start_time=start_time, end_time=end_time, points_per_time=points_per_time)
         # Do the simulations
-        result_ts, _ = self.system.simulateStaircase(self.input_name, self.output_name, times=times,
+        result_ts, antimony_builder = self.system.simulateStaircase(self.input_name, self.output_name, times=times,
                                                 initial_value=staircase.initial_value, num_step=staircase.num_step,
                                                 final_value=staircase.final_value, is_steady_state=is_steady_state,
                                                 inplace=False)
@@ -188,7 +189,7 @@ class SISOTransferFunctionBuilder(object):
         staircase_arr = np.concatenate([staircase_arr, [staircase_arr[-1]]])
         result_ts[staircase_name] = staircase_arr
         del result_ts[self.input_name]
-        return result_ts
+        return result_ts, antimony_builder
 
     @staticmethod 
     def setYAxColor(ax, position, color):
@@ -307,7 +308,7 @@ class SISOTransferFunctionBuilder(object):
         """
         # Get the calibration data
         new_staircase = staircase.copy()
-        data_ts = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
+        data_ts, antimony_builder = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
         ms_times = util.cleanTimes(data_ts.index)
         output_ts, staircase_column_name, _ = self._extractStaircaseResponseInformation(data_ts)
         data_ts.index = ms_times
@@ -356,7 +357,9 @@ class SISOTransferFunctionBuilder(object):
               time_series=output_ts,
               staircase_arr=staircase_arr,
               staircase_name=staircase_column_name,
-              parameters=minimizer_result.params)
+              parameters=minimizer_result.params,
+              antimony_builder=antimony_builder,
+              )
         return fitter_result
     
     @classmethod

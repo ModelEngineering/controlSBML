@@ -42,7 +42,7 @@ FINAL_VALUE = 15
 STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE)
 SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
 BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
-RESPONSE_TS = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, end_time=50)
+RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, end_time=50)
 
 
 #############################

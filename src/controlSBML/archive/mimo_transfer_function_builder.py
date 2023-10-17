@@ -77,7 +77,7 @@ class MIMOTransferFunctionBuilder(object):
                 # Adjust the staircase as required
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
                 builder = tfb.SISOTransferFunctionBuilder(sys)
-                response_df = builder.makeStaircaseResponse(staircase=staircase_dct[input_name],
+                response_df, _ = builder.makeStaircaseResponse(staircase=staircase_dct[input_name],
                                                             is_steady_state=is_steady_state,
                                                              **kwargs)
                 result_dct[output_name].append(response_df)
