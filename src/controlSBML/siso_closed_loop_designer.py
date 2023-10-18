@@ -81,7 +81,6 @@ class SISOClosedLoopDesigner(object):
         # Outputs
         self.kp = None
         self.ki = None
-        self.kd = None
         self.kf = None
         self.closed_loop_system = None
         self.residual_rmse = None
@@ -140,7 +139,7 @@ class SISOClosedLoopDesigner(object):
         self.kd = None
         self.kf = None
 
-    def design(self, kp=False, ki=False, kd=False, kf=False, overshoot_penalty=1e3):
+    def design(self, kp=False, ki=False, kd=False, kf=False, overshoot_penalty=1e5):
         """
         Design objective: Minimize settling time without overshoot.
         Args:
@@ -164,8 +163,9 @@ class SISOClosedLoopDesigner(object):
             tf = _calculateClosedLoopTf(**kwargs)
             _, predictions = self.simulate(transfer_function=tf)
             residuals = self.step_size - predictions
-            is_high = predictions > 0
-            predictions[is_high] *= overshoot_penalty
+            is_high = residuals > 0
+            residuals[is_high] *= overshoot_penalty
+            mse = np.mean(residuals**2)
             return residuals
         # Construct the parameters
         params = lmfit.Parameters()
@@ -243,21 +243,20 @@ class SISOClosedLoopDesigner(object):
         Args:
             kwargs: plot options
         """
-        param_dct = {n: 0 for n in PARAM_NAMES}
+        param_dct = {n: None for n in PARAM_NAMES}
         param_dct.update(self.get())
         k_dct = {k: param_dct[k] for k in PARAM_NAMES}
-        simulated_ts, _ = self.system.simulateSISOClosedLoop(setpoint=1,
+        simulated_ts, builder = self.system.simulateSISOClosedLoop(setpoint=self.step_size,
                                start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
                                is_steady_state=False, inplace=False, **k_dct)
-        self.history.add()
-        plot_result = util.plotOneTS(simulated_ts, markers=["", ""],
-                                     xlabel="time", ax2=0, is_plot=False, **kwargs)
-        param_dct = self.get()
-        text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
-        plot_result.ax.set_title(" ".join(text))
+        if not "title" in kwargs:
+            param_dct = self.get()
+            text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
+            title = " ".join(text)
+        self.system.plotSISOClosedLoop(simulated_ts, self.step_size, markers=["", ""], title=title, **kwargs)
         if is_plot:
             plt.show()
-
+        self.history.add()
 
 class _History(object):
     # Maintains history of changes to design choices

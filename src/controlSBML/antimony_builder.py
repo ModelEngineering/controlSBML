@@ -308,7 +308,7 @@ class AntimonyBuilder(object):
         self.addStatement("")
         self.makeComment("Filter: kf=%s" % (str(kf)))
         name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
-        if kf is not None:
+        if (kf is not None) and (kf > 0):
             statement = "%s' =  -%f*%s + %f*%s" % (name_ot, kf, name_ot, kf, name_in)
             self.addStatement(statement)
             self.makeAdditionStatement(name_ot, 0, is_assignment=False)   # Initialize the filter output
@@ -379,7 +379,7 @@ class AntimonyBuilder(object):
         self.addStatement(statement)
         return name_in, name_ot
 
-    def makeSISOClosedLoopSystem(self, input_name, output_name, kp=None, ki=None, kd=None, kf=None, setpoint=0,
+    def makeSISOClosedLoopSystem(self, input_name, output_name, kp=None, ki=None, kf=None, setpoint=0,
                            noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20,
                            initial_output_value=None, sign=-1):
         """

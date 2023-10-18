@@ -1,10 +1,12 @@
 import controlSBML.siso_closed_loop_designer as cld
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 import controlSBML as ctl
+import controlSBML.util as util
 import helpers
 
 import copy
 import control
+import matplotlib.pyplot as plt
 import numpy as np
 import sympy
 import unittest
@@ -20,6 +22,20 @@ S1 -> S2; k1*S1
 k0 = 1
 k1 = 1
 S0 = 0
+S1 = 0
+S2 = 0
+end
+"""
+MODEL2 = """
+model *main2_model()
+S0 -> S1; k0*S0
+S1 -> S2; k1*S1
+S2 -> ; k2*S2
+
+k0 = 1
+k1 = 1
+k2 = 2
+S0 = 10
 S1 = 0
 S2 = 0
 end
@@ -47,6 +63,8 @@ SYSTEM = ctl.SBMLSystem(MODEL, input_names=[INPUT_NAME], output_names=[OUTPUT_NA
 builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
 staircase = ctl.Staircase(final_value=15, num_step=5)
 fitter_result = builder.fitTransferFunction(num_numerator=2, num_denominator=3, staircase=staircase)
+if False:
+    builder.plotFitTransferFunction(fitter_result, figsize=(5,5))
 TRANSFER_FUNCTION = fitter_result.transfer_function
 PARAMETER_DCT = {p: n+1 for n, p in enumerate(cld.PARAM_NAMES)}
 TIMES = np.linspace(0, 20, 200)
@@ -108,9 +126,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             other_names = set(cld.PARAM_NAMES) - set(names)
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
-        sys_tf = control.tf([1], [1, 1])
-        designer = cld.SISOClosedLoopDesigner(SYSTEM, sys_tf)
-        designer.design(kp=1.0)
+        designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf)
+        designer.design(kp=True)
         checkParams(["kp"])
 
     def testDesign2(self):
@@ -142,15 +159,39 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.designer.plot(is_plot=IS_PLOT, markers=["", ""])
         self.designer.set(kp=10, ki=5)
         self.designer.plot(is_plot=IS_PLOT)
-        designer = self.designer.history.get(1)
-        designer.set(kp=1)
-        designer.plot(is_plot=IS_PLOT, markers=["", ""])
-    
-    def testEvaluatePlotResult(self):
+
+    def makeDesigner(self, end_time=200):
+        system = ctl.SBMLSystem(MODEL2, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
+        times = np.linspace(0, end_time, 10*end_time)
+        builder = SISOTransferFunctionBuilder(system, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        staircase = ctl.Staircase(final_value=15, num_step=5)
+        fitter_result = builder.fitTransferFunction(num_numerator=2, num_denominator=3, staircase=staircase)
+        if False:
+            builder.plotFitTransferFunction(fitter_result, figsize=(5,5))
+        designer = cld.SISOClosedLoopDesigner(system, fitter_result.transfer_function, times=times)
+        return designer
+
+    def testPlot2(self):
         if IGNORE_TEST:
             return
-        self.designer.set(kp=1)
-        self.designer.evaluate(is_plot=IS_PLOT)
+        designer = self.makeDesigner()
+        designer.design(kp=True, ki=True)
+        designer.plot(is_plot=IS_PLOT, markers=["", ""])
+        # Check for stability
+        self.assertTrue(util.isTransferFunctionStable(designer.closed_loop_tf))
+    
+    def testEvaluate2(self):
+        if IGNORE_TEST:
+            return
+        def test(kp, ki):
+            designer = self.makeDesigner(end_time=10)
+            designer.design(kp=kp, ki=ki)
+            designer.evaluate(is_plot=IS_PLOT)
+            return designer.residual_rmse
+        #
+        rmse1 = test(kp=True, ki=False)
+        rmse2 = test(kp=True, ki=True)
+        self.assertLess(rmse2, rmse1)
 
     def test_closed_loop_tf(self):
         # Checks that the closed loop transfer function is calculated correctly

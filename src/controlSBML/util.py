@@ -578,6 +578,21 @@ def makeRoadrunnerSymbolDct(roadrunner):
     #
     return symbol_dct
 
+def isTransferFunctionStable(transfer_function):
+    """
+    Checks if the transfer function is stable.
+
+    Args:
+        transfer_function: control.TransferFunction
+    Returns:
+        bool
+    """
+    poles = transfer_function.poles()
+    for pole in poles:
+        if np.real(pole) > 0:
+            return False
+    return True 
+
 
 ############### CLASSES ################
 
