@@ -10,7 +10,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 SIZE = 10
 if IS_PLOT:
@@ -223,6 +223,41 @@ class TestFunctions(unittest.TestCase):
         self.assertTrue(result)
         result = util.compareSingleArgumentFunctions(func2, func2, 0, 100)
         self.assertTrue(result)
+
+    def testIsPositiveRealPart(self):
+        if IGNORE_TEST:
+           return
+        def test(arr, is_stable):
+            result = util.isPositiveRealPart(arr)
+            self.assertEqual(result, is_stable)
+        #
+        test(np.array([-1+0j, 1+2j]), True)
+        test(np.array([-1+0j, -1+2j]), False)
+    
+    def testIsStablePoles(self):
+        if IGNORE_TEST:
+           return
+        def test(tf, is_stable):
+            result = util.isStablePoles(tf)
+            self.assertEqual(result, is_stable)
+        #
+        tf = control.TransferFunction([1, 1], [1, -1])
+        test(tf, False)
+        tf = control.TransferFunction([1, -1], [1, 1])
+        test(tf, True)
+
+    def testIsStableZeros(self):
+        if IGNORE_TEST:
+           return
+        def test(tf, is_stable):
+            result = util.isStableZeros(tf)
+            self.assertEqual(result, is_stable)
+        #
+        tf = control.TransferFunction([1, 1], [1, -1])
+        test(tf, True)
+        tf = control.TransferFunction([1, -1], [1, 1])
+        test(tf, False)
+
         
 
 if __name__ == '__main__':

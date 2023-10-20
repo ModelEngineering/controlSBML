@@ -7,6 +7,7 @@ The design is done using transfer functions and is most appropriate if there is 
 import controlSBML.constants as cn
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML import util
+from controlSBML import msgs 
 from controlSBML.timeseries import Timeseries
 
 import control
@@ -27,7 +28,7 @@ LOWPASS_POLE = 1e4 # Pole for low pass filter
 COL_KP = "kp"
 COL_KI = "ki"
 COL_KF = "kf"
-COL_RESIDUAL_RMSE = "residual_rmse"
+COL_RESIDUAL_MSE = "residual_rmse"
 COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
 COL_CLOSED_LOOP_SYSTEM_TS = "closed_loop_system_ts"
 COL_STEP_SIZE = "step_size"
@@ -57,17 +58,20 @@ def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign
 ##################################################################
 class SISOClosedLoopDesigner(object):
 
-    def __init__(self, system, sys_tf, times=None, step_size=STEP_SIZE, is_history=True, sign=-1):
+    def __init__(self, system, sys_tf, times=None, step_size=STEP_SIZE, is_steady_state=False,
+                 is_history=True, sign=-1):
         """
         Args:
             sbml_system: SBMLSystem
             sys_tf: control.TransferFunction (open loop system)
+            is_steady_state: bool (if True, then the steady state is used)
             is_history: bool (if True, then history is maintained)
             sign: int (-1: negative feedback; +1: positive feedback)
         """
         self.system = system
         self.sys_tf = sys_tf
         self.step_size = step_size
+        self.is_steady_state = is_steady_state
         if times is None:
             self.times = np.linspace(0, 5, 50)
         else:
@@ -83,7 +87,7 @@ class SISOClosedLoopDesigner(object):
         self.ki = None
         self.kf = None
         self.closed_loop_system = None
-        self.residual_rmse = None
+        self.residual_mse = None
         self.minimizer_result = None
         #
         self._initializeDesigner()
@@ -133,13 +137,13 @@ class SISOClosedLoopDesigner(object):
     
     def _initializeDesigner(self):
         self.minimizer_result = None
-        self.residual_rmse = None # Root mean square of residuals
+        self.residual_mse = None # Root mean square of residuals
         self.kp = None
         self.ki = None
         self.kd = None
         self.kf = None
 
-    def design(self, kp=False, ki=False, kd=False, kf=False, overshoot_penalty=1e5):
+    def design(self, kp=False, ki=False, kd=False, kf=False, overshoot_penalty=1e3, max_residual=10):
         """
         Design objective: Minimize settling time without overshoot.
         Args:
@@ -161,10 +165,18 @@ class SISOClosedLoopDesigner(object):
             kwargs.update(params.valuesdict())
             kwargs.update({"sign": self.sign})
             tf = _calculateClosedLoopTf(**kwargs)
+            if not util.isStablePoles(tf):
+                raise ValueError("Closed loop transfer function is not stable")
             _, predictions = self.simulate(transfer_function=tf)
             residuals = self.step_size - predictions
-            is_high = residuals > 0
-            residuals[is_high] *= overshoot_penalty
+            # Handle nan and inf values
+            idxs = self._findNanIdxs(residuals)
+            residuals[idxs] = 1
+            # Penalize overshoot
+            high_idxs = [n for n, r in enumerate(residuals) if r > 0]
+            residuals[high_idxs] *= overshoot_penalty
+            idxs = [n for n, r in enumerate(residuals) if r > max_residual]
+            residuals[idxs] = max_residual
             mse = np.mean(residuals**2)
             return residuals
         # Construct the parameters
@@ -186,8 +198,69 @@ class SISOClosedLoopDesigner(object):
                 self.__setattr__(name, value)
                 new_params.add(name, value=value, min=MIN_VALUE, max=MAX_VALUE)
         residuals = _calculateResiduals(new_params)
-        self.residual_rmse = np.sqrt(np.mean(residuals**2))
+        self.residual_mse = np.sqrt(np.mean(residuals**2))
         self.history.add()
+    
+    def designGainController(self, sign=-1, initial_kp=0.1,
+                          increment_kp=0.1, max_kp=100, overshoot_penalty=1e3, max_residual=10):
+        """
+        Creates a kp controller if possible. Minimizes settling time subject to constraint on overshoot.
+
+        Args:
+            initial_kp: float (initial value of the kp parameter)
+            increment_kp: float (increment for the kp parameter)
+            max_kp: float (maximum value of kp)
+            overshoot_penalty: float (penalty for overshoot)
+            max_residual: float (maximum value for a residual)
+            max_residual: float (maximum value for a residual)
+        """
+        global min_mse, min_kp
+        self._initializeDesigner()
+        kwargs = dict(sys_tf=self.sys_tf, sign=self.sign)
+        min_mse = None
+        min_kp = None
+        def update(kp, mse):
+            global min_mse, min_kp
+            if min_mse is None:
+                min_mse = mse
+                min_kp = kp
+            elif mse < min_mse:
+                min_mse = mse
+                min_kp = kp
+            else:
+                pass
+            return
+        # Search for the best value of kp
+        for kp in np.arange(initial_kp, max_kp, increment_kp):
+            kwargs["kp"] = kp
+            cl_tf = _calculateClosedLoopTf(**kwargs)
+            if not util.isStablePoles(cl_tf):
+                continue
+            _, predictions = self.simulate(transfer_function=cl_tf)
+            residuals = self.step_size - predictions
+            # Handle nan and inf values
+            idxs = self._findNanIdxs(residuals)
+            residuals[idxs] = 1
+            # Penalize overshoot
+            high_idxs = [n for n, r in enumerate(residuals) if r > 0]
+            residuals[high_idxs] *= overshoot_penalty
+            idxs = [n for n, r in enumerate(residuals) if r > max_residual]
+            residuals[idxs] = max_residual
+            mse = np.mean(residuals**2)
+            update(kp, mse)
+        # Record the result
+        self.kp = min_kp
+        self.residual_mse = np.mean(residuals**2)
+        if self.kp is None:
+            msg = "Failed to find a gain controller."
+            if (not util.isStablePoles(self.sys_tf)) and (not util.isStableZeros(self.sys_tf)):
+                msg += "\n  This may be because the open loop transfer function has unstable poles and zeros."
+            msgs.warn(msg)
+        self.history.add()
+
+    @staticmethod
+    def _findNanIdxs(values):
+        return [n for n, r in enumerate(values) if (np.isinf(r) or np.isnan(r))]
 
     def simulate(self, transfer_function=None, period=None):
         """
@@ -248,7 +321,7 @@ class SISOClosedLoopDesigner(object):
         k_dct = {k: param_dct[k] for k in PARAM_NAMES}
         simulated_ts, builder = self.system.simulateSISOClosedLoop(setpoint=self.step_size,
                                start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
-                               is_steady_state=False, inplace=False, **k_dct)
+                               is_steady_state=self.is_steady_state, inplace=False, **k_dct)
         if not "title" in kwargs:
             param_dct = self.get()
             text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
@@ -276,7 +349,7 @@ class _History(object):
             self._dct[name] = []
         self._dct[COL_CLOSED_LOOP_SYSTEM] = []
         self._dct[COL_STEP_SIZE] = []
-        self._dct[COL_RESIDUAL_RMSE] = []
+        self._dct[COL_RESIDUAL_MSE] = []
 
     def add(self):
         if not self.is_history:
@@ -285,7 +358,7 @@ class _History(object):
             self._dct[name].append(self.designer.__getattribute__(name))
         self._dct[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
         self._dct[COL_STEP_SIZE].append(self.designer.step_size)
-        self._dct[COL_RESIDUAL_RMSE].append(self.designer.residual_rmse)
+        self._dct[COL_RESIDUAL_MSE].append(self.designer.residual_mse)
 
     def undo(self):
         _ = self._dct.pop()
@@ -321,6 +394,6 @@ class _History(object):
         for name in PARAM_NAMES:
             designer.__setattr__(name, dct[name])
         designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]
-        designer.residual_rmse = dct[COL_RESIDUAL_RMSE]
+        designer.residual_mse = dct[COL_RESIDUAL_MSE]
         designer.history.add()
         return designer

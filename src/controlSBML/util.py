@@ -578,7 +578,18 @@ def makeRoadrunnerSymbolDct(roadrunner):
     #
     return symbol_dct
 
-def isTransferFunctionStable(transfer_function):
+def isPositiveRealPart(complex_numbers):
+    """
+    Determines if any number in a vector has a positive real part.
+
+    Args:
+        complex_numbers: list-complex
+    """
+    poles = np.array(complex_numbers)
+    reals = np.real(poles)
+    return any([r > 0 for r in reals])  
+
+def isStablePoles(transfer_function):
     """
     Checks if the transfer function is stable.
 
@@ -587,11 +598,18 @@ def isTransferFunctionStable(transfer_function):
     Returns:
         bool
     """
-    poles = transfer_function.poles()
-    for pole in poles:
-        if np.real(pole) > 0:
-            return False
-    return True 
+    return not isPositiveRealPart(transfer_function.poles())
+
+def isStableZeros(transfer_function):
+    """
+    Checks if the transfer has zeros in the right half plane.
+
+    Args:
+        transfer_function: control.TransferFunction
+    Returns:
+        bool
+    """
+    return not isPositiveRealPart(transfer_function.zeros())
 
 
 ############### CLASSES ################

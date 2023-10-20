@@ -59,7 +59,7 @@ end
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
 INPUT_NAME = "S0"
 OUTPUT_NAME = "S2"
-SYSTEM = ctl.SBMLSystem(MODEL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+SYSTEM = ctl.SBMLSystem(MODEL2, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
 builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
 staircase = ctl.Staircase(final_value=15, num_step=5)
 fitter_result = builder.fitTransferFunction(num_numerator=2, num_denominator=3, staircase=staircase)
@@ -127,8 +127,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
         designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf)
-        designer.design(kp=True)
-        checkParams(["kp"])
+        designer.design(kp=True, ki=True, kf=True)
+        checkParams(["kp", "ki", "kf"])
 
     def testDesign2(self):
         if IGNORE_TEST:
@@ -137,6 +137,15 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         denr = np.array([2.04313198, 1.77120743, 0.49351805])
         sys_tf = control.tf(numr, denr)
         designer1 = cld.SISOClosedLoopDesigner(SYSTEM, sys_tf)
+
+    def testDesignGainController(self):
+        if IGNORE_TEST:
+            return
+        times = np.linspace(0, 200, 1000)
+        designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf, times=times)
+        designer.designGainController(max_kp=20)
+        designer.evaluate(is_plot=IS_PLOT)
+        self.assertTrue(util.isStablePoles(designer.closed_loop_tf))
 
     def testSimulate(self):
         if IGNORE_TEST:
@@ -178,7 +187,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer.design(kp=True, ki=True)
         designer.plot(is_plot=IS_PLOT, markers=["", ""])
         # Check for stability
-        self.assertTrue(util.isTransferFunctionStable(designer.closed_loop_tf))
+        self.assertTrue(util.isStablePoles(designer.closed_loop_tf))
     
     def testEvaluate2(self):
         if IGNORE_TEST:
@@ -187,7 +196,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             designer = self.makeDesigner(end_time=10)
             designer.design(kp=kp, ki=ki)
             designer.evaluate(is_plot=IS_PLOT)
-            return designer.residual_rmse
+            return designer.residual_mse
         #
         rmse1 = test(kp=True, ki=False)
         rmse2 = test(kp=True, ki=True)
