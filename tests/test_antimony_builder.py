@@ -157,6 +157,15 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check()
 
+    def testMakePIControllerInputIsAParameter(self):
+        if IGNORE_TEST:
+            return
+        builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
+        name_in, name_ot = builder.makePIControllerElement(kp=7, suffix="_S1_S3")
+        builder.makeAdditionStatement("k0", name_ot)
+        builder.makeAdditionStatement(name_in, 3, "-"+"S3")
+        self.check(builder=builder)
+
     def testMakeSISOClosedLoopSystem(self):
         if IGNORE_TEST:
             return

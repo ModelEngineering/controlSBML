@@ -327,7 +327,7 @@ class SBMLSystem(object):
         return ts
 
     def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, setpoint=1,
-                               start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None,
+                               start_time=cn.START_TIME, end_time=cn.END_TIME, times=None, num_point=None,
                                is_steady_state=False, inplace=False, initial_input_value=None,
                                sign=-1):
         """
@@ -340,6 +340,10 @@ class SBMLSystem(object):
             ki float
             kf: float
             setpoint: float (setpoint)
+            times: np.ndarray (times for the simulation)
+            start_time: float (overridden by times)
+            end_time: float (overridden by times)
+            num_point: int (overridden by times)
             inplace: bool (update the existing model with the closed loop statements)
             initial_input_value: float (initial value of the input)
             sign: float (sign of the feedback)
@@ -347,6 +351,10 @@ class SBMLSystem(object):
             Timeseries
             AntimonyBuilder
         """
+        if times is not None:
+            start_time = times[0]
+            end_time = times[-1]
+            num_point = len(times)
         if input_name is None:
             input_name = self.input_names[0]
         if output_name is None:
@@ -361,8 +369,10 @@ class SBMLSystem(object):
         #
         if input_name in builder.boundary_species_names:
             new_input_name = input_name
-        else:
+        elif input_name in builder.floating_species_names:
             new_input_name = builder.makeParameterNameForBoundaryReaction(input_name)
+        else:
+            new_input_name = input_name
         builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint,
                                          initial_output_value=initial_input_value, sign=sign)
         # Run the simulation

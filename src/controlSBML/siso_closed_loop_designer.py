@@ -19,7 +19,7 @@ import pandas as pd
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
 DEFAULT_INITIAL_VALUE = 1   # Default initial value for a
-STEP_SIZE = 1
+SETPOINT = 1
 BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
 PARAM_NAMES = ["kp", "ki", "kf"]
@@ -31,7 +31,7 @@ COL_KF = "kf"
 COL_RESIDUAL_MSE = "residual_rmse"
 COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
 COL_CLOSED_LOOP_SYSTEM_TS = "closed_loop_system_ts"
-COL_STEP_SIZE = "step_size"
+COL_SETPOINT = "setpoint"
 
 
 ##################################################################
@@ -40,7 +40,6 @@ def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign
     controller_tf = util.makePIDTransferFunction(kp=kp, ki=ki, kd=kd)
     # Filter
     if kf is not None:
-        is_none = False
         filter_tf = control.TransferFunction([kf], [1, kf])
     else:
         filter_tf = 1
@@ -58,7 +57,7 @@ def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign
 ##################################################################
 class SISOClosedLoopDesigner(object):
 
-    def __init__(self, system, sys_tf, times=None, step_size=STEP_SIZE, is_steady_state=False,
+    def __init__(self, system, sys_tf, times=None, setpoint=SETPOINT, is_steady_state=False,
                  is_history=True, sign=-1):
         """
         Args:
@@ -70,7 +69,7 @@ class SISOClosedLoopDesigner(object):
         """
         self.system = system
         self.sys_tf = sys_tf
-        self.step_size = step_size
+        self.setpoint = setpoint
         self.is_steady_state = is_steady_state
         if times is None:
             self.times = np.linspace(0, 5, 50)
@@ -105,7 +104,7 @@ class SISOClosedLoopDesigner(object):
         _, closed_loop_ts = self.simulate(transfer_function=self.closed_loop_tf)
         return closed_loop_ts
     
-    def set(self, kp=None, ki=None, kd=None, kf=None):
+    def set(self, kp=None, ki=None, kf=None):
         """
         Sets values of the design parameters
 
@@ -115,8 +114,10 @@ class SISOClosedLoopDesigner(object):
             kd (float)
             kf (float)
         """
-        for name in PARAM_NAMES:
-            value = eval(name)
+        value_dct = {"kp": kp, "ki": ki, "kf": kf}
+        for name, value in value_dct.items():
+            if value is None:
+                continue
             self.__setattr__(name, value)
         self.closed_loop_system = None
         self.history.add()
@@ -143,121 +144,203 @@ class SISOClosedLoopDesigner(object):
         self.kd = None
         self.kf = None
 
-    def design(self, kp=False, ki=False, kd=False, kf=False, overshoot_penalty=1e3, max_residual=10):
+    def _isFeasibleSystem(self, kp=None, ki=None, kf=None, max_output=1e6):
         """
-        Design objective: Minimize settling time without overshoot.
+        Determines if the closed loop system is stable and does not produce negative values for inputs or outputs.
+
         Args:
-            kp, ki, kd, kf (bool, float): if True, the parameter is fitted. If float, then initial value.
-            overshoot_penalty: float (penalty for overshoot)
+            kp: float
+            ki: float
+            kf: float
+            max_output: float (maximum value of the output)
+        Returns:
+            bool
         """
-        self._initializeDesigner()
-        def _calculateResiduals(params):
+        try:
+            response_ts, builder = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
+                        start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
+                        is_steady_state=self.is_steady_state, inplace=False,
+                        kp=kp, ki=ki, kf=kf)
+        except Exception:
+            return False
+        # Check for large outputs
+        outputs = response_ts[self.system.output_names[0]].values
+        max_value = np.max([np.max(outputs), np.abs(np.min(outputs))])
+        if max_value > max_value:
+            return False
+        # Check for negative values
+        for column in response_ts.columns:
+            if np.any(response_ts[column].values < 0):
+                return False
+        #
+        return True
+    
+    def _makeParameters(self, min_value=MIN_VALUE, max_value=MAX_VALUE, **kwargs):
+        """
+        Creates a lmfit.Parameters object.
+
+        Args:
+            kwargs:
+                key: name of parameter
+                value: value of parameter or None
+        Returns:
+            lmfit.Parameters
+        """
+        parameters = lmfit.Parameters()
+        for key, value in kwargs.items():
+            if value is None:
+                continue
+            parameters.add(key, value=value, min=min_value, max=max_value)
+        return parameters
+    
+    def _getParameters(self, params):
+        def get(name):
+            if name in params.keys():
+                return params[name].value
+            return None
+        return get("kp"), get("ki"), get("kf")
+
+    def _findFeasibleClosedLoopSystem(self, value_dct, fixeds, min_value=MIN_VALUE, max_value=MAX_VALUE, max_iteration=10):
+        """
+        Finds values of the parameters that are minimally stable.
+
+        Args:
+            value_dct: dict (name: value)
+                key: name of parameter
+                value: value of parameter or None
+            fixeds: list-str (parameters whose values don't change)
+            min_value: float (minimum value of a parameter)
+            max_value: float (maximum value of a parameter)
+            max_iteration: int (maximum number of iterations)
+        Returns:
+            dict: {name: value}
+                key: name of parameter
+                value: value of parameter or None
+        """
+        MINIMAL_FACTOR = 0.01
+        factor = 0.5
+        def mult(dct, factor):
+            new_dct = {}
+            for name, value in dct.items():
+                if name in fixeds:
+                    new_dct[name] = value
+                elif value is None:
+                    new_dct[name] = None
+                else:
+                    new_dct[name] = factor*value
+            return new_dct
+        # Iterate to find values
+        dct = dict(value_dct)
+        last_stable_dct = None
+        for _ in range(max_iteration):
+            if self._isFeasibleSystem(**dct):
+                if factor < MINIMAL_FACTOR:
+                    break
+                else:
+                    # Try a bigger factor
+                    factor = 1 + factor
+                    last_stable_dct = dict(dct)
+            else:
+                if last_stable_dct is not None:
+                    dct = dict(last_stable_dct)
+                    break
+                else:
+                    factor = factor/2
+            dct = mult(dct, factor)
+        # Return the result
+        return dct
+    
+    def _calculateRandomParameterValues(self, value_dct, fixeds, min_value=MIN_VALUE, max_value=MAX_VALUE):
+        """
+        Calculates values for the non-fixed, non-None parameters.
+
+        Args:
+            value_dct: dict
+                key: name of parameter
+                value: value of parameter or None
+            fixeds: list-str
+            min_value: float/dict (parameter name: value)
+            max_value: float/dict (parameter name: value)
+        Returns:
+            dict
+        """
+        def makeDct(min_value, default):
+            if isinstance(min_value, dict):
+                missing_keys = set(PARAM_NAMES).difference(set(min_value.keys()))
+                for key in missing_keys:
+                    min_value[key] = default
+                return min_value
+            dct = {n: min_value for n in PARAM_NAMES}
+            return dct
+        #
+        min_dct = makeDct(min_value, MIN_VALUE)
+        max_dct = makeDct(max_value, MAX_VALUE)
+        new_value_dct = {}
+        for name, value in value_dct.items():
+            if name in fixeds:
+                new_value_dct[name] = value
+                continue
+            if value is None:
+                continue
+            if (isinstance(value, bool) and value == False):
+                continue
+            new_value_dct[name] = np.random.uniform(min_dct[name], max_dct[name])
+        return new_value_dct
+
+    def design(self, kp=False, ki=False, kf=False, max_iteration=10,
+               num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE):
+        """
+        Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
+        Args:
+            kp, ki, kf (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
+            num_restart: int (number of times to restart the minimizer)
+            min_value: float/dict (parameter name: value)
+            max_value: float/dict (parameter name: value)
+        """
+        # Initial check
+        if (not util.isStablePoles(self.sys_tf)) and (not util.isStableZeros(self.sys_tf)):
+            msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
+            msgs.warn(msg)
+        # Residual calculation
+        def calculateMse(value_dct):
             """
-            Calculate residuals.
+            Calculate the mean sum of squares of the residuals.
 
             Args:
-                params (lmfit.Parameters)
+                value_dct: dict: {name: value}
             Returns:
-                np.array (residuals)
+                float (mean squared error)
             """
-            # Calculate the closed loop transfer function
-            kwargs = dict(sys_tf=self.sys_tf)
-            kwargs.update(params.valuesdict())
-            kwargs.update({"sign": self.sign})
-            tf = _calculateClosedLoopTf(**kwargs)
-            if not util.isStablePoles(tf):
-                raise ValueError("Closed loop transfer function is not stable")
-            _, predictions = self.simulate(transfer_function=tf)
-            residuals = self.step_size - predictions
-            # Handle nan and inf values
-            idxs = self._findNanIdxs(residuals)
-            residuals[idxs] = 1
-            # Penalize overshoot
-            high_idxs = [n for n, r in enumerate(residuals) if r > 0]
-            residuals[high_idxs] *= overshoot_penalty
-            idxs = [n for n, r in enumerate(residuals) if r > max_residual]
-            residuals[idxs] = max_residual
-            mse = np.mean(residuals**2)
-            return residuals
-        # Construct the parameters
-        params = lmfit.Parameters()
-        for name in PARAM_NAMES:
-            value = eval(name)
-            if not isinstance(value, float):
-                if not value:  # Skip parameters with a value of False
-                    continue
-                value = DEFAULT_INITIAL_VALUE
-            params.add(name, value=value, min=MIN_VALUE, max=MAX_VALUE)
-        # Fit the parameters
-        minimizer = lmfit.Minimizer(_calculateResiduals, params)
-        self.minimizer_result = minimizer.leastsq()
-        new_params = lmfit.Parameters()
-        for name in PARAM_NAMES:
-            if name in self.minimizer_result.params.valuesdict().keys():
-                value = self.minimizer_result.params.valuesdict()[name]
-                self.__setattr__(name, value)
-                new_params.add(name, value=value, min=MIN_VALUE, max=MAX_VALUE)
-        residuals = _calculateResiduals(new_params)
-        self.residual_mse = np.sqrt(np.mean(residuals**2))
+            output_name = self.system.output_names[0]
+            response_ts, _ = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
+                        start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
+                        is_steady_state=self.is_steady_state, inplace=False, **value_dct)
+            residuals = self.setpoint - response_ts[output_name].values
+            return np.mean(residuals**2)
+        # Initializations
+        value_dct = {"kp": kp, "ki": ki, "kf": kf}
+        fixeds = [n for n, v in value_dct.items() if isinstance(v, float)]
+        self._initializeDesigner()
+        # Iterate across restarts
+        best_varying_dct = dict(value_dct)
+        best_mse = None
+        for _ in range(num_restart):
+            # Fit the parameters
+            new_value_dct = self._calculateRandomParameterValues(value_dct, fixeds, min_value=min_value, max_value=max_value)
+            stable_value_dct = self._findFeasibleClosedLoopSystem(new_value_dct, fixeds, min_value=min_value,
+                                                                  max_value=max_value, max_iteration=max_iteration)
+            mse = calculateMse(stable_value_dct)
+            if best_mse is None:
+                best_varying_dct = dict(stable_value_dct)
+                best_mse = mse
+            elif mse < best_mse:
+                best_varying_dct = dict(stable_value_dct)
+                best_mse = mse
+        # Record the result
+        self.residual_mse = best_mse
+        self.set(**best_varying_dct)
         self.history.add()
     
-    def designGainController(self, sign=-1, initial_kp=0.1,
-                          increment_kp=0.1, max_kp=100, overshoot_penalty=1e3, max_residual=10):
-        """
-        Creates a kp controller if possible. Minimizes settling time subject to constraint on overshoot.
-
-        Args:
-            initial_kp: float (initial value of the kp parameter)
-            increment_kp: float (increment for the kp parameter)
-            max_kp: float (maximum value of kp)
-            overshoot_penalty: float (penalty for overshoot)
-            max_residual: float (maximum value for a residual)
-            max_residual: float (maximum value for a residual)
-        """
-        global min_mse, min_kp
-        self._initializeDesigner()
-        kwargs = dict(sys_tf=self.sys_tf, sign=self.sign)
-        min_mse = None
-        min_kp = None
-        def update(kp, mse):
-            global min_mse, min_kp
-            if min_mse is None:
-                min_mse = mse
-                min_kp = kp
-            elif mse < min_mse:
-                min_mse = mse
-                min_kp = kp
-            else:
-                pass
-            return
-        # Search for the best value of kp
-        for kp in np.arange(initial_kp, max_kp, increment_kp):
-            kwargs["kp"] = kp
-            cl_tf = _calculateClosedLoopTf(**kwargs)
-            if not util.isStablePoles(cl_tf):
-                continue
-            _, predictions = self.simulate(transfer_function=cl_tf)
-            residuals = self.step_size - predictions
-            # Handle nan and inf values
-            idxs = self._findNanIdxs(residuals)
-            residuals[idxs] = 1
-            # Penalize overshoot
-            high_idxs = [n for n, r in enumerate(residuals) if r > 0]
-            residuals[high_idxs] *= overshoot_penalty
-            idxs = [n for n, r in enumerate(residuals) if r > max_residual]
-            residuals[idxs] = max_residual
-            mse = np.mean(residuals**2)
-            update(kp, mse)
-        # Record the result
-        self.kp = min_kp
-        self.residual_mse = np.mean(residuals**2)
-        if self.kp is None:
-            msg = "Failed to find a gain controller."
-            if (not util.isStablePoles(self.sys_tf)) and (not util.isStableZeros(self.sys_tf)):
-                msg += "\n  This may be because the open loop transfer function has unstable poles and zeros."
-            msgs.warn(msg)
-        self.history.add()
-
     @staticmethod
     def _findNanIdxs(values):
         return [n for n, r in enumerate(values) if (np.isinf(r) or np.isnan(r))]
@@ -279,7 +362,7 @@ class SISOClosedLoopDesigner(object):
             U = np.sin(2*np.pi*self.times/period)
         else:
             U = np.repeat(1, len(self.times))
-        U = U*self.step_size
+        U = U*self.setpoint
         new_times, predictions = control.forced_response(transfer_function, T=self.times, U=U)
         return new_times, predictions
     
@@ -292,7 +375,7 @@ class SISOClosedLoopDesigner(object):
         """
         new_times, predictions = self.simulate(period=period)
         df = pd.DataFrame({"time": new_times, "predictions": predictions})
-        df["step_size"] = self.step_size
+        df["setpoint"] = self.setpoint
         ts = Timeseries(mat=df)
         if "is_plot" in kwargs:
             is_plot = kwargs["is_plot"]
@@ -311,25 +394,36 @@ class SISOClosedLoopDesigner(object):
 
     def evaluate(self, is_plot=True, **kwargs):
         """
-        Creates an SBMLSystem using the design parameters.
+        Creates an SBMLSystem using the design parameters. Records the builder.
 
         Args:
             kwargs: plot options
+        Returns:
+            Timeseries (from simulation)
+            AntimonyBuilder (from simulation)
         """
         param_dct = {n: None for n in PARAM_NAMES}
         param_dct.update(self.get())
         k_dct = {k: param_dct[k] for k in PARAM_NAMES}
-        simulated_ts, builder = self.system.simulateSISOClosedLoop(setpoint=self.step_size,
-                               start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
-                               is_steady_state=self.is_steady_state, inplace=False, **k_dct)
-        if not "title" in kwargs:
-            param_dct = self.get()
-            text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
-            title = " ".join(text)
-        self.system.plotSISOClosedLoop(simulated_ts, self.step_size, markers=["", ""], title=title, **kwargs)
-        if is_plot:
-            plt.show()
-        self.history.add()
+        try:
+            simulated_ts, antimony_builder = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
+                                start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
+                                is_steady_state=self.is_steady_state, inplace=False, **k_dct)
+            success = True
+        except Exception as exp:
+            success = False
+            msg = "Could not simulate the closed loop system."
+            msgs.warn(msg)
+        if success:
+            if not "title" in kwargs:
+                param_dct = self.get()
+                text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
+                title = " ".join(text)
+            self.system.plotSISOClosedLoop(simulated_ts, self.setpoint, markers=["", ""], title=title, **kwargs)
+            if is_plot:
+                plt.show()
+            self.history.add()
+        return simulated_ts, antimony_builder
 
 class _History(object):
     # Maintains history of changes to design choices
@@ -348,7 +442,7 @@ class _History(object):
         for name in PARAM_NAMES:
             self._dct[name] = []
         self._dct[COL_CLOSED_LOOP_SYSTEM] = []
-        self._dct[COL_STEP_SIZE] = []
+        self._dct[COL_SETPOINT] = []
         self._dct[COL_RESIDUAL_MSE] = []
 
     def add(self):
@@ -357,7 +451,7 @@ class _History(object):
         for name in PARAM_NAMES:
             self._dct[name].append(self.designer.__getattribute__(name))
         self._dct[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
-        self._dct[COL_STEP_SIZE].append(self.designer.step_size)
+        self._dct[COL_SETPOINT].append(self.designer.setpoint)
         self._dct[COL_RESIDUAL_MSE].append(self.designer.residual_mse)
 
     def undo(self):
@@ -390,7 +484,7 @@ class _History(object):
             dct[name] = self._dct[name][idx]
         designer = SISOClosedLoopDesigner(self.designer.system, self.designer.sys_tf,
                                           times=self.designer.times,
-                                          step_size=STEP_SIZE)
+                                          setpoint=SETPOINT)
         for name in PARAM_NAMES:
             designer.__setattr__(name, dct[name])
         designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]
