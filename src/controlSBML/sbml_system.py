@@ -42,11 +42,11 @@ class SBMLSystem(object):
         self.is_fixed_input_species = is_fixed_input_species
         self.roadrunner = makeRoadrunner(self.model_reference)
         self.is_steady_state = is_steady_state
+        self.original_antimony = self._getAntimony()
         # Validate the input and output names
         self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
         self.output_names = [self.makeOutputName(n, self.roadrunner) for n in output_names]
-        # Verify that the main model is a module
-        self.original_antimony = self._getAntimony()
+        # Create the symbols for input and outputs
         self.symbol_dct = self._makeSymbolDct()
         try:
             self.antimony_builder = AntimonyBuilder(self.original_antimony, self.symbol_dct)
@@ -305,7 +305,8 @@ class SBMLSystem(object):
         data = self.roadrunner.simulate(start_time, end_time, num_point, selections=selections)
         ts = Timeseries(data)
         return ts
-    
+
+    # FIXME: Delete since duplicated in controlSBML 
     def plotModel(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, **kwargs):
         """
         Plots the original model.

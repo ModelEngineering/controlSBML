@@ -228,4 +228,4 @@ class MIMOTransferFunctionBuilder(object):
             index: str (input)
             values: PlotResult
         """
-        return cls._plotMIMO(fitter_result_df, tfb.SISOTransferFunctionBuilder.plotFitTransferFunction, **kwargs)
+        return cls._plotMIMO(fitter_result_df, tfb.SISOTransferFunctionBuilder.plotFitterResult, **kwargs)

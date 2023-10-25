@@ -364,7 +364,7 @@ class SISOTransferFunctionBuilder(object):
     
     @classmethod
     @Expander(cn.KWARGS, cn.PLOT_KWARGS)
-    def plotFitTransferFunction(cls, fitter_result, mgr=None, **kwargs):
+    def plotFitterResult(cls, fitter_result, mgr=None, **kwargs):
         """
         Plots the results of fitting a transfer function for the NonlinearIOSystem.
         If an option manager is specified, then the caller handles figure generation.

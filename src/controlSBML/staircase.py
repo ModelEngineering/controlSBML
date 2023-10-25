@@ -3,20 +3,16 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-DEFAULT_NUM_STEP = 5
-DEFAULT_INITIAL_VALUE = 0
-DEFAULT_FINAL_VALUE = 10
-DEFAULT_POINT_PER_STEP = 10
-DEFAULT_NUM_POINT = 100
+
 C_NUM_POINT = "num_point"
 C_NUM_STEP = "num_step"
 
 
 class Staircase(object):
 
-    def __init__(self, initial_value=DEFAULT_INITIAL_VALUE,
-                 num_step=DEFAULT_NUM_STEP, final_value=DEFAULT_FINAL_VALUE,
-                 num_point=DEFAULT_NUM_POINT, name=None):
+    def __init__(self, initial_value=cn.DEFAULT_INITIAL_VALUE,
+                 num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE,
+                 num_point=cn.DEFAULT_NUM_POINT, name=None):
         """
         Creates a staircase of values.
 

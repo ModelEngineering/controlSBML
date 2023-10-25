@@ -157,7 +157,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
               end_time=100)
         if IS_PLOT:
-            builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT)
+            builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         self.assertLess(fitter_result.rms_residuals, 0.2)
 
@@ -169,7 +169,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
               end_time=100, fit_start_time=10, fit_end_time=40)
         if IS_PLOT:
-            builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT)
+            builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         self.assertLess(fitter_result.rms_residuals, 0.1)
 
@@ -180,7 +180,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         builder = stb.SISOTransferFunctionBuilder(system)
         fitter_result = builder.fitTransferFunction(num_numerator=4, num_denominator=4,
               end_time=50)
-        builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT, figsize=(5,5))
+        builder.plotFitterResult(fitter_result, is_plot=IS_PLOT, figsize=(5,5))
 
     def testFitTransferFunction2(self):
         if IGNORE_TEST:
@@ -191,7 +191,7 @@ class TestNonlinearIOSystem(unittest.TestCase):
         staircase = Staircase(initial_value=50, final_value=100)
         fitter_result = builder.fitTransferFunction(1, 2, staircase=staircase,
               end_time=5)
-        builder.plotFitTransferFunction(fitter_result, is_plot=IS_PLOT)
+        builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
 
 
