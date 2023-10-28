@@ -287,11 +287,13 @@ class SISOClosedLoopDesigner(object):
             new_value_dct[name] = np.random.uniform(min_dct[name], max_dct[name])
         return new_value_dct
 
-    def design(self, kp=False, ki=False, kf=False, max_iteration=10,
+    def design(self, input_name=None, output_name=None, kp=False, ki=False, kf=False, max_iteration=10,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
+            input_name: str (name of the input species)
+            output_name: str (name of the output species)
             kp, ki, kf (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
             num_restart: int (number of times to restart the minimizer)
             min_value: float/dict (parameter name: value)
@@ -301,6 +303,8 @@ class SISOClosedLoopDesigner(object):
         if (not util.isStablePoles(self.sys_tf)) and (not util.isStableZeros(self.sys_tf)):
             msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
             msgs.warn(msg)
+        if output_name is None:
+            output_name = self.system.output_names[0]
         # Residual calculation
         def calculateMse(value_dct):
             """
@@ -311,8 +315,8 @@ class SISOClosedLoopDesigner(object):
             Returns:
                 float (mean squared error)
             """
-            output_name = self.system.output_names[0]
             response_ts, _ = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
+                        input_name=input_name, output_name=output_name,
                         start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
                         is_steady_state=self.is_steady_state, inplace=False, **value_dct)
             residuals = self.setpoint - response_ts[output_name].values

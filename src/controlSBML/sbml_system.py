@@ -14,9 +14,6 @@ import numpy as np
 import tellurium as te
 
 
-REFERENCE = "reference"
-
-
 class SBMLSystem(object):
 
     def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,

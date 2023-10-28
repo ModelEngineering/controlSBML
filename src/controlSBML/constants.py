@@ -25,9 +25,28 @@ class LegendSpec():
         self.crd = crd
         self.loc = loc
 
-attributes = "transfer_function staircase_arr staircase_name parameters rms_residuals stderr"
-attributes += " nfev redchi time_series input_name output_name antimony_builder"
-FitterResult = collections.namedtuple("FitterResult", attributes)
+class FitterResult(object):
+
+    def __init__(self, transfer_function=None, staircase_arr=None, staircase_name=None, parameters=None, rms_residuals=None,
+                 stderr=None, nfev=None, redchi=None, time_series=None, input_name=None, output_name=None, antimony_builder=None):
+        self.transfer_function = transfer_function
+        self.staircase_arr = staircase_arr
+        self.staircase_name = staircase_name
+        self.parameters = parameters
+        self.rms_residuals = rms_residuals
+        self.stderr = stderr
+        self.nfev = nfev
+        self.redchi = redchi
+        self.time_series = time_series
+        self.input_name = input_name
+        self.output_name = output_name
+        self.antimony_builder = antimony_builder
+
+    def copy(self):
+        return FitterResult(self.transfer_function, self.staircase_arr, self.staircase_name,
+                            self.parameters, self.rms_residuals, self.stderr, self.nfev,
+                            self.redchi, self.time_series, self.input_name, self.output_name,
+                            self.antimony_builder)
 
 
 ################ DIRECTORIES #################

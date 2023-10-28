@@ -1,4 +1,6 @@
 """Create a staircase of values. Build multiple staircases."""
+import controlSBML.constants as cn
+
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -68,7 +70,7 @@ class Staircase(object):
 
     @classmethod
     def makeRelativeStaircase(cls, center=5, fractional_deviation=0.1,
-                              num_step=DEFAULT_NUM_STEP, num_point=DEFAULT_NUM_POINT):
+                              num_step=cn.DEFAULT_NUM_STEP, num_point=cn.DEFAULT_NUM_POINT):
         """
         Specifies the staircase relative to a center point.
 

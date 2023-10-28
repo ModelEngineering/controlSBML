@@ -148,6 +148,9 @@ class SISOTransferFunctionBuilder(object):
         if self.output_name is None:
             self.output_name = sbml_system.output_names[0]
 
+    def copy(self):
+        return SISOTransferFunctionBuilder(self.system, input_name=self.input_name, output_name=self.output_name)
+
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def makeStaircaseResponse(self, staircase=Staircase(), mgr=None,
            is_steady_state=True, **kwargs):
@@ -305,6 +308,8 @@ class SISOTransferFunctionBuilder(object):
             stderr: dict (key: term, value: stderr)
             nfev: number of function evaluations
             redchi: float (reduced ChiSq)
+            parameters: lmfit.Parameters
+            antimony_builder: AntimonyBuilder
         """
         # Get the calibration data
         new_staircase = staircase.copy()

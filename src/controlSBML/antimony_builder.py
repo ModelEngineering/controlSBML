@@ -143,6 +143,10 @@ class AntimonyBuilder(object):
 
     def _getSetOfType(self, antimony_type):
         return [k for k, v in self.symbol_dct.items() if v == antimony_type]
+    
+    @ property
+    def species_names(self):
+        return list(set(self.floating_species_names) + set(self.boundary_species_names))
 
     @property
     def floating_species_names(self):
