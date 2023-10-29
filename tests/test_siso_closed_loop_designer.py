@@ -110,8 +110,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         sys_tf = control.tf([1], [1, 2])
-        closed_loop_tf_kp = cld._calculateClosedLoopTf(sys_tf=sys_tf, kp=3)
-        closed_loop_tf_ki = cld._calculateClosedLoopTf(sys_tf=sys_tf, ki=3)
+        closed_loop_tf_kp = cld._calculateClosedLoopTf(open_loop_transfer_function=sys_tf, kp=3)
+        closed_loop_tf_ki = cld._calculateClosedLoopTf(open_loop_transfer_function=sys_tf, ki=3)
         _, ys_kp = control.step_response(closed_loop_tf_kp, TIMES)
         _, ys_ki = control.step_response(closed_loop_tf_ki, TIMES)
         self.assertTrue(ys_kp[-1] < ys_ki[-1])

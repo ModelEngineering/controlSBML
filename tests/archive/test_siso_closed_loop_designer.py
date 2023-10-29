@@ -71,15 +71,15 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         sys_tf = control.tf([1], [1, 2])
-        closed_loop_tf_kp = scld._calculateClosedLoopTf(sys_tf=sys_tf, kp=3)
-        closed_loop_tf_ki = scld._calculateClosedLoopTf(sys_tf=sys_tf, ki=3)
+        closed_loop_tf_kp = scld._calculateClosedLoopTf(open_loop_transfer_function=sys_tf, kp=3)
+        closed_loop_tf_ki = scld._calculateClosedLoopTf(open_loop_transfer_function=sys_tf, ki=3)
         _, ys_kp = control.step_response(closed_loop_tf_kp, TIMES)
         _, ys_ki = control.step_response(closed_loop_tf_ki, TIMES)
         self.assertTrue(ys_kp[-1] < ys_ki[-1])
         self.assertTrue(np.isclose(ys_ki[-1], 1, atol=0.01))
         #
         # Check degree of the closed loop function
-        closed_loop_tf_kd = scld._calculateClosedLoopTf(sys_tf=sys_tf, kd=3)
+        closed_loop_tf_kd = scld._calculateClosedLoopTf(open_loop_transfer_function=sys_tf, kd=3)
         self.assertGreater(len(closed_loop_tf_kd.den[0][0]), len(closed_loop_tf_kp.den[0][0]))
 
     def test_closed_loop_tf(self):

@@ -17,7 +17,7 @@ import tellurium as te
 class SBMLSystem(object):
 
     def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,
-                 model_id="model", is_steady_state=False):
+                 model_id="model", is_steady_state=False, roadrunner=None):
         """
         model_reference: str
             string, SBML file or Roadrunner object
@@ -37,7 +37,10 @@ class SBMLSystem(object):
         self.model_reference = model_reference
         self.model_id = model_id
         self.is_fixed_input_species = is_fixed_input_species
-        self.roadrunner = makeRoadrunner(self.model_reference)
+        if roadrunner is None:
+            self.roadrunner = makeRoadrunner(self.model_reference)
+        else:
+            self.roadrunner = roadrunner
         self.is_steady_state = is_steady_state
         self.original_antimony = self._getAntimony()
         # Validate the input and output names

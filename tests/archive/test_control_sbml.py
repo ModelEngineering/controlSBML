@@ -45,7 +45,7 @@ class TestControlSBML(unittest.TestCase):
     def testConstructor(self):
         if IGNORE_TEST:
             return
-        self.assertTrue("RoadRunner" in str(type(self.ctlsb.roadrunner)))
+        self.assertTrue("RoadRunner" in str(type(self.ctlsb._roadrunner)))
 
     def testConstructWithRoadrunner(self):
         if IGNORE_TEST:

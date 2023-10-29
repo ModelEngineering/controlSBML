@@ -35,7 +35,7 @@ COL_SETPOINT = "setpoint"
 
 
 ##################################################################
-def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
+def _calculateClosedLoopTf(open_loop_transfer_function=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
     # Construct the transfer functions
     controller_tf = util.makePIDTransferFunction(kp=kp, ki=ki, kd=kd)
     # Filter
@@ -44,7 +44,7 @@ def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign
     else:
         filter_tf = 1
     # Closed loop transfer function
-    forward_tf = sys_tf*controller_tf
+    forward_tf = open_loop_transfer_function*controller_tf
     final_tf = control.feedback(forward_tf, filter_tf, sign=sign)
     # Ensure that the resulting transfer function is proper
     if len(final_tf.num[0][0]) == len(final_tf.den[0][0]):
@@ -57,7 +57,7 @@ def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign
 ##################################################################
 class SISOClosedLoopDesigner(object):
 
-    def __init__(self, system, sys_tf, times=None, setpoint=SETPOINT, is_steady_state=False,
+    def __init__(self, system, open_loop_transfer_function, times=None, setpoint=SETPOINT, is_steady_state=False,
                  is_history=True, sign=-1):
         """
         Args:
@@ -68,7 +68,7 @@ class SISOClosedLoopDesigner(object):
             sign: int (-1: negative feedback; +1: positive feedback)
         """
         self.system = system
-        self.sys_tf = sys_tf
+        self.open_loop_transfer_function = open_loop_transfer_function
         self.setpoint = setpoint
         self.is_steady_state = is_steady_state
         if times is None:
@@ -96,7 +96,7 @@ class SISOClosedLoopDesigner(object):
 
     @property
     def closed_loop_tf(self):
-        return _calculateClosedLoopTf(sys_tf=self.sys_tf, kp=self.kp, ki=self.ki,
+        return _calculateClosedLoopTf(open_loop_transfer_function=self.open_loop_transfer_function, kp=self.kp, ki=self.ki,
                                       kf=self.kf, sign=self.sign)
     
     @property
@@ -300,7 +300,7 @@ class SISOClosedLoopDesigner(object):
             max_value: float/dict (parameter name: value)
         """
         # Initial check
-        if (not util.isStablePoles(self.sys_tf)) and (not util.isStableZeros(self.sys_tf)):
+        if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
             msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
             msgs.warn(msg)
         if output_name is None:
