@@ -1,5 +1,5 @@
-General plot for plotting closed loop
-Incorporate general staircase and closed loop plots into make_siso.
+CTLSB.plotSBMLSystem - does a plot with multiple inputs and multiple outputs.
+times is an option for all plot methods and it persists. Similarly with staircase.
 Are negative values of boundaries (rate rule or species) handled correctly?
 Bugs
   "Stoichiometry matrix does not exist for this model" -- 379

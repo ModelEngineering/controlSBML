@@ -28,10 +28,13 @@ class Staircase(object):
         self.initial_value = initial_value
         self.num_step = num_step
         self.final_value = final_value
-        self.num_point = num_point
+        self.setNumPoint(num_point)  # self.num_point
         self.name = name
         self._updateState()
         #self.staircase_arr is dynamically
+
+    def setNumPoint(self, num_point):
+        self.num_point = num_point
 
     def copy(self):
         return Staircase(initial_value=self.initial_value,
@@ -59,7 +62,6 @@ class Staircase(object):
         # Add more if needed
         num_add_more = self.num_point - len(staircase_arr)
         if num_add_more < 0:
-            import pdb; pdb.set_trace()
             raise RuntimeError("Negative residual count")
         elif num_add_more > 0:
             final_values = np.repeat(self.final_value, num_add_more)

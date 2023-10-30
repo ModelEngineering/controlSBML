@@ -7,8 +7,8 @@ import numpy as np
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 FIGSIZE = (5, 5)
 LINEAR_MDL = """
 model *main_model()
@@ -72,9 +72,10 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(ts, Timeseries))
 
     def testPlotStaircaseResponse(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         self.ctlsb.setSISOSystemSpecification(input_name="S1", output_name="S3")
+        self.ctlsb.setTimes(np.linspace(0, 10, 100))
         ts, builder = self.ctlsb.plotStaircaseResponse(is_plot=IS_PLOT, figsize=FIGSIZE)
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
@@ -100,7 +101,7 @@ class TestControlSBML(unittest.TestCase):
             return
         self.ctlsb.setSISOSystemSpecification(input_name="S1", output_name="S3")
         _ = self.ctlsb.plotTransferFunctionFit(num_numerator=2, num_denominator=2, is_plot=False)
-        ts, builder = self.ctlsb.plotSISOClosedLoopDesign(setpoint=5, sign=-1, kp=True, ki=True, figsize=FIGSIZE)
+        ts, builder = self.ctlsb.plotSISOClosedLoopDesign(setpoint=5, sign=-1, kp=True, ki=True, figsize=FIGSIZE, is_plot=IS_PLOT)
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
     

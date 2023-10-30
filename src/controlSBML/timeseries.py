@@ -13,6 +13,7 @@ then use Timeseries or TimeseriesSer to reconstruct the object.
 """
 
 import controlSBML as ctl
+from controlSBML import util
 import controlSBML.constants as cn
 
 import numpy as np
@@ -191,7 +192,7 @@ class Timeseries(pd.DataFrame):
                     new_columns[pos] = column
                 df.columns = new_columns
             except:
-                import pdb; pdb.set_trace()
+                raise RuntimeError("Unable to set column names.")
             if times is None:
                 raise ValueError("No time information found.")
         else:
@@ -264,7 +265,7 @@ class Timeseries(pd.DataFrame):
         column_names: list-str
         row_names: list-str
         """
-        df = ctl.mat2DF(mat, column_names=column_names, row_names=row_names)
+        df = util.mat2DF(mat, column_names=column_names, row_names=row_names)
         return Timeseries(df)
 
     def copy(self, **kwargs):

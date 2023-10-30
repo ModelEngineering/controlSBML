@@ -486,9 +486,10 @@ class _History(object):
         dct = {}
         for name in self._dct.keys():
             dct[name] = self._dct[name][idx]
-        designer = SISOClosedLoopDesigner(self.designer.system, self.designer.sys_tf,
+        designer = SISOClosedLoopDesigner(self.designer.system, self.designer.open_loop_transfer_function,
                                           times=self.designer.times,
-                                          setpoint=SETPOINT)
+                                          setpoint=SETPOINT, is_steady_state=self.designer.is_steady_state,
+                                          is_history=self.designer.history.is_history, sign=self.designer.sign)
         for name in PARAM_NAMES:
             designer.__setattr__(name, dct[name])
         designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]

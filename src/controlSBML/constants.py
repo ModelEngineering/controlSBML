@@ -189,7 +189,7 @@ DEFAULT_DEVIATION = 0.5
 
 # Plot line colors
 PREDICTED_COLOR = "blue"
-SIMULATED_COLOR = "green"
+SIMULATED_COLOR = "brown"
 INPUT_COLOR = "red"
 
 COMMENT_STR = "//"

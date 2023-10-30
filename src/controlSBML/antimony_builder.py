@@ -113,7 +113,6 @@ class AntimonyBuilder(object):
         start_pos = line.find("*") + 1
         end_pos = line.find("(")
         if (start_pos < 0) or (end_pos < 0) or (end_pos < start_pos):
-            import pdb; pdb.set_trace()
             raise RuntimeError("Unable to extract model name from line: %s" % line)
         return line[start_pos:end_pos]
 

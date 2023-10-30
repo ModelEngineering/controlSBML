@@ -140,7 +140,7 @@ class SISOTransferFunctionBuilder(object):
         output_name: str
         """
         #
-        self.system = sbml_system
+        self.sbml_system = sbml_system
         self.input_name = input_name
         self.output_name = output_name
         if self.input_name is None:
@@ -149,10 +149,10 @@ class SISOTransferFunctionBuilder(object):
             self.output_name = sbml_system.output_names[0]
 
     def copy(self):
-        return SISOTransferFunctionBuilder(self.system, input_name=self.input_name, output_name=self.output_name)
+        return SISOTransferFunctionBuilder(self.sbml_system, input_name=self.input_name, output_name=self.output_name)
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def makeStaircaseResponse(self, staircase=Staircase(), mgr=None,
+    def makeStaircaseResponse(self, staircase=Staircase(), mgr=None, times=None,
            is_steady_state=True, **kwargs):
         """
         Constructs the staircase response of the NonlinearIOSystem.
@@ -164,6 +164,7 @@ class SISOTransferFunctionBuilder(object):
         staircase: Staircase (num_point will be adjusted as per options)
         is_steady_state: bool (initialize to steady state values)
         mgr: OptionManager
+        times: np.array (times at which to simulate)
         #@expand
 
         Returns
@@ -177,19 +178,24 @@ class SISOTransferFunctionBuilder(object):
         if mgr is None:
             mgr = OptionManager(kwargs)
         # Construct the time
-        start_time = mgr.options.get(cn.O_START_TIME)
-        end_time = mgr.options.get(cn.O_END_TIME)
-        points_per_time = staircase.num_point/(end_time - start_time)
+        if times is None:
+            start_time = mgr.options.get(cn.O_START_TIME)
+            end_time = mgr.options.get(cn.O_END_TIME)
+            points_per_time = staircase.num_point/(end_time - start_time)
+            times = util.makeSimulationTimes(start_time=start_time, end_time=end_time, points_per_time=points_per_time)
+        else:
+            points_per_time = len(times)/(times[-1] - times[0])
+            mgr.options[cn.START_TIME] = times[0]
+            mgr.options[cn.END_TIME] = times[-1]
         mgr.options[cn.O_POINTS_PER_TIME] = points_per_time
-        times = util.makeSimulationTimes(start_time=start_time, end_time=end_time, points_per_time=points_per_time)
         # Do the simulations
-        result_ts, antimony_builder = self.system.simulateStaircase(self.input_name, self.output_name, times=times,
+        result_ts, antimony_builder = self.sbml_system.simulateStaircase(self.input_name, self.output_name, times=times,
                                                 initial_value=staircase.initial_value, num_step=staircase.num_step,
                                                 final_value=staircase.final_value, is_steady_state=is_steady_state,
                                                 inplace=False)
+        staircase.setNumPoint(len(result_ts))
         staircase_name = "%s_%s" % (self.input_name, STAIRCASE)
         staircase_arr= staircase.staircase_arr
-        staircase_arr = np.concatenate([staircase_arr, [staircase_arr[-1]]])
         result_ts[staircase_name] = staircase_arr
         del result_ts[self.input_name]
         return result_ts, antimony_builder
@@ -233,7 +239,7 @@ class SISOTransferFunctionBuilder(object):
         staircase_ts = response_ts[staircase_name]
         response_ts = new_response_ts
         # Do the plots
-        plot_result = util.plotOneTS(response_ts, mgr=mgr, color=cn.SIMULATED_COLOR)
+        plot_result = util.plotOneTS(response_ts, mgr=mgr, colors=[cn.SIMULATED_COLOR])
         ax = plot_result.ax
         mgr.plot_opts.set(cn.O_AX, ax)
         mgr.plot_opts.set(cn.O_YLABEL, output_name)

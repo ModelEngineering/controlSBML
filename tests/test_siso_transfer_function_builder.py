@@ -7,6 +7,7 @@ import controlSBML.util as util
 import helpers
 
 import matplotlib.pyplot as plt
+import numpy as np
 import os
 import unittest
 import shutil
@@ -42,7 +43,7 @@ FINAL_VALUE = 15
 STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE)
 SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
 BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
-RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, end_time=50)
+RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
 
 
 #############################

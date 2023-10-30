@@ -125,12 +125,19 @@ class _SystemSpecification(object):
         self.output_names = output_names
         self.is_fixed_input_species = is_fixed_input_species
         self.is_steady_state = is_steady_state
-        self.roadrunner = roadrunner
+        self._roadrunner = None
 
     def copy(self):
+        # Does not copy the RoadRunner object since it is constructed on the first reference
         return _SystemSpecification(self.model_reference, input_names=self.input_names, output_names=self.output_names,
                                     is_fixed_input_species=self.is_fixed_input_species,
                                     is_steady_state=self.is_steady_state, roadrunner=None)
+    
+    @property
+    def roadrunner(self):
+        if self._roadrunner is None:
+            self._roadrunner = makeRoadrunner(self.model_reference)
+        return self._roadrunner
 
 
 class ControlSBML(object):
@@ -142,12 +149,9 @@ class ControlSBML(object):
         roadrunner: ExtendedRoadrunner
         """
         # First initializations
-        self._system_specification = _SystemSpecification(model_reference)
-        if roadrunner is None:
-            self._roadrunner = makeRoadrunner(model_reference)
-        else:
-            self._roadrunner = roadrunner
-        self.setTimes()   # self.times
+        self._system_specification = _SystemSpecification(model_reference, roadrunner=roadrunner)
+        self.setTimes()
+        self._times = self.getTimes()
         self._staircase_specification = _StaircaseSpecification()
         self._fitter_result = cn.FitterResult()
         self._siso_closed_loop_specification = _SISODClosedLoopSpecification()
@@ -289,7 +293,8 @@ class ControlSBML(object):
             Timeseries
         """
         _, plot_fig_opts = self._getOptions(kwargs)
-        data = self._roadrunner.simulate(self._times[0], self._times[-1], len(self._times))
+        self._roadrunner.reset()
+        data = self._roadrunner.simulate(self._start_time, self._end_time, self._num_point)
         ts = Timeseries(data)
         if is_plot:
             util.plotOneTS(ts, **plot_fig_opts)
@@ -316,7 +321,7 @@ class ControlSBML(object):
         self.setStaircaseSpecification(initial_value=initial_value, final_value=final_value, num_step=num_step)
         sim_opts, plot_fig_opts = self._getOptions(kwargs)
         sbml_system, siso_transfer_function_builder = self.getSystem()
-        response_ts, builder = siso_transfer_function_builder.makeStaircaseResponse(
+        response_ts, builder = siso_transfer_function_builder.makeStaircaseResponse(times=self.getTimes(),
             staircase=self.getStaircase(), is_steady_state=sbml_system.is_steady_state, **sim_opts)
         siso_transfer_function_builder.plotStaircaseResponse(response_ts, **plot_fig_opts)
         return response_ts, builder
@@ -419,6 +424,10 @@ class ControlSBML(object):
         """
         return Staircase(initial_value=self._staircase_specification.initial_value, final_value=self._staircase_specification.final_value,
                          num_step=self._staircase_specification.num_step, num_point=len(self._times))
+    
+    @property
+    def _roadrunner(self):
+        return self._system_specification.roadrunner
 
     @staticmethod 
     def _getOptions(options):
@@ -438,3 +447,15 @@ class ControlSBML(object):
         plot_fig_opts = {n: v for n, v in plot_fig_opts.items() if v is not None}
         sim_opts = {n: v for n, v in mgr.sim_opts.items() if v is not None}
         return sim_opts, plot_fig_opts
+    
+    @property
+    def _start_time(self):
+        return self.getTimes()[0]
+    
+    @property
+    def _end_time(self):
+        return self.getTimes()[-1]
+    
+    @property
+    def _num_point(self):
+        return len(self.getTimes())
