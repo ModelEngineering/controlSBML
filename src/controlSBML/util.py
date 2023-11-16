@@ -494,18 +494,12 @@ def cleanTimes(times):
     """
     expected_diff = np.mean(np.diff(times))
     expected_diff = int(np.round(expected_diff))
-    diffs = np.diff(times)
-    indices = [n for n in range(len(times)-1) if diffs[n] != expected_diff]
-    new_times = list(times)
-    for idx in indices:
-        if idx > 0:
-            new_times[idx] = new_times[idx - 1] + expected_diff
-        else:
-            if not 1 in indices:
-                new_times[idx] = new_times[idx + 1] - expected_diff
-            else:
-                raise ValueError("Cannot exceptions at indices 0, 1")
-    return np.array(new_times)
+    new_times = np.repeat(None, len(times))
+    new_times[0] = times[0]
+    for idx in range(1, len(times)):
+        new_times[idx] = new_times[idx - 1] + expected_diff
+    arr = np.array(new_times)
+    return arr.astype(float)
 
 def calculateInitialValue(transfer_function):
     """

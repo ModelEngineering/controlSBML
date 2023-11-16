@@ -26,6 +26,8 @@ class LegendSpec():
         self.loc = loc
 
 class FitterResult(object):
+    ATTRS = ["transfer_function", "staircase_arr", "staircase_name", "parameters", "rms_residuals",
+             "stderr", "nfev", "redchi", "time_series", "input_name", "output_name", "antimony_builder"]
 
     def __init__(self, transfer_function=None, staircase_arr=None, staircase_name=None, parameters=None, rms_residuals=None,
                  stderr=None, nfev=None, redchi=None, time_series=None, input_name=None, output_name=None, antimony_builder=None):
@@ -43,10 +45,14 @@ class FitterResult(object):
         self.antimony_builder = antimony_builder
 
     def copy(self):
-        return FitterResult(self.transfer_function, self.staircase_arr, self.staircase_name,
-                            self.parameters, self.rms_residuals, self.stderr, self.nfev,
-                            self.redchi, self.time_series, self.input_name, self.output_name,
-                            self.antimony_builder)
+        kwargs = {a: getattr(self, a) for a in self.ATTRS}
+        return FitterResult(**kwargs)
+    
+    def equals(self, other):
+        for attr in self.ATTRS:
+            if getattr(self, attr) != getattr(other, attr):
+                return False
+        return True
 
 
 ################ DIRECTORIES #################
@@ -183,7 +189,7 @@ METFORMIN_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000001039.
 MTOR_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
 
 # Transfer function building
-DEFAULT_NUM_NUMERATOR = 2
+DEFAULT_NUM_NUMERATOR = 1
 DEFAULT_NUM_DENOMINATOR = 3
 DEFAULT_DEVIATION = 0.5
 

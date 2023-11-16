@@ -1,6 +1,8 @@
 CTLSB.plotSBMLSystem - does a plot with multiple inputs and multiple outputs.
-times is an option for all plot methods and it persists. Similarly with staircase.
+Describe persistent options: times, staircase, plot options?
 Are negative values of boundaries (rate rule or species) handled correctly?
+Noise & disturbances
+MISO
 Bugs
   "Stoichiometry matrix does not exist for this model" -- 379
   "Cannot create AntimonyBuilder: Antimony: Error in model string, line 27:  syntax error, unexpected element name, expecting number or '('" -- 386
