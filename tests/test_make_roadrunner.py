@@ -7,7 +7,7 @@ import tellurium as te
 
 IGNORE_TEST = False
 IS_PLOT = False
-HTTP_FILE = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000206.2?filename=BIOMD0000000206_url.xml"
+HTTP_FILE = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL3352181362/2/BIOMD0000000206_url.xml"
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 XML_FILE_56 = os.path.join(TEST_DIR, "BIOMD0000000056.xml")
