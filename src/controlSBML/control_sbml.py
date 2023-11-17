@@ -325,7 +325,7 @@ class ControlSBML(object):
             if is_assign_from_simulation:
                 final_value = ts[input_name].max()
             else:
-                initial_value = cn.DEFAULT_FINAL_VALUE
+                initial_value = cn.DEFAULT_INITIAL_VALUE
         self.setOptions(initial_value=initial_value, final_value=final_value,
                                                          num_step=num_step)
 
