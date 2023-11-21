@@ -1,4 +1,5 @@
 import controlSBML.siso_closed_loop_designer as cld
+from controlSBML.control_sbml import ControlSBML
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 import controlSBML as ctl
 import controlSBML.util as util
@@ -143,7 +144,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
         designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf, times=np.linspace(0, 200, 1000))
-        designer.design(kp=True, ki=True, num_restart=3, max_value=10)
+        designer.design(kp_spec=True, ki_spec=True, num_restart=3, max_value=10)
         param_dct = designer.get()
         designer.evaluate(is_plot=IS_PLOT)
         checkParams(["kp", "ki"])
@@ -223,7 +224,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         designer = self.makeDesigner()
-        designer.design(kp=True, ki=True)
+        designer.design(kp_spec=True, ki_spec=True)
         designer.plot(is_plot=IS_PLOT, markers=["", ""])
 
     def test_closed_loop_tf(self):
@@ -264,8 +265,21 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         #
         times = np.linspace(0, 1000, 10000)
         designer = cld.SISOClosedLoopDesigner(system, linear_tf, times=times, setpoint=5)
-        designer.design(kp=True, ki=True, num_restart=2, max_value=100)
+        designer.design(kp_spec=True, ki_spec=True, num_restart=2, max_value=100)
         designer.evaluate(is_plot=IS_PLOT, figsize=FIGSIZE)
+
+    def testBug2(self):
+        if IGNORE_TEST:
+            return
+        # Setup
+        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb = ControlSBML(url)
+        ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+        _ = ctlsb.plotClosedLoop(setpoint=80, sign=-1, kp=1, ki=0.001, kf=None, figsize=FIGSIZE,
+                                  times=np.linspace(0, 2000, 20000), is_plot=False)
+        _ = ctlsb.plotDesign(kp_spec=True, ki_spec=True, figsize=FIGSIZE, max_parameter_value=1, is_plot=True)
 
     def testFindFeasibleClosedLoopSystem(self):
         if IGNORE_TEST:

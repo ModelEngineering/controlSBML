@@ -122,7 +122,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         denr = np.array([2.04313198, 1.77120743, 0.49351805])
         sys_tf = control.tf(numr, denr)
         designer1 = scld.SISOClosedLoopDesigner(sys_tf)
-        designer1.design(kp=True, ki=True, residual_precision=2)
+        designer1.design(kp_spec=True, ki_spec=True, residual_precision=2)
         designer2 = scld.SISOClosedLoopDesigner(sys_tf)
         designer2.design(kp=True, ki=True, residual_precision=5)
         self.assertLess(designer1.kp, designer2.kp)

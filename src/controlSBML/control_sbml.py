@@ -58,6 +58,7 @@ from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML import util
 from controlSBML.option_management.option_manager import OptionManager
 import controlSBML.constants as cn
+import controlSBML.msgs as msgs
 
 import collections
 import numpy as np
@@ -170,8 +171,6 @@ class ControlSBML(object):
         return {k: getattr(self, k) for k in options}
     
     def getOpenLoopTransferFunction(self):
-        if self._fitter_result.transfer_function is None:
-            raise ValueError("Must use 'plotTransferFunctionFit' before using this method.")
         return self._fitter_result.transfer_function
     
     def getFitterResult(self):
@@ -444,11 +443,14 @@ class ControlSBML(object):
         self.setOptions(**kwargs)
         sbml_system, _ = self.getSystem()
         designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(),
-                setpoint=self.setpoint, is_steady_state=sbml_system.is_steady_state,
+                setpoint=self.setpoint, is_steady_state=sbml_system.is_steady_state, times=self.getTimes(),
                 sign=self.sign)
         designer.design(input_name=self.getInputName(), output_name=self.getOutputName(),
-                kp=kp_spec, ki=ki_spec, kf=kf_spec, max_iteration=max_iteration,
+                kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec, max_iteration=max_iteration,
                 num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value)
+        if designer.residual_mse is None:
+            msgs.warn("No design found!")
+            return None, None
         self.setOptions(kp=designer.kp, ki=designer.ki, kf=designer.kf, ylabel=self.getOutputName())
         response_ts, antimony_builder = self.plotClosedLoop(
                 sign=self.sign,

@@ -18,7 +18,7 @@ import pandas as pd
 
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
-DEFAULT_INITIAL_VALUE = 1   # Default initial value for a
+DEFAULT_INITIAL_VALUE = 1   # Default initial value for a parameter
 SETPOINT = 1
 BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
@@ -144,7 +144,7 @@ class SISOClosedLoopDesigner(object):
         self.kd = None
         self.kf = None
 
-    def _isFeasibleSystem(self, kp=None, ki=None, kf=None, max_output=1e6):
+    def _isFeasibleSystem(self, kp=None, ki=None, kf=None, max_output=1e6, min_output=0):
         """
         Determines if the closed loop system is stable and does not produce negative values for inputs or outputs.
 
@@ -157,7 +157,7 @@ class SISOClosedLoopDesigner(object):
             bool
         """
         try:
-            response_ts, builder = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
+            response_ts, _ = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
                         start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
                         is_steady_state=self.is_steady_state, inplace=False,
                         kp=kp, ki=ki, kf=kf)
@@ -166,7 +166,8 @@ class SISOClosedLoopDesigner(object):
         # Check for large outputs
         outputs = response_ts[self.system.output_names[0]].values
         max_value = np.max([np.max(outputs), np.abs(np.min(outputs))])
-        if max_value > max_value:
+        min_value = np.min([np.max(outputs), np.abs(np.min(outputs))])
+        if (max_value > max_output) or (min_value < min_output):
             return False
         # Check for negative values
         for column in response_ts.columns:
@@ -213,7 +214,7 @@ class SISOClosedLoopDesigner(object):
             max_value: float (maximum value of a parameter)
             max_iteration: int (maximum number of iterations)
         Returns:
-            dict: {name: value}
+            dict: {name: value} or None (no stable result found)
                 key: name of parameter
                 value: value of parameter or None
         """
@@ -232,8 +233,8 @@ class SISOClosedLoopDesigner(object):
         # Iterate to find values
         dct = dict(value_dct)
         last_stable_dct = None
-        for _ in range(max_iteration):
-            if self._isFeasibleSystem(**dct):
+        for idx in range(max_iteration):
+            if self._isFeasibleSystem(min_output=min_value, max_output=max_value, **dct):
                 if factor < MINIMAL_FACTOR:
                     break
                 else:
@@ -248,6 +249,8 @@ class SISOClosedLoopDesigner(object):
                     factor = factor/2
             dct = mult(dct, factor)
         # Return the result
+        if last_stable_dct is None:
+            return None
         return dct
     
     def _calculateRandomParameterValues(self, value_dct, fixeds, min_value=MIN_VALUE, max_value=MAX_VALUE):
@@ -287,22 +290,38 @@ class SISOClosedLoopDesigner(object):
             new_value_dct[name] = np.random.uniform(min_dct[name], max_dct[name])
         return new_value_dct
 
-    def design(self, input_name=None, output_name=None, kp=False, ki=False, kf=False, max_iteration=10,
+    def design(self, input_name=None, output_name=None, kp_spec=False, ki_spec=False, kf_spec=False, max_iteration=10,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
             input_name: str (name of the input species)
             output_name: str (name of the output species)
-            kp, ki, kf (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
+            kp_spec, ki_spec, kf_spec (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
             num_restart: int (number of times to restart the minimizer)
             min_value: float/dict (parameter name: value)
             max_value: float/dict (parameter name: value)
         """
+        def assignParameterValue(parameter_spec):
+            if parameter_spec is None:
+                return None
+            if isinstance(parameter_spec, bool):
+                if parameter_spec:
+                    return DEFAULT_INITIAL_VALUE
+                else:
+                    return None
+            if isinstance(parameter_spec, float):
+                return parameter_spec
+            raise ValueError("Invalid parameter_spec: %s" % parameter_spec)
+        #
+        kp = assignParameterValue(kp_spec)
+        ki = assignParameterValue(ki_spec)
+        kf = assignParameterValue(kf_spec)
         # Initial check
-        if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
-            msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
-            msgs.warn(msg)
+        if self.open_loop_transfer_function is not None:
+            if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
+                msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
+                msgs.warn(msg)
         if output_name is None:
             output_name = self.system.output_names[0]
         # Residual calculation
@@ -316,7 +335,7 @@ class SISOClosedLoopDesigner(object):
                 float (mean squared error)
             """
             response_ts, _ = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
-                        input_name=input_name, output_name=output_name,
+                        input_name=input_name, output_name=output_name, times=self.times,
                         start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
                         is_steady_state=self.is_steady_state, inplace=False, **value_dct)
             residuals = self.setpoint - response_ts[output_name].values
@@ -333,6 +352,8 @@ class SISOClosedLoopDesigner(object):
             new_value_dct = self._calculateRandomParameterValues(value_dct, fixeds, min_value=min_value, max_value=max_value)
             stable_value_dct = self._findFeasibleClosedLoopSystem(new_value_dct, fixeds, min_value=min_value,
                                                                   max_value=max_value, max_iteration=max_iteration)
+            if stable_value_dct is None:
+                continue
             mse = calculateMse(stable_value_dct)
             if best_mse is None:
                 best_varying_dct = dict(stable_value_dct)
