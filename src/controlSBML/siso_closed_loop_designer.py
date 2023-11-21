@@ -234,7 +234,7 @@ class SISOClosedLoopDesigner(object):
         dct = dict(value_dct)
         last_stable_dct = None
         for idx in range(max_iteration):
-            if self._isFeasibleSystem(min_output=min_value, max_output=max_value, **dct):
+            if self._isFeasibleSystem(**dct):
                 if factor < MINIMAL_FACTOR:
                     break
                 else:
@@ -353,7 +353,14 @@ class SISOClosedLoopDesigner(object):
             stable_value_dct = self._findFeasibleClosedLoopSystem(new_value_dct, fixeds, min_value=min_value,
                                                                   max_value=max_value, max_iteration=max_iteration)
             if stable_value_dct is None:
-                continue
+                # Try simplifying by using proportional control
+                new_value_dct["kp"] = DEFAULT_INITIAL_VALUE
+                new_value_dct["ki"] = None
+                new_value_dct["kf"] = None
+                stable_value_dct = self._findFeasibleClosedLoopSystem(new_value_dct, fixeds, min_value=min_value,
+                                                                  max_value=max_value, max_iteration=max_iteration)
+                if stable_value_dct is None:
+                    continue
             mse = calculateMse(stable_value_dct)
             if best_mse is None:
                 best_varying_dct = dict(stable_value_dct)

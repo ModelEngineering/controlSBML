@@ -278,8 +278,9 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         ctlsb = ControlSBML(url)
         ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
         _ = ctlsb.plotClosedLoop(setpoint=80, sign=-1, kp=1, ki=0.001, kf=None, figsize=FIGSIZE,
-                                  times=np.linspace(0, 2000, 20000), is_plot=False)
-        _ = ctlsb.plotDesign(kp_spec=True, ki_spec=True, figsize=FIGSIZE, max_parameter_value=1, is_plot=True)
+                                  times=np.linspace(0, 100, 1000), is_plot=False)
+        _ = ctlsb.plotDesign(kp_spec=True, ki_spec=True, figsize=FIGSIZE, max_parameter_value=1, is_plot=IS_PLOT)
+        self.assertIsNotNone(ctlsb.kp)
 
     def testFindFeasibleClosedLoopSystem(self):
         if IGNORE_TEST:
