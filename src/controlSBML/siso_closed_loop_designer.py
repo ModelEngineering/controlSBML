@@ -37,6 +37,8 @@ COL_SETPOINT = "setpoint"
 ##################################################################
 def _calculateClosedLoopTf(open_loop_transfer_function=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
     # Construct the transfer functions
+    if open_loop_transfer_function is None:
+        return None
     controller_tf = util.makePIDTransferFunction(kp=kp, ki=ki, kd=kd)
     # Filter
     if kf is not None:
@@ -96,6 +98,8 @@ class SISOClosedLoopDesigner(object):
 
     @property
     def closed_loop_tf(self):
+        if self.open_loop_transfer_function is None:
+            return None
         return _calculateClosedLoopTf(open_loop_transfer_function=self.open_loop_transfer_function, kp=self.kp, ki=self.ki,
                                       kf=self.kf, sign=self.sign)
     
@@ -389,6 +393,8 @@ class SISOClosedLoopDesigner(object):
             ValueError: if there are no parameters defined for the closed loop transfer function
         """
         if transfer_function is None:
+            if self.closed_loop_tf is None:
+                raise ValueError("No closed loop transfer function defined.")
             transfer_function = self.closed_loop_tf
         if period is not None:
             U = np.sin(2*np.pi*self.times/period)

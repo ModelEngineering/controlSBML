@@ -295,7 +295,6 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         ts, _ = designer.evaluate(is_plot=IS_PLOT)
         self.assertTrue(np.isclose(SETPOINT, ts[OUTPUT_NAME].values[-1], atol=0.1))
 
-
     def testIsFeasibleSystem(self):
         if IGNORE_TEST:
             return

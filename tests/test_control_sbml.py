@@ -37,7 +37,7 @@ S3 = 0
 end
 """
 SPECIES_NAMES = ["S1", "S2", "S3", "S4"]
-CTLSB = ControlSBML(LINEAR_MDL)
+CTLSB = ControlSBML(LINEAR_MDL, final_value=10)
 
 
 #############################
@@ -84,6 +84,8 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE)
+        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
+        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE)
         if IS_PLOT:
             plt.savefig("test_plot_model.png")
         self.assertTrue(isinstance(ts, Timeseries))
@@ -120,10 +122,12 @@ class TestControlSBML(unittest.TestCase):
     def testPlotDesign(self):
         if IGNORE_TEST:
             return
+        setpoint = 5
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        _ = self.ctlsb.plotTransferFunctionFit(num_numerator=2, num_denominator=2, is_plot=False)
-        ctlsb = self.ctlsb.copy()
-        ts, builder = ctlsb.plotDesign(setpoint=5, sign=-1, kp_spec=True, ki_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT)
+        ts, builder = self.ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT)
+        # Show that kp, ki are now the defaults
+        _ = self.ctlsb.plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kp=1, figsize=FIGSIZE,
+                                                          times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
 
@@ -139,6 +143,7 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
+        self.ctlsb.setOptions(kp=5, sign=-1)
         self.ctlsb.plotTransferFunctionFit(is_plot=False)
         self.assertTrue(isinstance(self.ctlsb.getSystem()[0], SBMLSystem))
         self.assertTrue(isinstance(self.ctlsb.getSystem()[1], SISOTransferFunctionBuilder))
