@@ -404,6 +404,7 @@ class SISOTransferFunctionBuilder(object):
                        colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
                        markers=["o", ""])
         ax = mgr.plot_opts[cn.O_AX]
+        mgr.plot_opts.set(cn.O_YLABEL, output_name)
         if mgr.plot_opts[cn.O_AX2] is None:
             ax2 = ax.twinx()
             mgr.plot_opts[cn.O_AX2] = ax2

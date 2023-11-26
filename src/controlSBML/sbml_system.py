@@ -377,11 +377,8 @@ class SBMLSystem(object):
         builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint,
                                          initial_output_value=initial_input_value, sign=sign)
         # Run the simulation
-        try:
-            result = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
-                               antimony_builder=builder, is_reload=True), builder
-        except Exception as exp:
-            import pdb; pdb.set_trace()
+        result = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
+                            antimony_builder=builder, is_reload=True), builder
         return result
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,

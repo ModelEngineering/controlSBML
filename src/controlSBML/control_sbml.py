@@ -96,6 +96,7 @@ INITIAL_OPTION_DCT = {cn.O_TITLE: "", cn.O_SUPTITLE: "", cn.O_WRITEFIG: False,
                         cn.O_XLABEL: "Time (sec)", cn.O_YLABEL: "Concentration",
                         cn.O_FIGSIZE: FIGSIZE,
                         cn.O_IS_PLOT: True,
+                        C_IS_FIXED_INPUT_SPECIES: True,
                         C_SETPOINT: SETPOINT}
 for key in OPTIONS:
     if not key in INITIAL_OPTION_DCT:
@@ -121,6 +122,7 @@ class ControlSBML(OptionSet):
         # Options
         super().__init__(**INITIAL_OPTION_DCT)
         self.setOptions(times=TIMES)
+        self.setOptions(**kwargs)  # Override the base defaults
         initial_value, final_value, num_step = self.initializeStaircaseOptions()
         self.setOptionSet(initial_value=initial_value, final_value=final_value, num_step=num_step)
         self.setOptions(**kwargs)  # Override the base defaults
@@ -241,20 +243,25 @@ class ControlSBML(OptionSet):
                 output_name=self.getOutputName(option_set=option_set))
         return sbml_system, transfer_function_builder
     
-    def getClosedLoopTransferFunction(self):
+    def getClosedLoopTransferFunction(self, **kwargs):
         """
         Calculates the closed loop transfer function
 
-        Returns: control.TransferFunction
+        Args:
+            kwargs: dict (options)
+
+        Returns: 
+            control.TransferFunction
         """
-        sbml_system, _ = self.getSystem()
+        option_set = self.getOptionSet(**kwargs)
+        sbml_system, _ = self.getSystem(**option_set)
         if len(sbml_system.input_names) != 1:
             raise ValueError("Must have exactly one input to use this method.")
         if len(sbml_system.output_names) != 1:
             raise ValueError("Must have exactly one output to use this method.")
         designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(),
-                setpoint=self.setpoint, is_steady_state=sbml_system.is_steady_state,
-                sign=self.sign)
+                setpoint=option_set.setpoint, is_steady_state=sbml_system.is_steady_state,
+                sign=option_set.sign)
         kp = 0
         ki = 0
         kf = 0
@@ -356,13 +363,14 @@ class ControlSBML(OptionSet):
         Returns:
             Timeseries
         """
+        kwargs[cn.O_AX2] = 0
         option_set = self.getOptionSet(**kwargs)
         self._roadrunner.reset()
         data = self._roadrunner.simulate(self._getStarttime(option_set),
                                          self._getEndtime(option_set), self._getNumpoint(option_set))
         ts = Timeseries(data)
-        if self.is_plot:
-            util.plotOneTS(ts, markers=option_set.markers, **self.plot_options)
+        if option_set.is_plot:
+            util.plotOneTS(ts, markers=option_set.markers, **self.getPlotOptions(**option_set))
         return ts
     
     def plotStaircaseResponse(self, **kwargs):
@@ -382,11 +390,11 @@ class ControlSBML(OptionSet):
             AntimonyBuilder
         """
         option_set = self.getOptionSet(**kwargs)
-        _, siso_transfer_function_builder = self.getSystem()
+        _, siso_transfer_function_builder = self.getSystem(**option_set)
         staircase = self.getStaircase(**option_set)
         response_ts, builder = siso_transfer_function_builder.makeStaircaseResponse(
             staircase=staircase, is_steady_state=option_set.is_steady_state, times=option_set.times)
-        siso_transfer_function_builder.plotStaircaseResponse(response_ts, **self.plot_options)
+        siso_transfer_function_builder.plotStaircaseResponse(response_ts, **self.getPlotOptions(**option_set))
         return response_ts, builder
     
     def plotTransferFunctionFit(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR,
@@ -407,7 +415,7 @@ class ControlSBML(OptionSet):
             AntimonyBuilder
         """
         option_set = self.getOptionSet(**kwargs)
-        _, siso_transfer_function_builder = self.getSystem()
+        _, siso_transfer_function_builder = self.getSystem(**option_set)
         if fit_start_time is None:
             fit_start_time = option_set.times[0]
         if fit_end_time is None:
@@ -417,11 +425,13 @@ class ControlSBML(OptionSet):
                             num_denominator=num_denominator, staircase=staircase,
                             fit_start_time=fit_start_time, fit_end_time=fit_end_time, times=option_set.times)
         if self.is_plot:
-            siso_transfer_function_builder.plotFitterResult(self._fitter_result, **self.plot_options)
+            siso_transfer_function_builder.plotFitterResult(self._fitter_result, **self.getPlotOptions(**option_set))
         return self._fitter_result.time_series, self._fitter_result.antimony_builder
     
     def plotClosedLoop(self, **kwargs):
         """
+        Plots the closed loop response. Control parameters not explicity specified are None.
+
         Args:
             kwargs: dict (persistent options)
         Returns:
@@ -429,8 +439,12 @@ class ControlSBML(OptionSet):
             AntimonyBuilder
         """
         option_set = self.getOptionSet(**kwargs)
-        plot_options = {o: v for o, v in self.plot_options.items() if o != cn.O_AX2}
-        sbml_system, _ = self.getSystem()
+        # Only consider the explicitly specified parameters
+        for parameter_name in CONTROL_PARAMETERS:
+            if not parameter_name in option_set:
+                setattr(option_set, parameter_name, None)
+        plot_options = {o: v for o, v in self.getPlotOptions(**option_set).items() if o != cn.O_AX2}
+        sbml_system, _ = self.getSystem(**option_set)
         response_ts, builder = sbml_system.simulateSISOClosedLoop(input_name=self.getInputName(option_set=option_set),
                                                                   output_name=self.getOutputName(option_set=option_set),
                 kp=option_set.kp, ki=option_set.ki, kf=option_set.kf, setpoint=option_set.setpoint, sign=option_set.sign,
@@ -478,10 +492,12 @@ class ControlSBML(OptionSet):
         # Persist the design parameters
         self.setOptions(kp=designer.kp, ki=designer.ki, kf=designer.kf)
         response_ts, antimony_builder = self.plotClosedLoop(
+                times=option_set.times,
+                setpoint=option_set.setpoint,
                 sign=self.sign,
                 kp=self.kp,
                 ki=self.ki,
-                kf=self.kf, **self.plot_options)
+                kf=self.kf, **self.getPlotOptions(**option_set))
         return response_ts, antimony_builder
 
    
@@ -514,6 +530,7 @@ class ControlSBML(OptionSet):
     def _getNumpoint(self, option_set):
         return len(option_set.times)
     
-    @property
-    def plot_options(self):
-        return {n: getattr(self, n) for n in PLOT_OPTIONS if n!=C_MARKERS}
+    def getPlotOptions(self, **kwargs):
+        option_set = self.getOptionSet(**kwargs)
+        plot_options = {n: option_set[n] for n in PLOT_OPTIONS if n!=C_MARKERS}
+        return plot_options

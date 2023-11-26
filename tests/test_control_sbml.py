@@ -85,7 +85,7 @@ class TestControlSBML(unittest.TestCase):
             return
         ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE)
         ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
-        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE)
+        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, markers=False)
         if IS_PLOT:
             plt.savefig("test_plot_model.png")
         self.assertTrue(isinstance(ts, Timeseries))
