@@ -155,6 +155,30 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(self.ctlsb.getFitterResult(), cn.FitterResult))
         self.assertTrue(isinstance(self.ctlsb.getTimes(), np.ndarray))
 
+    def testFullAPI(self):
+        if IGNORE_TEST:
+            return
+        TIMES = np.linspace(0, 10000, 10000)
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        INPUT_NAME = "pIRS"
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
+        CTLSB = ControlSBML(URL, figsize=FIGSIZE, times=TIMES, markers=False)  # Specify default value of options
+        ts = CTLSB.plotModel(ax2=0, is_plot=IS_PLOT)
+        # Define the system and plot response over a controlled range
+        CTLSB = ControlSBML(URL, figsize=FIGSIZE, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME],
+                        times=np.linspace(0, 10000, 10000), markers=False, sign=-1, is_plot=False)
+        if True:
+            _, builder = CTLSB.plotStaircaseResponse(is_plot=IS_PLOT)
+            _, builder = CTLSB.plotStaircaseResponse(initial_value=20, final_value=25, is_plot=IS_PLOT)
+            _ = CTLSB.plotTransferFunctionFit(figsize=FIGSIZE, num_numerator=2, num_denominator=3, initial_value=20, final_value=25,
+                                            fit_start_time=2000, is_plot=IS_PLOT)
+            _ = CTLSB.plotClosedLoop(setpoint=150, kp=1, kf=None, is_plot=IS_PLOT)
+        ts, builder = CTLSB.plotDesign(setpoint=150, kp_spec=True, ki_spec=True, kf_spec=False, 
+                                       num_restart=1, is_plot=IS_PLOT)
+        _ = CTLSB.plotClosedLoop(setpoint=120, kp=0.002, ki=0.019, is_plot=IS_PLOT)
+        _ = CTLSB.plotClosedLoop(setpoint=150, kp=1, is_plot=IS_PLOT)
+
 
 if __name__ == '__main__':
   unittest.main()

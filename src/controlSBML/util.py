@@ -101,7 +101,7 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **k
         markers = MARKERS
         [markers.extend(markers) for _ in range(5)]
     elif markers == False:
-        markers = np.repeat("", len(MARKERS))
+        markers = np.repeat("", len(time_series.columns))
     if mgr is None:
         mgr = OptionManager(kwargs)
         is_fig = True
@@ -116,10 +116,6 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **k
     if ax is None:
         fig, ax = plt.subplots(1)
         mgr.plot_opts.set(cn.O_AX, ax)
-    ax2 = None
-    if mgr.plot_opts[cn.O_AX2] is None:
-        ax2 = ax.twinx()
-        mgr.plot_opts[cn.O_AX2] = ax2
     times = np.array(time_series.index)/cn.MS_IN_SEC
     sel_colors = list(colors)
     sel_markers = list(markers)
@@ -131,7 +127,7 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **k
     mgr.doPlotOpts()
     if is_fig:
         mgr.doFigOpts()
-    return PlotResult(ax=ax, ax2=ax2, fig=fig, time_series=time_series)
+    return PlotResult(ax=ax, ax2=None, fig=fig, time_series=time_series)
 
 @Expander(cn.KWARGS, cn.PLOT_KWARGS)
 def plotManyTS(*tss, ncol=1, names=None, **kwargs):

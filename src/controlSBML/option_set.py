@@ -17,14 +17,12 @@ class OptionSet(dict):
         self.names = list(kwargs.keys())
         for key, value in kwargs.items():
             setattr(self, key, value)
-            self.update({key: value})
+            self[key] = value
 
     def setOptionSet(self, **kwargs):
         for key, value in kwargs.items():
-            if not key in self.names:
-                raise ValueError("Option {} not recognized".format(key))
+            self[key] = value
             setattr(self, key, value)
-            self.update({key: value})
 
     def _copyOptionSet(self):
         #return OptionSet(**{k: getattr(self, k) for k in self.names})

@@ -443,7 +443,8 @@ class SBMLSystem(object):
             mgr = OptionManager(new_kwargs)
         new_kwargs["is_plot"] = False
         df = pd.DataFrame(timeseries[output_name], columns=[output_name])
-        plot_result = util.plotOneTS(df, ax2=0, colors=[cn.SIMULATED_COLOR], markers=markers, **new_kwargs)
+        new_kwargs.setdefault(cn.O_AX2, 0)
+        plot_result = util.plotOneTS(df, colors=[cn.SIMULATED_COLOR], markers=markers, **new_kwargs)
         ax = plot_result.ax
         ax.set_ylabel(output_name)
         # Plot the setpoint
@@ -463,9 +464,9 @@ class SBMLSystem(object):
         self.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
         self.setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax2.set_ylabel(input_name)
-        mgr.doPlotOpts()
+        #mgr.doPlotOpts()
         ax.legend([])
-        mgr.doFigOpts()
+        #mgr.doFigOpts()
         if is_plot:
             plt.show()
 

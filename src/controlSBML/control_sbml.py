@@ -97,6 +97,8 @@ INITIAL_OPTION_DCT = {cn.O_TITLE: "", cn.O_SUPTITLE: "", cn.O_WRITEFIG: False,
                         cn.O_FIGSIZE: FIGSIZE,
                         cn.O_IS_PLOT: True,
                         C_IS_FIXED_INPUT_SPECIES: True,
+                        C_IS_STEADY_STATE: False,
+                        C_SIGN: -1,
                         C_SETPOINT: SETPOINT}
 for key in OPTIONS:
     if not key in INITIAL_OPTION_DCT:
@@ -110,7 +112,38 @@ class ControlSBML(OptionSet):
         model_reference: str
             string, SBML file or Roadrunner object
         roadrunner: ExtendedRoadrunner
-        kwargs: dict (default values of options)
+        Plot options:
+            ax: axis for plot
+            figure: figure object
+            figsize: figure size (width, height)
+            is_plot: bool (plot if True)
+            markers: list-str (markers for plot lines; False, no markers)                                                                                       
+            suptitle: str (subtitle)
+            title: str (title)
+            xlabel: str (x label)
+            xlim: tupe-float (x lower limit, x upper limit)
+            xticklabels: list-float (labels for x ticks)
+            ylabel: str (y label)
+            ylim: tupe-float (y lower limit, y upper limit)
+            yticklabels: list-float (labels for y ticks)
+        System options:
+            input_names: list-str
+            is_steady_state: bool (start system in steady state; default: False)
+            is_fixed_input_species: bool (concentration of input species are controlled externally; default: True)
+            output_names: list-str
+        Closed loop options:
+            kf: float (filter constant)
+            ki: float (integral control)
+            kp: float (proportional control)
+            setpoint: float (regulation point)
+            sign: -1/+1 (direction of feedback: default: -1) 
+        Staircase options:
+            final_value: float (last value of input in staircase; default: maximum input value in SBML model)
+            initial_value: float (first value of input in staircase; default: minimum input value in SBML model)
+            num_step: int (number of steps in staircase; default: 5)
+        Miscellaneous options
+            times: list-float (times of simulation; default: np.linspace(0, 5, 50))
+
         """
         # First initializations
         self.model_reference = model_reference
@@ -275,7 +308,7 @@ class ControlSBML(OptionSet):
         designer.set(kp=kp, ki=ki, kf=kf)
         return designer.closed_loop_tf
     
-    def getParameterStr(self, parameters):
+    def getParameterStr(self, parameters, **kwargs):
         """
         Provides a string representation of a persistent option.
         Args:
@@ -285,8 +318,9 @@ class ControlSBML(OptionSet):
         """
         stg = ""
         for name in parameters:
-            if getattr(self, name) is not None:
-                stg += "{}={} ".format(name, np.round(getattr(self, name), 4))
+            if name in kwargs.keys():
+                if kwargs[name] is not None:
+                    stg += "{}={} ".format(name, np.round(kwargs[name], 4))
         return stg
 
     ############ SETTERS ##############
@@ -441,9 +475,12 @@ class ControlSBML(OptionSet):
         option_set = self.getOptionSet(**kwargs)
         # Only consider the explicitly specified parameters
         for parameter_name in CONTROL_PARAMETERS:
-            if not parameter_name in option_set:
-                setattr(option_set, parameter_name, None)
-        plot_options = {o: v for o, v in self.getPlotOptions(**option_set).items() if o != cn.O_AX2}
+            if not parameter_name in kwargs.keys():
+                option_set.setOptionSet(**{parameter_name: None})
+        # Extract the plot options, but not axis 2
+        #plot_options = {o: v for o, v in self.getPlotOptions(**option_set).items() if o != cn.O_AX2}
+        plot_options = self.getPlotOptions(**option_set)
+        # Construct the SBML system
         sbml_system, _ = self.getSystem(**option_set)
         response_ts, builder = sbml_system.simulateSISOClosedLoop(input_name=self.getInputName(option_set=option_set),
                                                                   output_name=self.getOutputName(option_set=option_set),
@@ -451,8 +488,9 @@ class ControlSBML(OptionSet):
                 times=option_set.times, is_steady_state=sbml_system.is_steady_state, inplace=False, initial_input_value=None,
                 )
         if (not "title" in plot_options) or (len(plot_options["title"]) == 0):
-            plot_options["title"] = self.getParameterStr([C_KP, C_KI, C_KF])
-        sbml_system.plotSISOClosedLoop(response_ts, option_set.setpoint, markers=None, **plot_options)
+            plot_options["title"] = self.getParameterStr([C_KP, C_KI, C_KF], **option_set)
+        _ = plot_options.setdefault(C_MARKERS, False)
+        sbml_system.plotSISOClosedLoop(response_ts, option_set.setpoint, **plot_options)
         return response_ts, builder
 
     def plotDesign(self, kp_spec=None, ki_spec=None, kf_spec=None, min_parameter_value=0,
@@ -488,16 +526,18 @@ class ControlSBML(OptionSet):
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
-        self.setOptions(kp=designer.kp, ki=designer.ki, kf=designer.kf, ylabel=self.getOutputName())
+        self.setOptions(kp=designer.kp, ki=designer.ki, kf=designer.kf)
         # Persist the design parameters
         self.setOptions(kp=designer.kp, ki=designer.ki, kf=designer.kf)
+        _ = option_set.setdefault(cn.O_YLABEL, self.getOutputName(option_set=option_set))
         response_ts, antimony_builder = self.plotClosedLoop(
                 times=option_set.times,
                 setpoint=option_set.setpoint,
                 sign=self.sign,
                 kp=self.kp,
                 ki=self.ki,
-                kf=self.kf, **self.getPlotOptions(**option_set))
+                kf=self.kf, 
+                **self.getPlotOptions(**option_set))
         return response_ts, antimony_builder
 
    
