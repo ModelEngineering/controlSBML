@@ -136,9 +136,9 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         sys_tf = control.tf([1], [1, 1])
         designer = scld.SISOClosedLoopDesigner(sys_tf)
         designer.set(kp=20)
-        _, prediction1s = designer.simulate()
+        _, prediction1s = designer.simulateTransferFunction()
         designer.set(kp=20, ki=50)
-        _, prediction2s = designer.simulate()
+        _, prediction2s = designer.simulateTransferFunction()
         self.assertLess(calcDiff(prediction2s), calcDiff(prediction1s))
 
     def testPlot(self):

@@ -200,9 +200,9 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         sys_tf = control.tf([1], [1, 1])
         designer = cld.SISOClosedLoopDesigner(SYSTEM, sys_tf)
         designer.set(kp=20)
-        _, prediction1s = designer.simulate()
+        _, prediction1s = designer.simulateTransferFunction()
         designer.set(kp=20, ki=50)
-        _, prediction2s = designer.simulate()
+        _, prediction2s = designer.simulateTransferFunction()
         self.assertLess(calcDiff(prediction2s), calcDiff(prediction1s))
 
     def testPlot(self):
@@ -290,26 +290,10 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=times, setpoint=SETPOINT)
         initial_dct = {"kp": 1, "ki": 1}
         fixed_dct = {}
-        value_dct = designer._findFeasibleClosedLoopSystem(initial_dct, fixed_dct)
+        value_dct = designer._searchForFeasibleClosedLoopSystem(initial_dct, fixed_dct)
         designer.set(**value_dct)
         ts, _ = designer.evaluate(is_plot=IS_PLOT)
         self.assertTrue(np.isclose(SETPOINT, ts[OUTPUT_NAME].values[-1], atol=0.1))
-
-    def testIsFeasibleSystem(self):
-        if IGNORE_TEST:
-            return
-        # Feasible system
-        self.init()
-        result = self.designer._isFeasibleSystem(kp=1, ki=1)
-        self.assertTrue(result)
-        # Infesible system
-        system = ctl.SBMLSystem(LINEAR_MDL, input_names=["k0"], output_names=["S3"], is_fixed_input_species=True,
-                                is_steady_state=False)
-        linear_tf = control.tf([1], [1, 1])
-        designer = cld.SISOClosedLoopDesigner(system, linear_tf, times=TIMES, setpoint=5)
-        result = designer._isFeasibleSystem(kp=100, ki=100)
-        self.assertFalse(result)
-
 
 
 #############################

@@ -108,6 +108,11 @@ O_YLABEL = "ylabel"
 O_YLIM = "ylim"
 O_YTICKLABELS = "yticklabels"
 
+# Control parameters
+CP_KP = "kp"
+CP_KI = "ki"
+CP_KF = "kf"
+
 # Default values of options
 SIM_DCT = dict(
       step_val=STEP_VAL,
