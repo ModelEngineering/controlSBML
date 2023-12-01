@@ -9,6 +9,7 @@ from controlSBML.option_management.option_manager import OptionManager
 from controlSBML import util
 from controlSBML import msgs 
 from controlSBML.timeseries import Timeseries
+from controlSBML.grid import Grid
 
 import control
 import lmfit
@@ -118,7 +119,7 @@ class SISOClosedLoopDesigner(object):
             kd (float)
             kf (float)
         """
-        value_dct = {"kp": kp, "ki": ki, "kf": kf}
+        value_dct = {COL_KP: kp, "ki": ki, "kf": kf}
         for name, value in value_dct.items():
             if value is None:
                 continue
@@ -203,7 +204,7 @@ class SISOClosedLoopDesigner(object):
             if name in params.keys():
                 return params[name].value
             return None
-        return get("kp"), get("ki"), get("kf")
+        return get(COL_KP), get("ki"), get("kf")
 
     def _findFeasibleClosedLoopSystem(self, value_dct, fixeds, min_value=MIN_VALUE, max_value=MAX_VALUE, max_iteration=10):
         """
@@ -257,7 +258,8 @@ class SISOClosedLoopDesigner(object):
             return None
         return dct
     
-    def _calculateRandomParameterValues(self, value_dct, fixeds, min_value=MIN_VALUE, max_value=MAX_VALUE):
+    def _calculateRandomParameterValues(self, value_dct, fixeds, min_value=MIN_VALUE, max_value=MAX_VALUE,
+                                        is_grid_search=True, restart_idx=0, num_restart=1):
         """
         Calculates values for the non-fixed, non-None parameters.
 
@@ -268,6 +270,9 @@ class SISOClosedLoopDesigner(object):
             fixeds: list-str
             min_value: float/dict (parameter name: value)
             max_value: float/dict (parameter name: value)
+            is_grid_search: bool (if True, then grid search is used)
+            restart_idx: int (index of the restart)
+            num_restart: int (number of restarts)
         Returns:
             dict
         """
@@ -283,19 +288,26 @@ class SISOClosedLoopDesigner(object):
         min_dct = makeDct(min_value, MIN_VALUE)
         max_dct = makeDct(max_value, MAX_VALUE)
         new_value_dct = {}
-        for name, value in value_dct.items():
-            if name in fixeds:
-                new_value_dct[name] = value
-                continue
-            if value is None:
-                continue
-            if (isinstance(value, bool) and value == False):
-                continue
-            new_value_dct[name] = np.random.uniform(min_dct[name], max_dct[name])
+        # Handle random search
+        if not is_grid_search:
+            for name, value in value_dct.items():
+                if name in fixeds:
+                    new_value_dct[name] = value
+                    continue
+                if value is None:
+                    continue
+                if (isinstance(value, bool) and value == False):
+                    continue
+                new_value_dct[name] = np.random.uniform(min_dct[name], max_dct[name])
+        # Handle grid search
+        else:
+            # Find the grid values
+            pass
         return new_value_dct
 
     def design(self, input_name=None, output_name=None, kp_spec=False, ki_spec=False, kf_spec=False, max_iteration=10,
-               num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE):
+               num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE, is_grid_search=True,
+               num_coordinate=3):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -305,6 +317,8 @@ class SISOClosedLoopDesigner(object):
             num_restart: int (number of times to restart the minimizer)
             min_value: float/dict (parameter name: value)
             max_value: float/dict (parameter name: value)
+            is_grid_search: restarts are done in different regions of the parameter space
+            num_coordinate: int (number of coordinates for a parameter; minimum is 2)
         """
         def assignParameterValue(parameter_spec):
             if parameter_spec is None:
@@ -345,22 +359,37 @@ class SISOClosedLoopDesigner(object):
             residuals = self.setpoint - response_ts[output_name].values
             return np.mean(residuals**2)
         # Initializations
-        value_dct = {"kp": kp, "ki": ki, "kf": kf}
+        value_dct = {COL_KP: kp, "ki": ki, "kf": kf}
         fixeds = [n for n, v in value_dct.items() if isinstance(v, float)]
         self._initializeDesigner()
+        # Grid initializations
+        # FIXME: Need to restructure to preserve old and use grid search
+        if is_grid_search:
+            grid = Grid()
+            parameter_names = []
+            if kp_spec:
+                parameter_names.append(COL_KP)
+            if ki_spec:
+                parameter_names.append(COL_KI)
+            if kf_spec:
+                parameter_names.append(COL_KF)
+            for name in parameter_names:
+                grid.addAxis(name, min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
         # Iterate across restarts
         best_varying_dct = dict(value_dct)
         best_mse = None
-        for _ in range(num_restart):
+        for restart_idx in range(num_restart):
             # Fit the parameters
-            new_value_dct = self._calculateRandomParameterValues(value_dct, fixeds, min_value=min_value, max_value=max_value)
+            new_value_dct = self._calculateRandomParameterValues(value_dct, fixeds, min_value=min_value, max_value=max_value,
+                                                                 is_grid_search=is_grid_search, 
+                                                                 restart_idx=restart_idx, num_restart=num_restart)
             stable_value_dct = self._findFeasibleClosedLoopSystem(new_value_dct, fixeds, min_value=min_value,
                                                                   max_value=max_value, max_iteration=max_iteration)
             if stable_value_dct is None:
                 # Try simplifying by using proportional control
-                new_value_dct["kp"] = DEFAULT_INITIAL_VALUE
-                new_value_dct["ki"] = None
-                new_value_dct["kf"] = None
+                new_value_dct[COL_KP] = DEFAULT_INITIAL_VALUE
+                new_value_dct[COL_KI] = None
+                new_value_dct[COL_KF] = None
                 stable_value_dct = self._findFeasibleClosedLoopSystem(new_value_dct, fixeds, min_value=min_value,
                                                                   max_value=max_value, max_iteration=max_iteration)
                 if stable_value_dct is None:

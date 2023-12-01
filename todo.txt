@@ -1,6 +1,4 @@
 CTLSB.plotSBMLSystem - does a plot with multiple inputs and multiple outputs.
-Describe persistent options: times, staircase, plot options?
-Are negative values of boundaries (rate rule or species) handled correctly?
 Noise & disturbances
 MISO
 Bugs

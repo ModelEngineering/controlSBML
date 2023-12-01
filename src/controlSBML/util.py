@@ -10,7 +10,6 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import urllib.request
-import warnings
 
 
 REPO_URL =  "https://github.com/ModelEngineering/controlSBML/raw/main"
