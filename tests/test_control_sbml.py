@@ -124,7 +124,9 @@ class TestControlSBML(unittest.TestCase):
             return
         setpoint = 5
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT)
+        ts, builder = self.ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
+                                            min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
+                                            num_coordinate=5)
         # Show that kp, ki are now the defaults
         _ = self.ctlsb.plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kp=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))

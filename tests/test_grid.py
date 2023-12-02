@@ -5,7 +5,7 @@ import unittest
 
 
 IGNORE_TEST = False
-IS_PLOT = True
+IS_PLOT = False
 NUM_COORDINATE = 3
 
 

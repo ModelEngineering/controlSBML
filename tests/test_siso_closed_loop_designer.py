@@ -63,7 +63,7 @@ end
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
 INPUT_NAME = "S0"
 OUTPUT_NAME = "S2"
-SYSTEM = ctl.SBMLSystem(MODEL2, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+SYSTEM = ctl.SBMLSystem(MODEL2, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
 TRANSFER_FUNCTION = control.TransferFunction(np.array([1.51083121, 2.01413339]), np.array([1.67214802, 1.24125478, 9.99999997]))
 TIMES = np.linspace(0, 20, 200)
 PARAMETER_DCT = {p: n+1 for n, p in enumerate(cld.PARAM_NAMES)}
@@ -153,44 +153,6 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer.set(**param_dct)
         designer.evaluate(is_plot=IS_PLOT)
 
-    def testCalculateRandomParameterValues(self):
-        if IGNORE_TEST:
-            return
-        self.init()
-        def test(kp=False, ki=False, kf=False, fixeds=None):
-            if fixeds is None:
-                fixeds = []
-            value_dct = {"kp": kp, "ki": ki, "kf": kf}
-            dct = self.designer._calculateRandomParameterValues(value_dct, fixeds)
-            for name, value in dct.items():
-                if name in fixeds:
-                    self.assertEqual(value_dct[name], value_dct[name])
-                elif isinstance(value, float):
-                    self.assertNotEqual(value_dct[name], value)
-                    self.assertTrue(isinstance(value, float))
-                else:
-                    self.assertTrue(False)
-        #
-        test(kp=True)
-        test(ki=True, kp=3, fixeds=["kp"])
-        test(ki=True, kp=3, kf=None, fixeds=["kp"])
-    
-    def testCalculateRandomParameterValuesWithDict(self):
-        if IGNORE_TEST:
-            return
-        self.init()
-        def test(max_dct, kp=False, ki=False):
-            value_dct = {"kp": kp, "ki": ki}
-            dct = self.designer._calculateRandomParameterValues(value_dct, {}, max_value=max_dct)
-            for name, value in dct.items():
-                if isinstance(value, float):
-                    self.assertNotEqual(value_dct[name], value)
-                    self.assertTrue(isinstance(value, float))
-                else:
-                    self.assertTrue(False)
-        #
-        test({"kp": 1, "kf": 100}, kp=True, ki=True)
-
     def testSimulate(self):
         if IGNORE_TEST:
             return
@@ -224,8 +186,22 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         designer = self.makeDesigner()
-        designer.design(kp_spec=True, ki_spec=True)
+        designer.design(kp_spec=True, ki_spec=True, min_value=0.1, max_value=10, num_restart=1)
         designer.plot(is_plot=IS_PLOT, markers=["", ""])
+        self.assertGreater(designer.kp, 0)
+        self.assertGreater(designer.ki, 0)
+        self.assertIsNone(designer.kf)
+
+    def testPlot3(self):
+        if IGNORE_TEST:
+            return
+        designer = self.makeDesigner()
+        designer.design(kp_spec=True, ki_spec=True, kf_spec=True, min_value=0.1, max_value=10, 
+                        num_coordinate=5, num_restart=1)
+        designer.plot(is_plot=IS_PLOT, markers=["", ""])
+        self.assertGreater(designer.kp, 0)
+        self.assertGreater(designer.ki, 0)
+        self.assertGreater(designer.kf, 0)
 
     def test_closed_loop_tf(self):
         # Checks that the closed loop transfer function is calculated correctly
@@ -290,7 +266,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=times, setpoint=SETPOINT)
         initial_dct = {"kp": 1, "ki": 1}
         fixed_dct = {}
-        value_dct = designer._searchForFeasibleClosedLoopSystem(initial_dct, fixed_dct)
+        value_dct = designer._searchForFeasibleClosedLoopSystem(initial_dct)
         designer.set(**value_dct)
         ts, _ = designer.evaluate(is_plot=IS_PLOT)
         self.assertTrue(np.isclose(SETPOINT, ts[OUTPUT_NAME].values[-1], atol=0.1))

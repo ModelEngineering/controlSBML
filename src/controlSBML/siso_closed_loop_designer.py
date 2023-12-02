@@ -158,7 +158,7 @@ class SISOClosedLoopDesigner(object):
         self.kd = None
         self.kf = None
 
-    def _searchForFeasibleClosedLoopSystem(self, value_dct, fixeds, max_iteration=10):
+    def _searchForFeasibleClosedLoopSystem(self, value_dct, max_iteration=10):
         """
         Does a greedy search to find values of the parameters that are minimally stable.
 
@@ -166,7 +166,6 @@ class SISOClosedLoopDesigner(object):
             value_dct: dict (name: value)
                 key: name of parameter
                 value: value of parameter or None
-            fixeds: list-str (parameters whose values don't change)
             max_iteration: int (maximum number of iterations)
         Returns:
             dict: {name: value} or None (no stable result found)
@@ -180,9 +179,7 @@ class SISOClosedLoopDesigner(object):
         def mult(dct, factor):
             new_dct = {}
             for name, value in dct.items():
-                if name in fixeds:
-                    new_dct[name] = value
-                elif value is None:
+                if value is None:
                     new_dct[name] = None
                 else:
                     new_dct[name] = factor*value
@@ -210,17 +207,17 @@ class SISOClosedLoopDesigner(object):
             return None
         return dct
 
-    def design(self, kp_spec=False, ki_spec=False, kf_spec=False, max_iteration=10,
-               num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE, is_grid_search=True,
+    def design(self, kp_spec=False, ki_spec=False, kf_spec=False, is_greedy=True,
+               num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
                num_coordinate=3):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
             kp_spec, ki_spec, kf_spec (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
             num_restart: int (number of times to restart the minimizer)
+            is_greedy: bool (if True, then a greedy search is done to find a feasible system)
             min_value: float/dict (parameter name: value)
             max_value: float/dict (parameter name: value)
-            is_grid_search: restarts are done in different regions of the parameter space
             num_coordinate: int (number of coordinates for a parameter; minimum is 2)
         """
         def addAxis(grid, parameter_name, parameter_spec):
@@ -249,19 +246,22 @@ class SISOClosedLoopDesigner(object):
         # Initializations
         evaluator = SISODesignEvaluator(self.system, input_name=self.input_name,
                                     output_name=self.output_name, setpoint=self.setpoint, times=self.times)
-        grid = Grid()
-        addAxis(grid, cn.CP_KP, kp_spec)
-        addAxis(grid, cn.CP_KI, ki_spec)
-        addAxis(grid, cn.CP_KF, kf_spec)
-        # Iterate to find values
-        for point in grid.points:
-            evaluator.evaluate(**point)
+        for _ in range(num_restart):
+            grid = Grid(default_min=min_value, default_max=max_value, default_num_coordinate=num_coordinate)
+            addAxis(grid, cn.CP_KP, kp_spec)
+            addAxis(grid, cn.CP_KI, ki_spec)
+            addAxis(grid, cn.CP_KF, kf_spec)
+            # Iterate to find values
+            for point in grid.points:
+                if is_greedy:
+                    new_point = self._searchForFeasibleClosedLoopSystem(point, max_iteration=10)
+                else:
+                    new_point = point
+                evaluator.evaluate(**new_point)
         # Record the result
         self.residual_mse = evaluator.residual_mse
         self.set(kp=evaluator.kp, ki=evaluator.ki, kf=evaluator.kf)
-        if self.residual_mse is None:
-            return msgs.warn("Could not find a feasible design.")
-        else:
+        if self.residual_mse is not None:
             self.history.add()
 
     def simulateTransferFunction(self, transfer_function=None, period=None):

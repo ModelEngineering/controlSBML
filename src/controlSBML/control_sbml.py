@@ -493,8 +493,9 @@ class ControlSBML(OptionSet):
         sbml_system.plotSISOClosedLoop(response_ts, option_set.setpoint, **plot_options)
         return response_ts, builder
 
-    def plotDesign(self, kp_spec=None, ki_spec=None, kf_spec=None, min_parameter_value=0,
-                                 max_parameter_value=10, max_iteration=20, num_restart=3, **kwargs):
+    def plotDesign(self, kp_spec:bool=False, ki_spec:bool=False, kf_spec:bool=False, min_parameter_value:float=0,
+                                 max_parameter_value:float=10, num_restart:int=3, 
+                                 num_coordinate:int=3, is_greedy:bool=True, **kwargs):
         """
         Plots the results of a closed loop design. The design is specified by the parameters kp_spec, ki_spec, and kf_spec.
            None or False: do not include the parameter
@@ -509,6 +510,8 @@ class ControlSBML(OptionSet):
             kf_spec: float (specification of filter gain)
             min_parameter_value: float (minimum value for kp, ki, kf; may be a dictionary)
             max_parameter_value: float (maximum value for kp, ki, kf; may be a dictionary)
+            num_coordinate: int (number of coordinate descent iterations)
+            is_greedy: bool (if True, use greedy algorithm)
             kwargs: dict (persistent options)
         Returns:
             Timeseries
@@ -518,11 +521,12 @@ class ControlSBML(OptionSet):
         sbml_system, _ = self.getSystem(**option_set)
         designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(),
                 setpoint=option_set.setpoint, is_steady_state=option_set.is_steady_state, times=option_set.times,
-                sign=option_set.sign)
-        designer.design(input_name=self.getInputName(option_set=option_set),
-                        output_name=self.getOutputName(option_set=option_set),
-                kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec, max_iteration=max_iteration,
-                num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value)
+                sign=option_set.sign,
+                input_name=self.getInputName(option_set=option_set),
+                output_name=self.getOutputName(option_set=option_set))
+        designer.design(kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec,
+                num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
+            num_coordinate=num_coordinate, is_greedy=is_greedy)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
