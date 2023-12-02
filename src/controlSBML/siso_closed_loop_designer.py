@@ -34,7 +34,7 @@ COL_SETPOINT = "setpoint"
 
 
 ##################################################################
-def _calculateClosedLoopTf(open_loop_transfer_function=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
+def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
     # Construct the transfer functions
     if open_loop_transfer_function is None:
         return None
@@ -107,15 +107,15 @@ class SISOClosedLoopDesigner(object):
         self.history.add()
 
     @property
-    def closed_loop_tf(self):
+    def closed_loop_transfer_function(self):
         if self.open_loop_transfer_function is None:
             return None
-        return _calculateClosedLoopTf(open_loop_transfer_function=self.open_loop_transfer_function, kp=self.kp, ki=self.ki,
+        return _calculateClosedLoopTransferFunction(open_loop_transfer_function=self.open_loop_transfer_function, kp=self.kp, ki=self.ki,
                                       kf=self.kf, sign=self.sign)
     
     @property
-    def closed_loop_ts(self):
-        _, closed_loop_ts = self.simulateTransferFunction(transfer_function=self.closed_loop_tf)
+    def closed_loop_timeseries(self):
+        _, closed_loop_ts = self.simulateTransferFunction(transfer_function=self.closed_loop_transfer_function)
         return closed_loop_ts
     
     def set(self, kp=None, ki=None, kf=None):
@@ -254,7 +254,7 @@ class SISOClosedLoopDesigner(object):
         addAxis(grid, cn.CP_KI, ki_spec)
         addAxis(grid, cn.CP_KF, kf_spec)
         # Iterate to find values
-        for point in grid.iteratePoints():
+        for point in grid.points:
             evaluator.evaluate(**point)
         # Record the result
         self.residual_mse = evaluator.residual_mse
@@ -276,9 +276,9 @@ class SISOClosedLoopDesigner(object):
             ValueError: if there are no parameters defined for the closed loop transfer function
         """
         if transfer_function is None:
-            if self.closed_loop_tf is None:
+            if self.closed_loop_transfer_function is None:
                 raise ValueError("No closed loop transfer function defined.")
-            transfer_function = self.closed_loop_tf
+            transfer_function = self.closed_loop_transfer_function
         if period is not None:
             U = np.sin(2*np.pi*self.times/period)
         else:

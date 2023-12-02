@@ -1,21 +1,11 @@
 from controlSBML.grid import Grid, Axis
-
-import unittest
-
-from controlSBML import util
 from controlSBML.timeseries import Timeseries
-import controlSBML.constants as cn
-import controlSBML as ctl
 
-import control
-import pandas as pd
-import numpy as np
-import tellurium as te
 import unittest
 
 
 IGNORE_TEST = False
-IS_PLOT = False
+IS_PLOT = True
 NUM_COORDINATE = 3
 
 
@@ -95,7 +85,7 @@ class TestGrid(unittest.TestCase):
             return
         self.grid.addAxis("test1", min_value=0, max_value=10, num_coordinate=5)
         self.grid.addAxis("test2", min_value=100, max_value=200, num_coordinate=NUM_COORDINATE)
-        points = list(self.grid.iteratePoints())
+        points = list(self.grid._iteratePoints())
         self.assertEqual(len(points), self.grid.num_point)
 
     def testPlot(self):
@@ -106,10 +96,9 @@ class TestGrid(unittest.TestCase):
         self.grid.plot(is_plot=IS_PLOT, figsize=(5,5))
         #
         axis = self.grid.getAxis("parm1")
-        axis.min_value = 150
-        axis.max_value = 160
-        axis.num_coordinate = 10
-        self.grid.generatePoints()
+        axis.setMinValue(150)
+        axis.setMaxValue(160)
+        axis.setNumCoordinate(10)
         self.grid.plot(is_plot=IS_PLOT, figsize=(5,5))
 
 if __name__ == '__main__':

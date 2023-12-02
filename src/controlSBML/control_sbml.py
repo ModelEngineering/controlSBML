@@ -306,7 +306,7 @@ class ControlSBML(OptionSet):
                 stmt = "%s = %f" % (parameter_name, parameter)
                 exec(stmt)
         designer.set(kp=kp, ki=ki, kf=kf)
-        return designer.closed_loop_tf
+        return designer.closed_loop_transfer_function
     
     def getParameterStr(self, parameters, **kwargs):
         """

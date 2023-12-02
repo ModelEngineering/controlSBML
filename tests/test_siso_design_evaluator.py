@@ -12,7 +12,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 TIMES = np.linspace(0, 100, 1000)
 MODEL_UNSTABLE = """
@@ -67,8 +67,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertTrue(mse > 0)
 
     def testEvaluate(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         parameter_dct = {cn.CP_KP: 1, cn.CP_KI: 1, cn.CP_KF: 1}
         self.evaluator_stable.evaluate(**parameter_dct)
         self.assertTrue(self.evaluator_stable.residual_mse > 0)

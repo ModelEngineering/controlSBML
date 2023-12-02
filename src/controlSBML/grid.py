@@ -33,10 +33,9 @@ Usage:
 
     # Change the coordinates for an axis
     axis = grid.getAxis("P1")
-    axis.min_value = 2
-    axis.max_value = 8
-    axis.num_coordinate = 25
-    grid.generatePoints()
+    axis.setMinValue(2)
+    axis.setMaxValue(8)
+    axis.setNumCoordinate(25)
 """
 from controlSBML.option_management.option_manager import OptionManager
 import controlSBML.constants as cn
@@ -53,7 +52,7 @@ DEFAULT_NUM_COORDINATE = 3
 
 class Axis:
     def __init__(self, parameter_name:str, min_value:float=None, max_value:float=None, num_coordinate:int=None,
-                 is_random:bool=False):
+                 is_random:bool=False, notifier=None):
         """
         Specifies the axis for a parameter.
 
@@ -63,16 +62,51 @@ class Axis:
             max_value: float (maximum value for parameter)
             num_coordinate: int (number of point coordinates for parameter)
             is_random: bool (True: random points; False: use midpoint of grid element)
+            notifier: function (called when an axis value is changed: no arguments, no return value)
         """
         self.parameter_name = parameter_name
         self.min_value = min_value
         self.max_value = max_value
         self.num_coordinate = num_coordinate
         self.is_random = is_random
+        if notifier is None:
+            notifier = lambda: None
+        self.notifier = notifier
 
     def __repr__(self)->str:
         return "Axis({}, min_value={}, max_value={}, num_coordinate={})".format(self.parameter_name,
                                                                                 self.min_value, self.max_value, self.num_coordinate)
+    ######## Setters ########
+    def setMinValue(self, min_value:float):
+        """
+        Sets the minimum value for the axis.
+
+        Args:
+            min_value: float (minimum value for parameter)
+        """
+        self.min_value = min_value
+        self.notifier()
+
+    def setMaxValue(self, max_value:float):
+        """
+        Sets the maximum value for the axis.
+
+        Args:
+            max_value: float (maximum value for parameter)
+        """
+        self.max_value = max_value
+        self.notifier()
+
+    def setNumCoordinate(self, num_coordinate:int):
+        """
+        Sets the number of coordinates for the axis.
+
+        Args:
+            num_coordinate: int (number of point coordinates for parameter)
+        """
+        self.num_coordinate = num_coordinate
+        self.notifier() 
+
     @property
     def coordinates(self):
         """
@@ -143,7 +177,13 @@ class Grid(object):
         # Updated when an axis is added
         #   key: parameter name
         #   value: list of coordinates corresponding to points for the parameter
-        self.coordinate_dct = {}   # Updated when an axis is added
+        self._points = None
+
+    def notifyAxisChange(self):
+        """
+        Notifies the grid that an axis has changed.
+        """
+        self._points = None
 
     def __repr__(self)->str:
         dct = {"name": [], "min": [], "max": [], "num_coordinate": []}
@@ -169,11 +209,9 @@ class Grid(object):
         if min_value >= max_value:
             raise ValueError("min_value must be less than max_value: {} >= {}".format(min_value, max_value))
         self.axis_dct[parameter_name] = Axis(parameter_name, min_value=min_value, max_value=max_value,
-                                             num_coordinate=num_coordinate, is_random=self.is_random)
-        self.generatePoints()
-        
-    def generatePoints(self):
-        self.coordinate_dct = {p: a.getPointCoordinates() for p, a in self.axis_dct.items()}
+                                             num_coordinate=num_coordinate, is_random=self.is_random,
+                                             notifier=self.notifyAxisChange)
+        self._points = None
         
     @property
     def num_point(self)->int:
@@ -183,20 +221,21 @@ class Grid(object):
         Returns:
             int: number of points
         """
-        return np.prod([v.num_coordinate - 1 for v in self.axis_dct.values()])
+        return len(self.points)
     
-    def deprecatedIteratePoints(self):
+    @property
+    def points(self)->typing.List[typing.Dict[str, float]]:
         """
-        Creates an iterator that returns a point.
+        Gets the list of points.
 
         Returns:
-            dict (key: parameter name; value: float)
+            list-dict: list of points
         """
-        coordinate_lists = list(self.coordinate_dct.values())
-        for coordinates in itertools.product(*coordinate_lists):
-            yield {p: v for p, v in zip(self.axis_dct.keys(), coordinates)}
+        if self._points is None:
+            self._points = list(self._iteratePoints())
+        return self._points
 
-    def iteratePoints(self):
+    def _iteratePoints(self):
         """
         Creates an iterator that returns a point.
 
@@ -252,7 +291,7 @@ class Grid(object):
         # Do the points
         xv = []
         yv = []
-        for point in self.iteratePoints():
+        for point in self.points:
             xv.append(point[axes[XAXIS].parameter_name])
             yv.append(point[axes[YAXIS].parameter_name])
         ax.scatter(xv, yv, marker="o", color="red")

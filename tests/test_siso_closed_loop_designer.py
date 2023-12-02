@@ -111,8 +111,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         sys_tf = control.tf([1], [1, 2])
-        closed_loop_tf_kp = cld._calculateClosedLoopTf(open_loop_transfer_function=sys_tf, kp=3)
-        closed_loop_tf_ki = cld._calculateClosedLoopTf(open_loop_transfer_function=sys_tf, ki=3)
+        closed_loop_tf_kp = cld._calculateClosedLoopTransferFunction(open_loop_transfer_function=sys_tf, kp=3)
+        closed_loop_tf_ki = cld._calculateClosedLoopTransferFunction(open_loop_transfer_function=sys_tf, ki=3)
         _, ys_kp = control.step_response(closed_loop_tf_kp, TIMES)
         _, ys_ki = control.step_response(closed_loop_tf_ki, TIMES)
         self.assertTrue(ys_kp[-1] < ys_ki[-1])
@@ -124,10 +124,10 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         sys_tf = control.tf([1], [1, 1])
         designer = cld.SISOClosedLoopDesigner(sys_tf)
         with self.assertRaises(ValueError):
-            _ = designer.closed_loop_tf()
+            _ = designer.closed_loop_transfer_function()
         #
         designer.kf = 4
-        closed_loop_tf = designer.closed_loop_tf
+        closed_loop_tf = designer.closed_loop_transfer_function
         numr = np.array(closed_loop_tf.num[0][0])
         self.assertTrue(np.allclose(numr, [20000, 80000, 0]))
         denr = np.array(closed_loop_tf.den[0][0])
@@ -243,7 +243,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         #
         designer = cld.SISOClosedLoopDesigner(self.system, sys_tf, setpoint=5)
         designer.set(kp=2, ki=3)
-        closed_loop_tf = designer.closed_loop_tf
+        closed_loop_tf = designer.closed_loop_transfer_function
         func1 = lambda x: float(closed_loop_tf(x))
         cltf_nums = cltf.subs({kp: 2, ki: 3})
         func2 = lambda x: sympy.N(cltf_nums.subs({s: x}))
