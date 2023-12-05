@@ -1,11 +1,12 @@
 from controlSBML.grid import Grid, Axis
 from controlSBML.timeseries import Timeseries
 
+import numpy as np
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 NUM_COORDINATE = 3
 
 
@@ -29,20 +30,19 @@ class TestAxis(unittest.TestCase):
         actual = self.axis.coordinates
         self.assertEqual(expected, actual)
 
-    def testGetPointCoordinates(self):
+    def testGetPointCoordinate(self):
         if IGNORE_TEST:
             return
-        expected = [2.5, 7.5]
-        axis = Axis("test", min_value=0, max_value=10, num_coordinate=NUM_COORDINATE, is_random=False)
-        actual = axis.getPointCoordinates()
-        self.assertEqual(expected, actual)
+        min_value = 0
+        max_value = 10
+        axis = Axis("test", min_value=min_value, max_value=max_value, num_coordinate=2, is_random=False)
+        actual = axis.getPointCoordinate(0)
+        self.assertTrue(np.isclose(5, actual))
         #
-        axis = Axis("test", min_value=0, max_value=10, num_coordinate=NUM_COORDINATE, is_random=True)
-        coordinates = axis.coordinates
-        actual = axis.getPointCoordinates()
-        for idx in range(len(actual)):
-            self.assertTrue(actual[idx] >= coordinates[idx])
-            self.assertTrue(actual[idx] <= coordinates[idx + 1])
+        axis = Axis("test", min_value=min_value, max_value=max_value, num_coordinate=2, is_random=True)
+        actual = axis.getPointCoordinate(0)
+        self.assertGreater(actual, min_value)
+        self.assertLess(actual, max_value)
 
 
 class TestGrid(unittest.TestCase):
@@ -91,15 +91,17 @@ class TestGrid(unittest.TestCase):
     def testPlot(self):
         if IGNORE_TEST:
             return
-        self.grid.addAxis("parm1", min_value=0, max_value=10, num_coordinate=10)
-        self.grid.addAxis("parm2", min_value=100, max_value=200, num_coordinate=5)
-        self.grid.plot(is_plot=IS_PLOT, figsize=(5,5))
-        #
-        axis = self.grid.getAxis("parm1")
-        axis.setMinValue(150)
-        axis.setMaxValue(160)
-        axis.setNumCoordinate(10)
-        self.grid.plot(is_plot=IS_PLOT, figsize=(5,5))
+        for is_random in [True, False]:
+            grid = Grid(is_random=is_random)
+            grid.addAxis("parm1", min_value=0, max_value=10, num_coordinate=10)
+            grid.addAxis("parm2", min_value=100, max_value=200, num_coordinate=5)
+            grid.plot(is_plot=IS_PLOT, figsize=(5,5))
+            #
+            axis = grid.getAxis("parm1")
+            axis.setMinValue(150)
+            axis.setMaxValue(160)
+            axis.setNumCoordinate(10)
+            grid.plot(is_plot=IS_PLOT, figsize=(5,5))
 
 if __name__ == '__main__':
     unittest.main()

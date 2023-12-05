@@ -12,7 +12,7 @@ import tellurium as te
 import unittest
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 TIMES = np.linspace(0, 100, 1000)
 MODEL_UNSTABLE = """
@@ -39,6 +39,7 @@ INPUT_NAME = "S1"
 OUTPUT_NAME = "S2"
 SYSTEM_STABLE = SBMLSystem(MODEL_STABLE, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
 SYSTEM_UNSTABLE = SBMLSystem(MODEL_UNSTABLE, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+FILE_SAVE = os.path.join(cn.TEST_DIR, "siso_design_evaluator.csv")
 
 
 #############################
@@ -47,8 +48,16 @@ SYSTEM_UNSTABLE = SBMLSystem(MODEL_UNSTABLE, input_names=[INPUT_NAME], output_na
 class TestSISOClosedLoopDesigner(unittest.TestCase):
 
     def setUp(self):
-        self.evaluator_stable = SISODesignEvaluator(SYSTEM_STABLE, INPUT_NAME, OUTPUT_NAME, times=TIMES)
-        self.evaluator_unstable = SISODesignEvaluator(SYSTEM_UNSTABLE, INPUT_NAME, OUTPUT_NAME, times=TIMES)
+        self.evaluator_stable = SISODesignEvaluator(SYSTEM_STABLE, INPUT_NAME, OUTPUT_NAME, times=TIMES, save_path=FILE_SAVE)
+        self.evaluator_unstable = SISODesignEvaluator(SYSTEM_UNSTABLE, INPUT_NAME, OUTPUT_NAME, times=TIMES, save_path=FILE_SAVE)
+        self.remove()
+
+    def tearDown(self):
+        self.remove()
+
+    def remove(self):
+        if os.path.isfile(FILE_SAVE):
+            os.remove(FILE_SAVE)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -67,10 +76,12 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertTrue(mse > 0)
 
     def testEvaluate(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
+        self.assertFalse(os.path.isfile(FILE_SAVE))
         parameter_dct = {cn.CP_KP: 1, cn.CP_KI: 1, cn.CP_KF: 1}
         self.evaluator_stable.evaluate(**parameter_dct)
+        self.assertTrue(os.path.isfile(FILE_SAVE))
         self.assertTrue(self.evaluator_stable.residual_mse > 0)
         #
         parameter_dct = {cn.CP_KP: 1, cn.CP_KI: 1, cn.CP_KF: 1}

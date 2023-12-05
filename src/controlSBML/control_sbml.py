@@ -60,10 +60,11 @@ from controlSBML.option_management.option_manager import OptionManager
 import controlSBML.constants as cn
 import controlSBML.msgs as msgs
 from controlSBML.option_set import OptionSet
+from controlSBML.grid import Grid
 
-import collections
+import os
 import numpy as np
-from docstring_expander.expander import Expander
+from typing import List, Dict, Tuple, Union
 
 PLOT_KWARGS = list(set(cn.PLOT_KWARGS).union(cn.FIG_KWARGS))
 SETPOINT = 1
@@ -103,15 +104,17 @@ INITIAL_OPTION_DCT = {cn.O_TITLE: "", cn.O_SUPTITLE: "", cn.O_WRITEFIG: False,
 for key in OPTIONS:
     if not key in INITIAL_OPTION_DCT:
         INITIAL_OPTION_DCT[key] = None
+SAVE_PATH = os.path.join(cn.DATA_DIR, "control_sbml.csv")
 
 
 class ControlSBML(OptionSet):
 
-    def __init__(self, model_reference, roadrunner=None, **kwargs):
+    def __init__(self, model_reference:str, roadrunner=None, save_path:str=None, **kwargs):
         """
         model_reference: str
             string, SBML file or Roadrunner object
         roadrunner: ExtendedRoadrunner
+        save_path: str (path to file where results are saved)
         Plot options:
             ax: axis for plot
             figure: figure object
@@ -150,6 +153,7 @@ class ControlSBML(OptionSet):
         if roadrunner is None:
             roadrunner = makeRoadrunner(model_reference)
         self._roadrunner = roadrunner
+        self.save_path = save_path
         # Internal state
         self._fitter_result = cn.FitterResult()
         # Options
@@ -167,7 +171,7 @@ class ControlSBML(OptionSet):
         ctlsb.setOptions(**persistent_options)
         return ctlsb
     
-    def equals(self, other):
+    def equals(self, other:object):
         if not isinstance(other, ControlSBML):
             return False
         if not self.model_reference == other.model_reference:
@@ -181,6 +185,33 @@ class ControlSBML(OptionSet):
     ############ GETTERS ##############
     def getAntimony(self):
         return self._roadrunner.getAntimony()
+    
+    def getGrid(self, min_value:int=0, max_value:int=10, num_coordinate:int=10, kp_spec:bool=False,
+                ki_spec:bool=False, kf_spec:bool=False, is_random=True)->Grid:
+        """
+        Creates a grid of values for the control parameters based on the specified control design.
+
+        Args:
+            min_value (int): _description_. Defaults to 0.
+            max_value (int): _description_. Defaults to 10.
+            num_coordinate (int): _description_. Defaults to 10.
+            kp_spec (bool): Proportional control. Defaults to False.
+            ki_spec (bool): Integral control. Defaults to False.
+            kf_spec (bool): Filter. Defaults to False.
+            is_random (bool): If True, the grid is randomly generated. Defaults to True.
+        Returns:
+            Grid
+        """
+        grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate, is_random=is_random)
+        def makeAxis(name, spec):
+            if spec:
+                grid.addAxis(name, min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
+            return [spec]
+        #
+        makeAxis(cn.CP_KP, kp_spec)
+        makeAxis(cn.CP_KI, ki_spec)
+        makeAxis(cn.CP_KF, kf_spec)
+        return grid
 
     def getPossibleInputs(self):
         sbml_system, _ = self.getSystem()
@@ -190,7 +221,7 @@ class ControlSBML(OptionSet):
         sbml_system, _ = self.getSystem()
         return sbml_system.getValidOutputs()
 
-    def getInputName(self, option_set=None):
+    def getInputName(self, option_set:OptionSet=None):
         """
         Args:
             option_set: OptionSet
@@ -204,7 +235,7 @@ class ControlSBML(OptionSet):
             input_names = option_set.input_names
         return input_names[0]
 
-    def getOutputName(self, option_set=None):
+    def getOutputName(self, option_set:OptionSet=None):
         """
         Args:
             option_set: OptionSet
@@ -218,7 +249,7 @@ class ControlSBML(OptionSet):
             output_names = option_set.output_names
         return output_names[0]
     
-    def getOptions(self, options=None):
+    def getOptions(self, options:dict=None):
         """
         Gets current values of the persistent options
 
@@ -308,7 +339,7 @@ class ControlSBML(OptionSet):
         designer.set(kp=kp, ki=ki, kf=kf)
         return designer.closed_loop_transfer_function
     
-    def getParameterStr(self, parameters, **kwargs):
+    def getParameterStr(self, parameters:List[str], **kwargs):
         """
         Provides a string representation of a persistent option.
         Args:
@@ -339,8 +370,7 @@ class ControlSBML(OptionSet):
         """
         self.setOptionSet(**kwargs)
 
-    # FIXME: Is this needed since I have set Options?
-    def setSystem(self, input_name, output_name, is_fixed_input_species=True, is_steady_state=False):
+    def setSystem(self, input_name:str, output_name:str, is_fixed_input_species:bool=True, is_steady_state:bool=False):
         """
         Sets the options related to defining the system.
 
@@ -355,7 +385,6 @@ class ControlSBML(OptionSet):
         self.setOptions(input_names=input_names, output_names=output_names,
                                    is_fixed_input_species=is_fixed_input_species, is_steady_state=is_steady_state)
 
-    # FIXME: Handle options? 
     def initializeStaircaseOptions(self, initial_value=None, final_value=None, num_step=cn.DEFAULT_NUM_STEP):
         """
         Initializes the staircase options based on their simulation values.
@@ -404,7 +433,7 @@ class ControlSBML(OptionSet):
                                          self._getEndtime(option_set), self._getNumpoint(option_set))
         ts = Timeseries(data)
         if option_set.is_plot:
-            util.plotOneTS(ts, markers=option_set.markers, **self.getPlotOptions(**option_set))
+            util.plotOneTS(ts, markers=option_set.markers, **self._getPlotOptions(**option_set))
         return ts
     
     def plotStaircaseResponse(self, **kwargs):
@@ -428,11 +457,11 @@ class ControlSBML(OptionSet):
         staircase = self.getStaircase(**option_set)
         response_ts, builder = siso_transfer_function_builder.makeStaircaseResponse(
             staircase=staircase, is_steady_state=option_set.is_steady_state, times=option_set.times)
-        siso_transfer_function_builder.plotStaircaseResponse(response_ts, **self.getPlotOptions(**option_set))
+        siso_transfer_function_builder.plotStaircaseResponse(response_ts, **self._getPlotOptions(**option_set))
         return response_ts, builder
     
-    def plotTransferFunctionFit(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR,
-                            num_denominator=cn.DEFAULT_NUM_DENOMINATOR, fit_start_time=None, fit_end_time=None, 
+    def plotTransferFunctionFit(self, num_numerator:int=cn.DEFAULT_NUM_NUMERATOR,
+                            num_denominator:int=cn.DEFAULT_NUM_DENOMINATOR, fit_start_time:float=None, fit_end_time:float=None, 
                             **kwargs):
         """
         Simulates the staircase response and plots it. Sets the fitter result.
@@ -459,7 +488,7 @@ class ControlSBML(OptionSet):
                             num_denominator=num_denominator, staircase=staircase,
                             fit_start_time=fit_start_time, fit_end_time=fit_end_time, times=option_set.times)
         if self.is_plot:
-            siso_transfer_function_builder.plotFitterResult(self._fitter_result, **self.getPlotOptions(**option_set))
+            siso_transfer_function_builder.plotFitterResult(self._fitter_result, **self._getPlotOptions(**option_set))
         return self._fitter_result.time_series, self._fitter_result.antimony_builder
     
     def plotClosedLoop(self, **kwargs):
@@ -478,8 +507,7 @@ class ControlSBML(OptionSet):
             if not parameter_name in kwargs.keys():
                 option_set.setOptionSet(**{parameter_name: None})
         # Extract the plot options, but not axis 2
-        #plot_options = {o: v for o, v in self.getPlotOptions(**option_set).items() if o != cn.O_AX2}
-        plot_options = self.getPlotOptions(**option_set)
+        plot_options = self._getPlotOptions(**option_set)
         # Construct the SBML system
         sbml_system, _ = self.getSystem(**option_set)
         response_ts, builder = sbml_system.simulateSISOClosedLoop(input_name=self.getInputName(option_set=option_set),
@@ -493,6 +521,46 @@ class ControlSBML(OptionSet):
         sbml_system.plotSISOClosedLoop(response_ts, option_set.setpoint, **plot_options)
         return response_ts, builder
 
+    # FIXME: implement plot_grid 
+    def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=True, is_plot_grid:bool=False, **kwargs):
+        """
+        Plots the results of a closed loop design based a grid of values for the control parameters.
+        Persists the closed loop design (kp, ki, kf) if a design is found.
+
+        Args:
+            grid: Grid (grid of values for the control parameters)
+            is_greedy: bool (if True, use greedy algorithm)
+            kwargs: dict (persistent options)
+            is_plot_grid: bool (if True, plot the grid with mean squared error)
+        Returns:
+            Timeseries
+            AntimonyBuilder
+        """
+        option_set = self.getOptionSet(**kwargs)
+        sbml_system, _ = self.getSystem(**option_set)
+        designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(),
+                setpoint=option_set.setpoint, is_steady_state=option_set.is_steady_state, times=option_set.times,
+                sign=option_set.sign,
+                input_name=self.getInputName(option_set=option_set),
+                output_name=self.getOutputName(option_set=option_set))
+        designer.designAlongGrid(grid, is_greedy=is_greedy, save_path=self.save_path)
+        if designer.residual_mse is None:
+            msgs.warn("No design found!")
+            return None, None
+        self.setOptions(kp=designer.kp, ki=designer.ki, kf=designer.kf)
+        # Persist the design parameters
+        self.setOptions(kp=designer.kp, ki=designer.ki, kf=designer.kf)
+        _ = option_set.setdefault(cn.O_YLABEL, self.getOutputName(option_set=option_set))
+        response_ts, antimony_builder = self.plotClosedLoop(
+                times=option_set.times,
+                setpoint=option_set.setpoint,
+                sign=self.sign,
+                kp=self.kp,
+                ki=self.ki,
+                kf=self.kf, 
+                **self._getPlotOptions(**option_set))
+        return response_ts, antimony_builder
+
     def plotDesign(self, kp_spec:bool=False, ki_spec:bool=False, kf_spec:bool=False, min_parameter_value:float=0,
                                  max_parameter_value:float=10, num_restart:int=3, 
                                  num_coordinate:int=3, is_greedy:bool=True, **kwargs):
@@ -504,7 +572,6 @@ class ControlSBML(OptionSet):
         Persists the closed loop design (kp, ki, kf) if a design is found.
 
         Args:
-            sign: int (-1: negative feedback; +1: positive feedback)
             kp_spec: float (specification of proportional gain)
             ki_spec: float (specification of integral gain)
             kf_spec: float (specification of filter gain)
@@ -526,7 +593,7 @@ class ControlSBML(OptionSet):
                 output_name=self.getOutputName(option_set=option_set))
         designer.design(kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec,
                 num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
-            num_coordinate=num_coordinate, is_greedy=is_greedy)
+            num_coordinate=num_coordinate, is_greedy=is_greedy, save_path=self.save_path)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
@@ -541,13 +608,13 @@ class ControlSBML(OptionSet):
                 kp=self.kp,
                 ki=self.ki,
                 kf=self.kf, 
-                **self.getPlotOptions(**option_set))
+                **self._getPlotOptions(**option_set))
         return response_ts, antimony_builder
 
    
     ############ PROPERTIES AND PRIVATE ##############
     @staticmethod 
-    def _getOptions(options):
+    def _getOptions(options:dict)->Tuple[dict, dict]:
         """
         Gets simulation and plot/fig options.
 
@@ -565,16 +632,16 @@ class ControlSBML(OptionSet):
         sim_opts = {n: v for n, v in mgr.sim_opts.items() if v is not None}
         return sim_opts, plot_fig_opts
     
-    def _getStarttime(self, option_set):
+    def _getStarttime(self, option_set:OptionSet)->float:
         return option_set.times[0]
     
-    def _getEndtime(self, option_set):
+    def _getEndtime(self, option_set:OptionSet)->float:
         return option_set.times[-1]
     
-    def _getNumpoint(self, option_set):
+    def _getNumpoint(self, option_set:OptionSet)->int:
         return len(option_set.times)
     
-    def getPlotOptions(self, **kwargs):
+    def _getPlotOptions(self, **kwargs)->dict:
         option_set = self.getOptionSet(**kwargs)
         plot_options = {n: option_set[n] for n in PLOT_OPTIONS if n!=C_MARKERS}
         return plot_options

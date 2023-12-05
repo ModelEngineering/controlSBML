@@ -66,14 +66,12 @@ DATA_DIR = os.path.join(PROJECT_DIR, "data")
 BIOMODELS_ZIP_FILENAME = "biomodels.zip"
 
 # Constants
-A_DF = None  # Use default value of A matrix
-B_DF = None  # Use default value of B matrix
-C_DF = None  # Use default value of C matrix
 END_TIME = 5  # Default endtime
 EVENT = "event"
 INPUT = "input"
 IN = "in"
 IS_PLOT = False
+MSE = "mse"
 OUT = "out"
 OUTPUT = "output"
 OUT_STATE = "out_state"

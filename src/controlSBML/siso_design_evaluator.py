@@ -4,19 +4,27 @@ from controlSBML import util
 from controlSBML.sbml_system import SBMLSystem
 import controlSBML.constants as cn
 
+import collections
 import numpy as np
+import pandas as pd
+import os
 from typing import List
+
+# Columns: kp, ki, kf, mse
+SAVE_PATH = os.path.join(cn.DATA_DIR, "evluate_result.csv")
 
 
 class SISODesignEvaluator:
     # Evaluates designs and remembers the best one
 
-    def __init__(self, system:SBMLSystem, input_name, output_name, setpoint:float=1, times:List[float]=cn.TIMES):
+    def __init__(self, system:SBMLSystem, input_name, output_name, setpoint:float=1, times:List[float]=cn.TIMES,
+                 save_path=SAVE_PATH):
         self.system = system
         self.setpoint = setpoint
         self.times = times
         self.input_name = input_name
         self.output_name = output_name
+        self.save_path = save_path
         #
         self.kp = None
         self.ki = None
@@ -34,14 +42,28 @@ class SISODesignEvaluator:
         Returns:
             bool (successful simulation)
         """
+        if (self.save_path is not None) and (os.path.isfile(self.save_path)):
+            df = pd.read_csv(self.save_path)
+            result_dct = df.to_dict(orient="list")
+        else:
+            result_dct = {cn.CP_KP: [], cn.CP_KI: [], cn.CP_KF: [], cn.MSE: []}
         def update(mse, kp=kp, ki=ki, kf=kf):
             self.kp = kp
             self.ki = ki
             self.kf = kf
             self.residual_mse = mse
         #
+        # Evaluate the design
         value_dct = {cn.CP_KP: kp, cn.CP_KI: ki, cn.CP_KF: kf}
         is_feasible, mse = self._calculateMse(**value_dct)
+        # Save the results
+        if self.save_path is not None:
+            result_dct[cn.CP_KP].append(kp)
+            result_dct[cn.CP_KI].append(ki)
+            result_dct[cn.CP_KF].append(kf)
+            result_dct[cn.MSE].append(mse)
+            df = pd.DataFrame(result_dct)
+            df.to_csv(self.save_path, index=False)
         if not is_feasible:
             return False
         if self.residual_mse is None:

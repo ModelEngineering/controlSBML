@@ -4,10 +4,12 @@ from controlSBML.sbml_system import SBMLSystem
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 from controlSBML.timeseries import Timeseries
 from controlSBML.antimony_builder import AntimonyBuilder
+from controlSBML.grid import Grid
 
 import control
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import unittest
 
 
@@ -38,6 +40,8 @@ end
 """
 SPECIES_NAMES = ["S1", "S2", "S3", "S4"]
 CTLSB = ControlSBML(LINEAR_MDL, final_value=10)
+FILE_SAVE = os.path.join(cn.TEST_DIR, "test_control_sbml.csv")
+REMOVE_FILES = [FILE_SAVE]
 
 
 #############################
@@ -47,6 +51,15 @@ class TestControlSBML(unittest.TestCase):
 
     def setUp(self):
         self.ctlsb = CTLSB.copy()
+        self.remove()
+
+    def tearDown(self):
+        self.remove()
+
+    def remove(self):
+        for file in REMOVE_FILES:
+            if os.path.isfile(file):
+                os.remove(file)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -132,6 +145,25 @@ class TestControlSBML(unittest.TestCase):
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
+
+    def testPlotGridDesign(self):
+        if IGNORE_TEST:
+            return
+        setpoint = 5
+        ctlsb = ControlSBML(LINEAR_MDL, setpoint=setpoint, final_value=10, input_names=["S1"], output_names=["S3"])
+        grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
+        grid.addAxis("kp")
+        _ = ctlsb.plotGridDesign(grid, is_plot=IS_PLOT)
+
+    def testPlotDesign1(self):
+        if IGNORE_TEST:
+            return
+        setpoint = 5
+        ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"], save_path=FILE_SAVE)
+        _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=False, is_plot=IS_PLOT,
+                                            min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
+                                            num_coordinate=2)
+        self.assertTrue(os.path.isfile(FILE_SAVE))
 
     def testEqualsCopy(self):
         if IGNORE_TEST:

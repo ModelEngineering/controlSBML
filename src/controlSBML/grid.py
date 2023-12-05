@@ -129,30 +129,15 @@ class Axis:
         if idx < 0 or idx >= self.num_coordinate - 1:
             raise ValueError("Invalid index: {}".format(idx))
         coordinates = self.coordinates
-        return np.random.uniform(coordinates[idx], coordinates[idx + 1])
-    
-    def getPointCoordinates(self)->typing.List[float]:
-        """
-        Gets the list of axis coordinates for points.
-
-        Returns:
-            list-float: list of coordinates for this axis
-        """
-        grid_coordinates = self.coordinates
-        coordinates = []
-        for idx in range(len(grid_coordinates) - 1):
-            lower = grid_coordinates[idx]
-            upper = grid_coordinates[idx + 1]
-            if self.is_random:
-                coordinates.append(np.random.uniform(lower, upper))
-            else:
-                coordinates.append((lower + upper)/2)
-        return coordinates
-
+        if self.is_random:
+            return np.random.uniform(coordinates[idx], coordinates[idx + 1])
+        else:
+            return (coordinates[idx] + coordinates[idx + 1])/2
+   
 
 class Grid(object):
-    def __init__(self, axis_dct=None, default_min=DEFAULT_MIN, default_max=DEFAULT_MAX,
-                 default_num_coordinate=DEFAULT_NUM_COORDINATE, is_random=True):
+    def __init__(self, axis_dct=None, min_value=DEFAULT_MIN, max_value=DEFAULT_MAX,
+                 num_coordinate=DEFAULT_NUM_COORDINATE, is_random=True):
         """
         Creates a dictionary of values to use for iterations for a grid search of a parameter space.
 
@@ -168,11 +153,11 @@ class Grid(object):
         if axis_dct is None:
             axis_dct = {}
         self.axis_dct = axis_dct
-        self.default_min = default_min
-        self.default_max = default_max
-        if default_num_coordinate < 2:
+        self.default_min = min_value
+        self.default_max = max_value
+        if num_coordinate < 2:
             raise ValueError("default_num_coordinate must be at least 2.")
-        self.default_num_coordinate = default_num_coordinate
+        self.default_num_coordinate = num_coordinate
         self.is_random = is_random
         # Updated when an axis is added
         #   key: parameter name
@@ -182,6 +167,12 @@ class Grid(object):
     def notifyAxisChange(self):
         """
         Notifies the grid that an axis has changed.
+        """
+        self.recalculatePoints()
+
+    def recalculatePoints(self):
+        """
+        Recalculates the points.
         """
         self._points = None
 
@@ -211,7 +202,7 @@ class Grid(object):
         self.axis_dct[parameter_name] = Axis(parameter_name, min_value=min_value, max_value=max_value,
                                              num_coordinate=num_coordinate, is_random=self.is_random,
                                              notifier=self.notifyAxisChange)
-        self._points = None
+        self.recalculatePoints()
         
     @property
     def num_point(self)->int:

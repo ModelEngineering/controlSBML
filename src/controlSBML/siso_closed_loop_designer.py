@@ -209,7 +209,7 @@ class SISOClosedLoopDesigner(object):
 
     def design(self, kp_spec=False, ki_spec=False, kf_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
-               num_coordinate=3):
+               num_coordinate=3, save_path=None):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -219,6 +219,7 @@ class SISOClosedLoopDesigner(object):
             min_value: float/dict (parameter name: value)
             max_value: float/dict (parameter name: value)
             num_coordinate: int (number of coordinates for a parameter; minimum is 2)
+            save_path: str (path to save the results)
         """
         def addAxis(grid, parameter_name, parameter_spec):
             """
@@ -245,12 +246,57 @@ class SISOClosedLoopDesigner(object):
                 msgs.warn(msg)
         # Initializations
         evaluator = SISODesignEvaluator(self.system, input_name=self.input_name,
-                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times)
+                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times, save_path=save_path)
+        grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
+        addAxis(grid, cn.CP_KP, kp_spec)
+        addAxis(grid, cn.CP_KI, ki_spec)
+        addAxis(grid, cn.CP_KF, kf_spec)
+        #
+        return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, save_path=save_path)
+
+    def simulateTransferFunction(self, transfer_function=None, period=None):
+        """
+        Simulates the closed loop transfer function based on the parameters of the object.
+
+        Args
+            transfer_function (control.TransferFunction): closed loop transfer function
+        Returns
+            (np.array, np.array): times, predictions
+        Raises
+            ValueError: if there are no parameters defined for the closed loop transfer function
+        """
+        if transfer_function is None:
+            if self.closed_loop_transfer_function is None:
+                raise ValueError("No closed loop transfer function defined.")
+            transfer_function = self.closed_loop_transfer_function
+        if period is not None:
+            U = np.sin(2*np.pi*self.times/period)
+        else:
+            U = np.repeat(1, len(self.times))
+        U = U*self.setpoint
+        new_times, predictions = control.forced_response(transfer_function, T=self.times, U=U)
+        return new_times, predictions
+
+    def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1, save_path:str=None):
+        """
+        Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
+
+        Args:
+            grid: Grid
+            is_greedy: bool (if True, then a greedy search is done to find a feasible system)
+            num_restart: int (number of times to start the search)
+            save_path: str (path to save the results)
+        """
+        # Initial check
+        if self.open_loop_transfer_function is not None:
+            if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
+                msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
+                msgs.warn(msg)
+        # Initializations
+        evaluator = SISODesignEvaluator(self.system, input_name=self.input_name,
+                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times, save_path=save_path)
         for _ in range(num_restart):
-            grid = Grid(default_min=min_value, default_max=max_value, default_num_coordinate=num_coordinate)
-            addAxis(grid, cn.CP_KP, kp_spec)
-            addAxis(grid, cn.CP_KI, ki_spec)
-            addAxis(grid, cn.CP_KF, kf_spec)
+            grid.recalculatePoints()
             # Iterate to find values
             for point in grid.points:
                 if is_greedy:

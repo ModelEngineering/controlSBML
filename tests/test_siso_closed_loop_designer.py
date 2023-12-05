@@ -2,7 +2,7 @@ import controlSBML.siso_closed_loop_designer as cld
 from controlSBML.control_sbml import ControlSBML
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 import controlSBML as ctl
-import controlSBML.util as util
+from controlSBML.grid import Grid
 import helpers
 
 import copy
@@ -202,6 +202,18 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertGreater(designer.kp, 0)
         self.assertGreater(designer.ki, 0)
         self.assertGreater(designer.kf, 0)
+    
+    def testPlotDesignAlongGrid(self):
+        if IGNORE_TEST:
+            return
+        designer = self.makeDesigner()
+        grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
+        grid.addAxis("kp")
+        designer.designAlongGrid(grid)
+        designer.plot(is_plot=IS_PLOT, markers=["", ""])
+        self.assertGreater(designer.kp, 0)
+        self.assertIsNone(designer.ki)
+        self.assertIsNone(designer.kf)
 
     def test_closed_loop_tf(self):
         # Checks that the closed loop transfer function is calculated correctly
