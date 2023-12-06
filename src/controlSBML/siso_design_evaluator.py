@@ -10,14 +10,13 @@ import os
 from typing import List
 
 # Columns: kp, ki, kf, mse
-SAVE_PATH = os.path.join(cn.DATA_DIR, "evluate_result.csv")
 
 
 class SISODesignEvaluator:
     # Evaluates designs and remembers the best one
 
     def __init__(self, system:SBMLSystem, input_name, output_name, setpoint:float=1, times:List[float]=cn.TIMES,
-                 save_path=SAVE_PATH):
+                 save_path=None):
         self.system = system
         self.setpoint = setpoint
         self.times = times

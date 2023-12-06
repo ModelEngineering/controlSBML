@@ -233,9 +233,10 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         #if IGNORE_TEST:
         #    return
         designer = self.makeDesigner()
-        grid = Grid(min_value=0.1, max_value=2, num_coordinate=5, is_random=False)
-        for parameter_name in cn.CONTROL_PARAMETERS:
-            grid.addAxis(parameter_name)
+        grid = Grid(min_value=0.1, max_value=2, num_coordinate=8, is_random=False)
+        grid.addAxis("kp", min_value=1, max_value=2, num_coordinate=8)
+        grid.addAxis("ki", min_value=0.01, max_value=0.1, num_coordinate=8)
+        grid.addAxis("kf", num_coordinate=8)
         if not os.path.isfile(SAVE_PATH):
             designer.designAlongGrid(grid, save_path=SAVE_PATH)
         design_result_df = pd.read_csv(SAVE_PATH)
