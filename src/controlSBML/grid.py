@@ -185,8 +185,8 @@ class Grid(object):
             dct["num_coordinate"].append(axis.num_coordinate)
         return str(pd.DataFrame(dct))
 
-    def addAxis(self, parameter_name:str, min_value:float=DEFAULT_MIN,
-                          max_value:float=DEFAULT_MAX, num_coordinate:int=DEFAULT_NUM_COORDINATE):
+    def addAxis(self, parameter_name:str, min_value:float=None,
+                          max_value:float=None, num_coordinate:int=None):
         """
         Creates an axis for a parameter.
         Args:
@@ -195,6 +195,12 @@ class Grid(object):
             max_value: float (maximum value for parameter)
             num_coordinate: int (number of point coordinates for parameter)
         """
+        if min_value is None:
+            min_value = self.default_min
+        if max_value is None:
+            max_value = self.default_max
+        if num_coordinate is None:
+            num_coordinate = self.default_num_coordinate
         if parameter_name in self.axis_dct:
             raise ValueError("Parameter name already exists: {}".format(parameter_name))
         if min_value >= max_value:

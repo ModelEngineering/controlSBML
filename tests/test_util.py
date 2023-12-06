@@ -258,6 +258,16 @@ class TestFunctions(unittest.TestCase):
         tf = control.TransferFunction([1, -1], [1, 1])
         test(tf, False)
 
+    def testRoundToDigits(self):
+        if IGNORE_TEST:
+           return
+        def test(value, digits, expected):
+            result = util.roundToDigits(value, digits)
+            self.assertTrue(np.isclose(result, expected))
+        #
+        test(0.000223, 2, 0.00022)
+        test(0.22, 1, 0.2)
+        test(22, 1, 22)
         
 
 if __name__ == '__main__':

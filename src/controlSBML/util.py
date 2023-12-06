@@ -603,6 +603,20 @@ def isStableZeros(transfer_function):
     """
     return not isPositiveRealPart(transfer_function.zeros())
 
+def roundToDigits(number:float, num_digits:int=2):
+    """
+    Rounds so that there are the specified number of non-zero digits.
+
+    Args:
+        number (float)
+        num_digits (int, optional)
+    """
+    log_number = np.log10(number)
+    if log_number > 0:
+        return np.round(number, num_digits)
+    required_decimal = -int(log_number) + num_digits
+    return np.round(number, required_decimal)
+
 
 ############### CLASSES ################
 

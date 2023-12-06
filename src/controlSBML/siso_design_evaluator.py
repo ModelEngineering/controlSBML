@@ -4,7 +4,6 @@ from controlSBML import util
 from controlSBML.sbml_system import SBMLSystem
 import controlSBML.constants as cn
 
-import collections
 import numpy as np
 import pandas as pd
 import os
@@ -30,6 +29,20 @@ class SISODesignEvaluator:
         self.ki = None
         self.kf = None
         self.residual_mse = None
+
+    def getEvaluatorResults(self)->pd.DataFrame:
+        """
+        Returns the design results if they have been saved.
+
+        Returns:
+            pd.DataFrame
+                columns: kp, ki, kf, mse
+        """
+        if (self.save_path is not None) and (os.path.isfile(self.save_path)):
+            df = pd.read_csv(self.save_path)
+            return df
+        else:
+            return None
 
     def evaluate(self, kp:float=None, ki:float=None, kf:float=None):
         """

@@ -5,18 +5,19 @@ The design is done using transfer functions and is most appropriate if there is 
 """
 
 import controlSBML.constants as cn
-from controlSBML.option_management.option_manager import OptionManager
 from controlSBML import util
 from controlSBML import msgs 
 from controlSBML.timeseries import Timeseries
 from controlSBML.grid import Grid
 from controlSBML.siso_design_evaluator import SISODesignEvaluator
+from controlSBML.option_management.option_manager import OptionManager
 
 import control
 import lmfit
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import seaborn as sns
 
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
@@ -24,13 +25,10 @@ DEFAULT_INITIAL_VALUE = 1   # Default initial value for a parameter
 SETPOINT = 1
 BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
-PARAM_NAMES = ["kp", "ki", "kf"]
 LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
-COL_RESIDUAL_MSE = "residual_rmse"
 COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
 COL_CLOSED_LOOP_SYSTEM_TS = "closed_loop_system_ts"
-COL_SETPOINT = "setpoint"
 
 
 ##################################################################
@@ -100,6 +98,7 @@ class SISOClosedLoopDesigner(object):
         self.closed_loop_system = None
         self.residual_mse = None
         self.minimizer_result = None
+        self.design_result_df = None # pd.DataFrame
         #
         self._initializeDesigner()
         self.siso = None # SISOClosedLoopSystem
@@ -144,7 +143,7 @@ class SISOClosedLoopDesigner(object):
             dict: {name: value}
         """
         dct = {}
-        for name in PARAM_NAMES:
+        for name in cn.CONTROL_PARAMETERS:
             if self.__getattribute__(name) is not None:
                 value = self.__getattribute__(name)
                 dct[name] = value
@@ -206,6 +205,60 @@ class SISOClosedLoopDesigner(object):
         if last_stable_dct is None:
             return None
         return dct
+    
+    def plotDesignResult(self, **kwargs):
+        """
+        Plots the design results.
+
+        Args:
+            kwargs: arguments for plotting
+        """
+        def makePlot(parameter_name1, parameter_name2, ax):
+            plot_df = self.design_result_df.pivot_table(index=parameter_name1, columns=parameter_name2,
+                                                  values=cn.MSE, aggfunc='mean')
+            plot_df = plot_df.sort_index(ascending=False)
+            plot_df.columns = [util.roundToDigits(c, 3) for c in plot_df.columns]
+            plot_df.index = [util.roundToDigits(c, 3) for c in plot_df.index]
+            sns.heatmap(plot_df, cmap="seismic", ax=ax)
+            ax.set_xlabel(parameter_name2)
+            ax.set_ylabel(parameter_name1)
+        #
+        if self.design_result_df is None:
+            msg = "No design results to plot."
+            msgs.warn(msg)
+            return
+        # Find the parameters in the design result
+        parameter_names = []
+        idx = list(self.design_result_df.index)[0]
+        for name in cn.CONTROL_PARAMETERS:
+            if not name in self.design_result_df.columns:
+                continue
+            if not np.isnan(self.design_result_df.loc[idx, name]):
+                parameter_names.append(name)
+        # Determine the type of plot
+        mgr = OptionManager(kwargs)
+        ax = mgr.getAx()
+        if len(parameter_names) == 1:
+            # Line plot
+            parameter_name = parameter_names[0]
+            yv = self.design_result_df[cn.MSE]
+            xv = self.design_result_df[parameter_name]
+            ax.stem(xv, yv)
+            ax.set_xlabel(parameter_name)
+            ax.set_ylabel(cn.MSE)
+        elif len(parameter_names) == 2:
+            # 2D plot
+            makePlot(parameter_names[0], parameter_names[1], ax)
+        elif len(parameter_names) == 3:
+            # Multple 2D plots
+            _, axes = plt.subplots(3, 1)
+            dct = {0: (0, 1), 1: (1, 2), 2: (0, 2)}
+            for idx in dct.keys():
+                makePlot(parameter_names[dct[idx][0]], parameter_names[dct[idx][1]], axes[idx])
+        else:
+            raise ValueError("Cannot plot %d parameters" % len(parameter_names))
+        mgr.doPlotOpts()
+        mgr.doFigOpts()
 
     def design(self, kp_spec=False, ki_spec=False, kf_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
@@ -306,6 +359,7 @@ class SISOClosedLoopDesigner(object):
                 evaluator.evaluate(**new_point)
         # Record the result
         self.residual_mse = evaluator.residual_mse
+        self.design_result_df = evaluator.getEvaluatorResults()
         self.set(kp=evaluator.kp, ki=evaluator.ki, kf=evaluator.kf)
         if self.residual_mse is not None:
             self.history.add()
@@ -369,9 +423,9 @@ class SISOClosedLoopDesigner(object):
             Timeseries (from simulation)
             AntimonyBuilder (from simulation)
         """
-        param_dct = {n: None for n in PARAM_NAMES}
+        param_dct = {n: None for n in cn.CONTROL_PARAMETERS}
         param_dct.update(self.get())
-        k_dct = {k: param_dct[k] for k in PARAM_NAMES}
+        k_dct = {k: param_dct[k] for k in cn.CONTROL_PARAMETERS}
         try:
             simulated_ts, antimony_builder = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
                                 start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
@@ -401,25 +455,25 @@ class _History(object):
         self.clear()
 
     def __len__(self):
-        first = PARAM_NAMES[0]
+        first = cn.CONTROL_PARAMETERS[0]
         return len(self._dct[first])
     
     def clear(self):
         self._dct = {}
-        for name in PARAM_NAMES:
+        for name in cn.CONTROL_PARAMETERS:
             self._dct[name] = []
         self._dct[COL_CLOSED_LOOP_SYSTEM] = []
-        self._dct[COL_SETPOINT] = []
-        self._dct[COL_RESIDUAL_MSE] = []
+        self._dct[cn.SETPOINT] = []
+        self._dct[cn.MSE] = []
 
     def add(self):
         if not self.is_history:
             return
-        for name in PARAM_NAMES:
+        for name in cn.CONTROL_PARAMETERS:
             self._dct[name].append(self.designer.__getattribute__(name))
         self._dct[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
-        self._dct[COL_SETPOINT].append(self.designer.setpoint)
-        self._dct[COL_RESIDUAL_MSE].append(self.designer.residual_mse)
+        self._dct[cn.SETPOINT].append(self.designer.setpoint)
+        self._dct[cn.MSE].append(self.designer.residual_mse)
 
     def undo(self):
         _ = self._dct.pop()
@@ -453,9 +507,9 @@ class _History(object):
                                           times=self.designer.times,
                                           setpoint=SETPOINT, is_steady_state=self.designer.is_steady_state,
                                           is_history=self.designer.history.is_history, sign=self.designer.sign)
-        for name in PARAM_NAMES:
+        for name in cn.CONTROL_PARAMETERS:
             designer.__setattr__(name, dct[name])
         designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]
-        designer.residual_mse = dct[COL_RESIDUAL_MSE]
+        designer.residual_mse = dct[cn.MSE]
         designer.history.add()
         return designer

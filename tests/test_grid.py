@@ -5,8 +5,8 @@ import numpy as np
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 NUM_COORDINATE = 3
 
 

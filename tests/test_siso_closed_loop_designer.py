@@ -2,6 +2,7 @@ import controlSBML.siso_closed_loop_designer as cld
 from controlSBML.control_sbml import ControlSBML
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 import controlSBML as ctl
+import controlSBML.constants as cn
 from controlSBML.grid import Grid
 import helpers
 
@@ -9,11 +10,13 @@ import copy
 import control
 import matplotlib.pyplot as plt
 import numpy as np
+import os
+import pandas as pd
 import sympy
 import unittest
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 FIGSIZE = (5, 5)
 helpers.setupPlotting(__file__)
 MODEL = """
@@ -66,8 +69,10 @@ OUTPUT_NAME = "S2"
 SYSTEM = ctl.SBMLSystem(MODEL2, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
 TRANSFER_FUNCTION = control.TransferFunction(np.array([1.51083121, 2.01413339]), np.array([1.67214802, 1.24125478, 9.99999997]))
 TIMES = np.linspace(0, 20, 200)
-PARAMETER_DCT = {p: n+1 for n, p in enumerate(cld.PARAM_NAMES)}
+PARAMETER_DCT = {p: n+1 for n, p in enumerate(cn.CONTROL_PARAMETERS)}
 SETPOINT = 3
+SAVE_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer.csv")
+REMOVE_FILES = []
 if False:
     # Required to construct the transfer function
     builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
@@ -86,7 +91,16 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
     def setUp(self):
         if IGNORE_TEST:
             return
+        self.remove()
         self.init()
+
+    def tearDown(self):
+        self.remove()
+
+    def remove(self):
+        for ffile in REMOVE_FILES:
+            if os.path.exists(ffile):
+                os.remove(ffile)
 
     def init(self):
         if "sys_tf" in dir(self):
@@ -100,11 +114,11 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.designer.set(**PARAMETER_DCT)
-        for name in cld.PARAM_NAMES:
+        for name in cn.CONTROL_PARAMETERS:
             self.assertEqual(getattr(self.designer, name), PARAMETER_DCT[name])
         #
         dct = self.designer.get()
-        for name in cld.PARAM_NAMES:
+        for name in cn.CONTROL_PARAMETERS:
             self.assertEqual(dct[name], PARAMETER_DCT[name])
 
     def testCalculateClosedLoopTf(self):
@@ -140,7 +154,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         def checkParams(names):
             for name in names:
                 self.assertIsNotNone(getattr(designer, name))
-            other_names = set(cld.PARAM_NAMES) - set(names)
+            other_names = set(cn.CONTROL_PARAMETERS) - set(names)
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
         designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf, times=np.linspace(0, 200, 1000))
@@ -214,6 +228,27 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertGreater(designer.kp, 0)
         self.assertIsNone(designer.ki)
         self.assertIsNone(designer.kf)
+
+    def testPlotDesignResult(self):
+        #if IGNORE_TEST:
+        #    return
+        designer = self.makeDesigner()
+        grid = Grid(min_value=0.1, max_value=2, num_coordinate=5, is_random=False)
+        for parameter_name in cn.CONTROL_PARAMETERS:
+            grid.addAxis(parameter_name)
+        if not os.path.isfile(SAVE_PATH):
+            designer.designAlongGrid(grid, save_path=SAVE_PATH)
+        design_result_df = pd.read_csv(SAVE_PATH)
+        def test(parameter_names):
+            names = list(parameter_names)
+            names.append(cn.MSE)
+            designer.design_result_df = design_result_df[names]
+            designer.plotDesignResult(is_plot=IS_PLOT, figsize=(5,5))
+        #
+        test(["kp", "ki"])
+        test(["kp"])
+        import pdb; pdb.set_trace()
+
 
     def test_closed_loop_tf(self):
         # Checks that the closed loop transfer function is calculated correctly
@@ -296,7 +331,7 @@ class TestHistory(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.assertEqual(len(self.history), 0)
-        diff = set(cld.PARAM_NAMES) - set(self.history._dct.keys())
+        diff = set(cn.CONTROL_PARAMETERS) - set(self.history._dct.keys())
         self.assertEqual(len(diff), 0)
 
     def addItems(self, count):

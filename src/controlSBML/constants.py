@@ -77,6 +77,7 @@ OUTPUT = "output"
 OUT_STATE = "out_state"
 PARAMS = "params"
 POINTS_PER_TIME = 10
+SETPOINT = "setpoint"
 START_TIME = 0  # Default start time
 STATE = "state"
 STEP_VAL = 1  # Multiplier used for simulation input
@@ -110,6 +111,7 @@ O_YTICKLABELS = "yticklabels"
 CP_KP = "kp"
 CP_KI = "ki"
 CP_KF = "kf"
+CONTROL_PARAMETERS = [CP_KP, CP_KI, CP_KF]
 
 # Default values of options
 SIM_DCT = dict(
