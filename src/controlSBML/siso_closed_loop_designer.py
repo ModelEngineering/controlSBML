@@ -29,6 +29,7 @@ LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
 COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
 COL_CLOSED_LOOP_SYSTEM_TS = "closed_loop_system_ts"
+PARAMETER_DISPLAY_DCT = {cn.CP_KP: r'$k_p$', cn.CP_KI: r'$k_i$', cn.CP_KF: r'$k_f$'}
 
 
 ##################################################################
@@ -219,9 +220,14 @@ class SISOClosedLoopDesigner(object):
             plot_df = plot_df.sort_index(ascending=False)
             plot_df.columns = [util.roundToDigits(c, 3) for c in plot_df.columns]
             plot_df.index = [util.roundToDigits(c, 3) for c in plot_df.index]
-            sns.heatmap(plot_df, cmap="seismic", ax=ax)
-            ax.set_xlabel(parameter_name2)
-            ax.set_ylabel(parameter_name1)
+            sns.heatmap(plot_df, cmap="seismic", ax=ax,
+                        cbar_kws={'label': 'MSE'})
+            ax.set_xlabel(PARAMETER_DISPLAY_DCT[parameter_name2])
+            ax.set_ylabel(PARAMETER_DISPLAY_DCT[parameter_name1])
+            xticklabels = ax.get_xticklabels()
+            ax.set_xticklabels(xticklabels, rotation=45)
+            yticklabels = ax.get_yticklabels()
+            ax.set_yticklabels(yticklabels, rotation=45)
         #
         if self.design_result_df is None:
             msg = "No design results to plot."

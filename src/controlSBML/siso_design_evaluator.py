@@ -9,8 +9,6 @@ import pandas as pd
 import os
 from typing import List
 
-# Columns: kp, ki, kf, mse
-
 
 class SISODesignEvaluator:
     # Evaluates designs and remembers the best one
