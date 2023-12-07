@@ -109,12 +109,14 @@ SAVE_PATH = os.path.join(cn.DATA_DIR, "control_sbml.csv")
 
 class ControlSBML(OptionSet):
 
-    def __init__(self, model_reference:str, roadrunner=None, save_path:str=None, **kwargs):
+    def __init__(self, model_reference:str, roadrunner=None, save_path:str=None,
+                 is_culmulative_data:bool=False, **kwargs):
         """
         model_reference: str
             string, SBML file or Roadrunner object
         roadrunner: ExtendedRoadrunner
         save_path: str (path to file where results are saved)
+        is_culmulative_data: bool (keep data from each design)
         Plot options:
             ax: axis for plot
             figure: figure object
@@ -150,6 +152,7 @@ class ControlSBML(OptionSet):
         """
         # First initializations
         self.model_reference = model_reference
+        self.is_culmulative_data = is_culmulative_data
         if roadrunner is None:
             roadrunner = makeRoadrunner(model_reference)
         self._roadrunner = roadrunner
@@ -522,7 +525,8 @@ class ControlSBML(OptionSet):
         return response_ts, builder
 
     # FIXME: implement plot_grid 
-    def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=True, is_plot_grid:bool=False, **kwargs):
+    def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=True, is_plot_grid:bool=False, 
+                       save_path=None, **kwargs):
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
         Persists the closed loop design (kp, ki, kf) if a design is found.
@@ -538,11 +542,16 @@ class ControlSBML(OptionSet):
         """
         option_set = self.getOptionSet(**kwargs)
         sbml_system, _ = self.getSystem(**option_set)
+        if save_path is None:
+            save_path = self.save_path
+        if save_path is not None:
+            if os.path.isfile(save_path) and (not self.is_culmulative_data):
+                os.remove(save_path)
         designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(),
                 setpoint=option_set.setpoint, is_steady_state=option_set.is_steady_state, times=option_set.times,
                 sign=option_set.sign,
                 input_name=self.getInputName(option_set=option_set),
-                output_name=self.getOutputName(option_set=option_set), save_path=self.save_path)
+                output_name=self.getOutputName(option_set=option_set), save_path=save_path)
         designer.designAlongGrid(grid, is_greedy=is_greedy)
         if designer.residual_mse is None:
             msgs.warn("No design found!")

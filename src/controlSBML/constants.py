@@ -62,6 +62,7 @@ for _ in range(2):
 CODE_DIR = os.path.join(PROJECT_DIR, "controlSBML")
 PLOT_DIR = PROJECT_DIR
 TEST_DIR = os.path.join(PROJECT_DIR, "tests")
+NOTEBOOK_DIR = os.path.join(PROJECT_DIR, "notebooks")
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
 BIOMODELS_ZIP_FILENAME = "biomodels.zip"
 

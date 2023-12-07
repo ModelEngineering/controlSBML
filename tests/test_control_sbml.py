@@ -13,8 +13,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 FIGSIZE = (5, 5)
 LINEAR_MDL = """
 model *main_model()
@@ -215,8 +215,8 @@ class TestControlSBML(unittest.TestCase):
         _ = CTLSB.plotClosedLoop(setpoint=150, kp=1, is_plot=IS_PLOT)
 
     def testPlotDesignResult(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"], save_path=CSV_FILE2)
         _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=True, is_plot=False,
@@ -225,6 +225,18 @@ class TestControlSBML(unittest.TestCase):
         plt.close('all')
         _, ax = plt.subplots(1)
         ctlsb.plotDesignResult(is_plot=IS_PLOT, ax=ax)
+
+    def testBug1(self):
+        if IGNORE_TEST:
+            return
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
+        path = os.path.join(cn.NOTEBOOK_DIR, "data3.csv")
+        ctlsb = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000),
+                   save_path=path)
+        ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        ctlsb.plotDesignResult(is_plot=IS_PLOT)
 
 
 
