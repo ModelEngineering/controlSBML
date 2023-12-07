@@ -15,8 +15,8 @@ import pandas as pd
 import sympy
 import unittest
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 FIGSIZE = (5, 5)
 helpers.setupPlotting(__file__)
 MODEL = """
@@ -108,7 +108,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             return
         self.sys_tf = copy.deepcopy(TRANSFER_FUNCTION)
         self.system = copy.deepcopy(SYSTEM)
-        self.designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=TIMES, setpoint=SETPOINT)
+        self.designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=TIMES, setpoint=SETPOINT,
+                                                   save_path=SAVE_PATH)
 
     def testGetSet(self):
         if IGNORE_TEST:
@@ -193,7 +194,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         times = np.linspace(0, end_time, 10*end_time)
         system = copy.deepcopy(SYSTEM)
         transfer_function = copy.deepcopy(TRANSFER_FUNCTION)
-        designer = cld.SISOClosedLoopDesigner(system, transfer_function, times=times)
+        designer = cld.SISOClosedLoopDesigner(system, transfer_function, times=times, save_path=SAVE_PATH)
         return designer
 
     def testPlot2(self):
@@ -211,7 +212,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             return
         designer = self.makeDesigner()
         designer.design(kp_spec=True, ki_spec=True, kf_spec=True, min_value=0.1, max_value=10, 
-                        num_coordinate=5, num_restart=1)
+                        num_coordinate=5, num_restart=1, is_report=True)
         designer.plot(is_plot=IS_PLOT, markers=["", ""])
         self.assertGreater(designer.kp, 0)
         self.assertGreater(designer.ki, 0)
@@ -223,33 +224,32 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer = self.makeDesigner()
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
         grid.addAxis("kp")
-        designer.designAlongGrid(grid)
+        designer.designAlongGrid(grid, is_report=True)
         designer.plot(is_plot=IS_PLOT, markers=["", ""])
         self.assertGreater(designer.kp, 0)
         self.assertIsNone(designer.ki)
         self.assertIsNone(designer.kf)
 
     def testPlotDesignResult(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         designer = self.makeDesigner()
         grid = Grid(min_value=0.1, max_value=2, num_coordinate=8, is_random=False)
         grid.addAxis("kp", min_value=1, max_value=2, num_coordinate=8)
         grid.addAxis("ki", min_value=0.01, max_value=0.1, num_coordinate=8)
         grid.addAxis("kf", num_coordinate=8)
         if not os.path.isfile(SAVE_PATH):
-            designer.designAlongGrid(grid, save_path=SAVE_PATH)
+            designer.designAlongGrid(grid)
         design_result_df = pd.read_csv(SAVE_PATH)
         def test(parameter_names):
             names = list(parameter_names)
             names.append(cn.MSE)
-            designer.design_result_df = design_result_df[names]
+            designer._design_result_df = design_result_df[names]
             designer.plotDesignResult(is_plot=IS_PLOT, figsize=(5,5))
         #
+        test(["kp", "ki", "kf"])
         test(["kp", "ki"])
         test(["kp"])
-        import pdb; pdb.set_trace()
-
 
     def test_closed_loop_tf(self):
         # Checks that the closed loop transfer function is calculated correctly

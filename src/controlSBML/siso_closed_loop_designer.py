@@ -13,9 +13,9 @@ from controlSBML.siso_design_evaluator import SISODesignEvaluator
 from controlSBML.option_management.option_manager import OptionManager
 
 import control
-import lmfit
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd
 import seaborn as sns
 
@@ -58,7 +58,8 @@ def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kp=No
 class SISOClosedLoopDesigner(object):
 
     def __init__(self, system, open_loop_transfer_function, times=None, setpoint=SETPOINT, is_steady_state=False,
-                 is_history=True, sign=-1, input_name=None, output_name=None):
+                 is_history=True, sign=-1, input_name=None, output_name=None,
+                 save_path=None):
         """
         Constructs a SISOClosedLoopDesigner object. If the system has more than one input (output) and not input (output) is specified),
         then the first input (output) is used.
@@ -70,6 +71,7 @@ class SISOClosedLoopDesigner(object):
             sign: int (-1: negative feedback; +1: positive feedback)
             input_name: str (name of input species)
             output_name: str (name of output species)
+            save_path: str (path to save the results or to an existing result)
         """
         self.system = system
         self.open_loop_transfer_function = open_loop_transfer_function
@@ -85,6 +87,7 @@ class SISOClosedLoopDesigner(object):
             output_name = self.system.output_names[0]
         self.input_name = input_name
         self.output_name = output_name
+        self.save_path = save_path
         # Calculated properties
         self.start_time = self.times[0]
         self.end_time = self.times[-1]
@@ -99,7 +102,7 @@ class SISOClosedLoopDesigner(object):
         self.closed_loop_system = None
         self.residual_mse = None
         self.minimizer_result = None
-        self.design_result_df = None # pd.DataFrame
+        self._design_result_df = None   # Calculated in property
         #
         self._initializeDesigner()
         self.siso = None # SISOClosedLoopSystem
@@ -214,13 +217,13 @@ class SISOClosedLoopDesigner(object):
         Args:
             kwargs: arguments for plotting
         """
-        def makePlot(parameter_name1, parameter_name2, ax):
+        def makePlot(parameter_name1, parameter_name2, ax, vmin=None, vmax=None):
             plot_df = self.design_result_df.pivot_table(index=parameter_name1, columns=parameter_name2,
                                                   values=cn.MSE, aggfunc='mean')
             plot_df = plot_df.sort_index(ascending=False)
             plot_df.columns = [util.roundToDigits(c, 3) for c in plot_df.columns]
             plot_df.index = [util.roundToDigits(c, 3) for c in plot_df.index]
-            sns.heatmap(plot_df, cmap="seismic", ax=ax,
+            sns.heatmap(plot_df, cmap="seismic", ax=ax, vmin=vmin, vmax=vmax,
                         cbar_kws={'label': 'MSE'})
             ax.set_xlabel(PARAMETER_DISPLAY_DCT[parameter_name2])
             ax.set_ylabel(PARAMETER_DISPLAY_DCT[parameter_name1])
@@ -243,9 +246,9 @@ class SISOClosedLoopDesigner(object):
                 parameter_names.append(name)
         # Determine the type of plot
         mgr = OptionManager(kwargs)
-        ax = mgr.getAx()
         if len(parameter_names) == 1:
             # Line plot
+            ax = mgr.getAx()
             parameter_name = parameter_names[0]
             yv = self.design_result_df[cn.MSE]
             xv = self.design_result_df[parameter_name]
@@ -254,13 +257,20 @@ class SISOClosedLoopDesigner(object):
             ax.set_ylabel(cn.MSE)
         elif len(parameter_names) == 2:
             # 2D plot
+            ax = mgr.getAx()
             makePlot(parameter_names[0], parameter_names[1], ax)
         elif len(parameter_names) == 3:
             # Multple 2D plots
-            _, axes = plt.subplots(3, 1)
+            # Find the range for the color bar
+            min_mse = self.design_result_df[cn.MSE].min()
+            max_mse = self.design_result_df[cn.MSE].max()
+            #
+            fig, axes = plt.subplots(3, 1)
+            mgr.setFigure()  # Set the current figure
             dct = {0: (0, 1), 1: (1, 2), 2: (0, 2)}
             for idx in dct.keys():
-                makePlot(parameter_names[dct[idx][0]], parameter_names[dct[idx][1]], axes[idx])
+                makePlot(parameter_names[dct[idx][0]], parameter_names[dct[idx][1]], axes[idx], vmin=min_mse, vmax=max_mse)
+            fig.subplots_adjust(hspace=0.8)  # Increase horizontal space between plots
         else:
             raise ValueError("Cannot plot %d parameters" % len(parameter_names))
         mgr.doPlotOpts()
@@ -268,7 +278,7 @@ class SISOClosedLoopDesigner(object):
 
     def design(self, kp_spec=False, ki_spec=False, kf_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
-               num_coordinate=3, save_path=None):
+               num_coordinate=3, save_path=None, is_report:bool=False):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -279,6 +289,7 @@ class SISOClosedLoopDesigner(object):
             max_value: float/dict (parameter name: value)
             num_coordinate: int (number of coordinates for a parameter; minimum is 2)
             save_path: str (path to save the results)
+            is_report: bool (provide progress report)
         """
         def addAxis(grid, parameter_name, parameter_spec):
             """
@@ -311,7 +322,7 @@ class SISOClosedLoopDesigner(object):
         addAxis(grid, cn.CP_KI, ki_spec)
         addAxis(grid, cn.CP_KF, kf_spec)
         #
-        return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, save_path=save_path)
+        return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, is_report=is_report)
 
     def simulateTransferFunction(self, transfer_function=None, period=None):
         """
@@ -336,15 +347,16 @@ class SISOClosedLoopDesigner(object):
         new_times, predictions = control.forced_response(transfer_function, T=self.times, U=U)
         return new_times, predictions
 
-    def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1, save_path:str=None):
+    def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1,
+                        is_report:bool=False):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
 
         Args:
             grid: Grid
             is_greedy: bool (if True, then a greedy search is done to find a feasible system)
-            num_restart: int (number of times to start the search)
-            save_path: str (path to save the results)
+            num_restart: int (number of times to start the search) 
+            is_report: bool (provide progress report)
         """
         # Initial check
         if self.open_loop_transfer_function is not None:
@@ -353,11 +365,18 @@ class SISOClosedLoopDesigner(object):
                 msgs.warn(msg)
         # Initializations
         evaluator = SISODesignEvaluator(self.system, input_name=self.input_name,
-                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times, save_path=save_path)
+                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times,
+                                    save_path=self.save_path)
+        iteration = 0
+        total_iteration = num_restart*grid.num_point
         for _ in range(num_restart):
             grid.recalculatePoints()
             # Iterate to find values
             for point in grid.points:
+                if is_report:
+                    iteration += 1
+                    percent = int(100*iteration/total_iteration)
+                    print("**Evaluating point %d (%d%%): %s" % (iteration, percent, str(point)))
                 if is_greedy:
                     new_point = self._searchForFeasibleClosedLoopSystem(point, max_iteration=10)
                 else:
@@ -365,10 +384,23 @@ class SISOClosedLoopDesigner(object):
                 evaluator.evaluate(**new_point)
         # Record the result
         self.residual_mse = evaluator.residual_mse
-        self.design_result_df = evaluator.getEvaluatorResults()
         self.set(kp=evaluator.kp, ki=evaluator.ki, kf=evaluator.kf)
         if self.residual_mse is not None:
             self.history.add()
+
+    @property
+    def design_result_df(self):
+        """
+        Returns:
+            pd.DataFrame
+                columns: kp, ki, kf, mse
+        """
+        if self._design_result_df is None:
+            if (self.save_path is not None) and (os.path.isfile(self.save_path)):
+                self._design_result_df = pd.read_csv(self.save_path)
+            else:
+                return None
+        return self._design_result_df
 
     def simulateTransferFunction(self, transfer_function=None, period=None):
         """

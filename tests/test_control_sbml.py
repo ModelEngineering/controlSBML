@@ -13,8 +13,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 FIGSIZE = (5, 5)
 LINEAR_MDL = """
 model *main_model()
@@ -40,8 +40,9 @@ end
 """
 SPECIES_NAMES = ["S1", "S2", "S3", "S4"]
 CTLSB = ControlSBML(LINEAR_MDL, final_value=10)
-FILE_SAVE = os.path.join(cn.TEST_DIR, "test_control_sbml.csv")
-REMOVE_FILES = [FILE_SAVE]
+CSV_FILE1 = os.path.join(cn.TEST_DIR, "test_control_sbml1.csv")
+CSV_FILE2 = os.path.join(cn.TEST_DIR, "test_control_sbml2.csv")
+REMOVE_FILES = [CSV_FILE1, CSV_FILE2]
 
 
 #############################
@@ -159,11 +160,11 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         setpoint = 5
-        ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"], save_path=FILE_SAVE)
+        ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"], save_path=CSV_FILE1)
         _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=False, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
                                             num_coordinate=2)
-        self.assertTrue(os.path.isfile(FILE_SAVE))
+        self.assertTrue(os.path.isfile(CSV_FILE1))
 
     def testEqualsCopy(self):
         if IGNORE_TEST:
@@ -212,6 +213,19 @@ class TestControlSBML(unittest.TestCase):
                                        num_restart=1, is_plot=IS_PLOT)
         _ = CTLSB.plotClosedLoop(setpoint=120, kp=0.002, ki=0.019, is_plot=IS_PLOT)
         _ = CTLSB.plotClosedLoop(setpoint=150, kp=1, is_plot=IS_PLOT)
+
+    def testPlotDesignResult(self):
+        #if IGNORE_TEST:
+        #    return
+        setpoint = 5
+        ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"], save_path=CSV_FILE2)
+        _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=True, is_plot=False,
+                                            min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
+                                            num_coordinate=4)
+        plt.close('all')
+        _, ax = plt.subplots(1)
+        ctlsb.plotDesignResult(is_plot=IS_PLOT, ax=ax)
+
 
 
 if __name__ == '__main__':

@@ -49,6 +49,21 @@ import typing
 DEFAULT_MIN = 0
 DEFAULT_MAX = 10
 DEFAULT_NUM_COORDINATE = 3
+NAME = "name"
+
+class Point(dict):
+    def __init__(self, **kwargs):
+        """
+        Specifies a point in a grid.
+
+        Args:
+            kwargs: dict (key: parameter name; value: float)
+        """
+        self.update(kwargs)
+
+    def __repr__(self)->str:
+        return "Point({})".format(", ".join(["{}: {}".format(k, v) for k, v in self.items()]))
+
 
 class Axis:
     def __init__(self, parameter_name:str, min_value:float=None, max_value:float=None, num_coordinate:int=None,
@@ -60,7 +75,7 @@ class Axis:
             parameter_parameter_name: str (parameter_name of parameter)
             min_value: float (minimum value for parameter)
             max_value: float (maximum value for parameter)
-            num_coordinate: int (number of point coordinates for parameter)
+            num_coordinate: int (includes the first and last coordinate and so this is one more than the number of grid elements)
             is_random: bool (True: random points; False: use midpoint of grid element)
             notifier: function (called when an axis value is changed: no arguments, no return value)
         """
@@ -177,11 +192,11 @@ class Grid(object):
         self._points = None
 
     def __repr__(self)->str:
-        dct = {"name": [], "min": [], "max": [], "num_coordinate": []}
+        dct = {NAME: [], cn.MIN: [], cn.MAX: [], "num_coordinate": []}
         for parameter_name, axis in self.axis_dct.items():
-            dct["name"].append(parameter_name)
-            dct["min"].append(axis.min_value)
-            dct["max"].append(axis.max_value)
+            dct[NAME].append(parameter_name)
+            dct[cn.MIN].append(axis.min_value)
+            dct[cn.MAX].append(axis.max_value)
             dct["num_coordinate"].append(axis.num_coordinate)
         return str(pd.DataFrame(dct))
 
@@ -221,7 +236,7 @@ class Grid(object):
         return len(self.points)
     
     @property
-    def points(self)->typing.List[typing.Dict[str, float]]:
+    def points(self)->typing.List[Point]:
         """
         Gets the list of points.
 
@@ -237,11 +252,11 @@ class Grid(object):
         Creates an iterator that returns a point.
 
         Returns:
-            dict (key: parameter name; value: float)
+            Point
         """
         index_lists = [list(range(self.axis_dct[p].num_coordinate - 1)) for p in self.axis_dct.keys()]
         for indices in itertools.product(*index_lists):
-            yield {a.parameter_name: a.getPointCoordinate(i) for a, i in zip(self.axis_dct.values(), indices)}
+            yield Point(**{a.parameter_name: a.getPointCoordinate(i) for a, i in zip(self.axis_dct.values(), indices)})
 
     def getAxis(self, parameter_name:str)->Axis:
         """

@@ -542,8 +542,8 @@ class ControlSBML(OptionSet):
                 setpoint=option_set.setpoint, is_steady_state=option_set.is_steady_state, times=option_set.times,
                 sign=option_set.sign,
                 input_name=self.getInputName(option_set=option_set),
-                output_name=self.getOutputName(option_set=option_set))
-        designer.designAlongGrid(grid, is_greedy=is_greedy, save_path=self.save_path)
+                output_name=self.getOutputName(option_set=option_set), save_path=self.save_path)
+        designer.designAlongGrid(grid, is_greedy=is_greedy)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
@@ -563,7 +563,7 @@ class ControlSBML(OptionSet):
 
     def plotDesign(self, kp_spec:bool=False, ki_spec:bool=False, kf_spec:bool=False, min_parameter_value:float=0,
                                  max_parameter_value:float=10, num_restart:int=3, 
-                                 num_coordinate:int=3, is_greedy:bool=True, **kwargs):
+                                 num_coordinate:int=3, is_greedy:bool=True, is_report:bool=True, **kwargs):
         """
         Plots the results of a closed loop design. The design is specified by the parameters kp_spec, ki_spec, and kf_spec.
            None or False: do not include the parameter
@@ -580,6 +580,7 @@ class ControlSBML(OptionSet):
             num_coordinate: int (number of coordinate descent iterations)
             is_greedy: bool (if True, use greedy algorithm)
             kwargs: dict (persistent options)
+            is_report: bool (report progress on the design search)
         Returns:
             Timeseries
             AntimonyBuilder
@@ -590,10 +591,10 @@ class ControlSBML(OptionSet):
                 setpoint=option_set.setpoint, is_steady_state=option_set.is_steady_state, times=option_set.times,
                 sign=option_set.sign,
                 input_name=self.getInputName(option_set=option_set),
-                output_name=self.getOutputName(option_set=option_set))
+                output_name=self.getOutputName(option_set=option_set), save_path=self.save_path)
         designer.design(kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec,
                 num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
-            num_coordinate=num_coordinate, is_greedy=is_greedy, save_path=self.save_path)
+            num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
@@ -610,8 +611,26 @@ class ControlSBML(OptionSet):
                 kf=self.kf, 
                 **self._getPlotOptions(**option_set))
         return response_ts, antimony_builder
+    
+    def plotDesignResult(self, save_path:str=None, **kwargs):
+        """
+        Plots the mean squared error of all points searched in the last design.
 
-   
+        Args:
+            save_path: str (path to CSV file where design results are saved)
+            kwargs: dict (plot options)
+            AntimonyBuilder
+        """
+        if save_path is None:
+            save_path = self.save_path
+        option_set = self.getOptionSet(**kwargs)
+        sbml_system, _ = self.getSystem(**option_set)
+        designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(), save_path=self.save_path)
+        if designer.design_result_df is None:
+            msgs.warn("No design found!")
+            return None, None
+        return designer.plotDesignResult(**kwargs)
+
     ############ PROPERTIES AND PRIVATE ##############
     @staticmethod 
     def _getOptions(options:dict)->Tuple[dict, dict]:
