@@ -3,7 +3,8 @@ from controlSBML.control_sbml import ControlSBML
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 import controlSBML as ctl
 import controlSBML.constants as cn
-from controlSBML.grid import Grid
+from controlSBML.grid import Grid, Point
+from controlSBML.siso_design_evaluator import SISODesignEvaluator
 import helpers
 
 import copy
@@ -72,7 +73,7 @@ TIMES = np.linspace(0, 20, 200)
 PARAMETER_DCT = {p: n+1 for n, p in enumerate(cn.CONTROL_PARAMETERS)}
 SETPOINT = 3
 SAVE_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer.csv")
-REMOVE_FILES = []
+REMOVE_FILES = [SAVE_PATH]
 if False:
     # Required to construct the transfer function
     builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
@@ -159,7 +160,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
         designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf, times=np.linspace(0, 200, 1000))
-        designer.design(kp_spec=True, ki_spec=True, num_restart=3, max_value=10)
+        designer.design(kp_spec=True, ki_spec=True, num_restart=1, max_value=10)
         param_dct = designer.get()
         designer.evaluate(is_plot=IS_PLOT)
         checkParams(["kp", "ki"])
@@ -212,34 +213,46 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             return
         designer = self.makeDesigner()
         designer.design(kp_spec=True, ki_spec=True, kf_spec=True, min_value=0.1, max_value=10, 
-                        num_coordinate=5, num_restart=1, is_report=True)
+                        num_coordinate=5, num_restart=1, is_report=IGNORE_TEST)
         designer.plot(is_plot=IS_PLOT, markers=["", ""])
         self.assertGreater(designer.kp, 0)
         self.assertGreater(designer.ki, 0)
         self.assertGreater(designer.kf, 0)
-    
-    def testPlotDesignAlongGrid(self):
+
+    def testDesignAlongGrid(self):
         if IGNORE_TEST:
             return
         designer = self.makeDesigner()
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
         grid.addAxis("kp")
-        designer.designAlongGrid(grid, is_report=True)
-        designer.plot(is_plot=IS_PLOT, markers=["", ""])
+        designer.designAlongGrid(grid, is_report=IGNORE_TEST)
         self.assertGreater(designer.kp, 0)
         self.assertIsNone(designer.ki)
+        self.assertIsNone(designer.kf)
+    
+    def testDesignAlongGridParallel(self):
+        if IGNORE_TEST:
+            return
+        designer = self.makeDesigner()
+        grid = Grid(min_value=0.1, max_value=10, num_coordinate=11)
+        grid.addAxis("kp")
+        grid.addAxis("ki")
+        designer.designAlongGrid(grid, is_report=IGNORE_TEST, num_process=6)
+        self.assertGreater(designer.kp, 0)
+        self.assertGreater(designer.ki, 0)
         self.assertIsNone(designer.kf)
 
     def testPlotDesignResult(self):
         if IGNORE_TEST:
             return
+        self.init()
         designer = self.makeDesigner()
-        grid = Grid(min_value=0.1, max_value=2, num_coordinate=8, is_random=False)
-        grid.addAxis("kp", min_value=1, max_value=2, num_coordinate=8)
-        grid.addAxis("ki", min_value=0.01, max_value=0.1, num_coordinate=8)
-        grid.addAxis("kf", num_coordinate=8)
-        if not os.path.isfile(SAVE_PATH):
-            designer.designAlongGrid(grid)
+        num_coordinate = 4
+        grid = Grid(min_value=0.1, max_value=2, num_coordinate=4, is_random=False)
+        grid.addAxis("kp", min_value=1, max_value=2, num_coordinate=num_coordinate)
+        grid.addAxis("ki", min_value=0.01, max_value=0.1, num_coordinate=num_coordinate)
+        grid.addAxis("kf", num_coordinate=num_coordinate)
+        designer.designAlongGrid(grid, num_process=6, is_report=IGNORE_TEST)
         design_result_df = pd.read_csv(SAVE_PATH)
         def test(parameter_names):
             names = list(parameter_names)
@@ -268,7 +281,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer = cld.SISOClosedLoopDesigner(self.system, sys_tf, setpoint=5)
         designer.set(kp=2, ki=3)
         closed_loop_tf = designer.closed_loop_transfer_function
-        func1 = lambda x: float(closed_loop_tf(x))
+        func1 = lambda x: np.real(closed_loop_tf(x))
         cltf_nums = cltf.subs({kp: 2, ki: 3})
         func2 = lambda x: sympy.N(cltf_nums.subs({s: x}))
         result = ctl.util.compareSingleArgumentFunctions(func1, func2, 0, 100)
@@ -313,11 +326,29 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         times = np.linspace(0, 100, 1000)
         designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=times, setpoint=SETPOINT)
         initial_dct = {"kp": 1, "ki": 1}
-        fixed_dct = {}
-        value_dct = designer._searchForFeasibleClosedLoopSystem(initial_dct)
+        evaluator = SISODesignEvaluator(self.system, INPUT_NAME, OUTPUT_NAME, setpoint=SETPOINT, times=times)
+        value_dct = cld.SISOClosedLoopDesigner._searchForFeasibleClosedLoopSystem(evaluator, initial_dct)
         designer.set(**value_dct)
         ts, _ = designer.evaluate(is_plot=IS_PLOT)
         self.assertTrue(np.isclose(SETPOINT, ts[OUTPUT_NAME].values[-1], atol=0.1))
+
+    def testEvaluatePoints(self):
+        if IGNORE_TEST:
+            return
+        points = [Point(kp=1), Point(kp=2), Point(kp=3)]
+        self.init()
+        workunit = cld.Workunit(system=self.system.copy(), 
+                            input_name=INPUT_NAME,
+                            output_name=OUTPUT_NAME,
+                            setpoint=SETPOINT,
+                            times=TIMES,
+                            is_report=IGNORE_TEST,
+                            is_greedy=False,
+                            num_restart=1)
+        return_dct = {}
+        self.designer.evaluatePoints(1, workunit, points, return_dct)
+        evaluator_result = return_dct[1]
+        self.assertEqual(len(evaluator_result[cn.MSE]), len(points))
 
 
 #############################

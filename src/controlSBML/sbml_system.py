@@ -16,6 +16,7 @@ import tellurium as te
 
 class SBMLSystem(object):
 
+    #FIXME: Do not require roadrunner for constructor so can pass a pickleable object
     def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,
                  model_id="model", is_steady_state=False, roadrunner=None):
         """
@@ -33,39 +34,88 @@ class SBMLSystem(object):
             input_names = []
         if output_names is None:
             output_names = []
+        self._specified_input_names = input_names
+        self._specified_output_names = output_names
         # First initializations
         self.model_reference = model_reference
         self.model_id = model_id
         self.is_fixed_input_species = is_fixed_input_species
-        if roadrunner is None:
-            self.roadrunner = makeRoadrunner(self.model_reference)
-        else:
-            self.roadrunner = roadrunner
         self.is_steady_state = is_steady_state
-        self.original_antimony = self._getAntimony()
-        # Validate the input and output names
-        self.input_names = [self.makeInputName(n, self.roadrunner) for n in input_names]
-        self.output_names = [self.makeOutputName(n, self.roadrunner) for n in output_names]
-        # Create the symbols for input and outputs
-        self.symbol_dct = self._makeSymbolDct()
-        try:
-            self.antimony_builder = AntimonyBuilder(self.original_antimony, self.symbol_dct)
-        except Exception as exp:
-            raise ValueError("Cannot create AntimonyBuilder: %s" % exp)
-        # Add boundary information depending on the type of input
-        for name in self.input_names:
-            if name in self.antimony_builder.floating_species_names:
-                if is_fixed_input_species:
-                    self.antimony_builder.makeBoundarySpecies(name)
-                else:
-                    self.antimony_builder.makeBoundaryReaction(name)
+        self.is_fixed_input_species = is_fixed_input_species
+        # The following are calculated on first reference
+        self._antimony_builder = None
+        self._roadrunner = roadrunner
+        self._input_names = None
+        self._output_names = None
+        self._original_antimony = None
+        self._symbol_dct = None
+        
 
-    def copy(self):
-        model_reference = str(self)
-        system = SBMLSystem(self.model_reference, input_names=self.input_names, output_names=self.output_names,
-                            is_fixed_input_species=self.is_fixed_input_species, model_id=self.model_id)
-        system.antimony_builder = self.antimony_builder.copy()
-        system.symbol_dct = dict(self.symbol_dct)
+    #################### PROPERTIES ####################
+    @property
+    def original_antimony(self):
+        if self._original_antimony is None:
+            self._original_antimony = self._getAntimony()
+        return self._original_antimony
+    
+    @property
+    def symbol_dct(self):
+        if self._symbol_dct is None:
+            self._symbol_dct = self._makeSymbolDct()
+        return self._symbol_dct
+
+    @property
+    def roadrunner(self):
+        if self._roadrunner is None:
+            self._roadrunner = makeRoadrunner(self.model_reference)
+        return self._roadrunner
+
+    # FIXME: Does not copy updates to the antimony 
+    @property
+    def antimony_builder(self):
+        if self._antimony_builder is None:
+            try:
+                self._antimony_builder = AntimonyBuilder(self.original_antimony, self.symbol_dct)
+            except Exception as exp:
+                raise ValueError("Cannot create AntimonyBuilder: %s" % exp)
+            # Create boundary information depending on the type of input
+            for name in self.input_names:
+                if name in self._antimony_builder.floating_species_names:
+                    if self.is_fixed_input_species:
+                        self._antimony_builder.makeBoundarySpecies(name)
+                    else:
+                        self._antimony_builder.makeBoundaryReaction(name)
+        return self._antimony_builder
+    
+    @property
+    def input_names(self):
+        if self._input_names is None:
+            self._input_names = [self.makeInputName(n, self.roadrunner) for n in self._specified_input_names]
+        return self._input_names
+    
+    @property
+    def output_names(self):
+        if self._output_names is None:
+            self._output_names = [self.makeOutputName(n, self.roadrunner) for n in self._specified_output_names]
+        return self._output_names
+            
+    #################### METHODS ####################
+    def copy(self, is_serializable:bool=False):
+        """
+        Copies the SBML object.
+
+        Args:
+            is_serializable (bool, optional): Does not not create the roadrunner object. Defaults to False.
+
+        Returns:
+            _type_: _description_
+        """
+        system = SBMLSystem(self.model_reference, input_names=self._specified_input_names,
+                            output_names=self._specified_output_names,
+                            is_fixed_input_species=self.is_fixed_input_species, model_id=self.model_id,
+                            is_steady_state=self.is_steady_state)
+        #system.antimony_builder = self.antimony_builder.copy()
+        #system.symbol_dct = dict(self.symbol_dct)
         return system
     
     def __eq__(self, other):
@@ -296,7 +346,7 @@ class SBMLSystem(object):
         if antimony_builder is None:
             antimony_builder = self.antimony_builder
         if is_reload:
-            self.roadrunner = te.loada(str(antimony_builder))
+            self._roadrunner = te.loada(str(antimony_builder))
         if is_steady_state:
             self.setSteadyState()
         selections = list(self.input_names)

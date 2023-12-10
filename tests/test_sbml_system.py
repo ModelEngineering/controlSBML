@@ -51,8 +51,9 @@ class TestSBMLSystem(unittest.TestCase):
     def testImproperModel(self):
         if IGNORE_TEST:
             return
+        sbml_system = SBMLSystem(IMPROPER_LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
         with self.assertRaises(ValueError):
-            SBMLSystem(IMPROPER_LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
+            _ = sbml_system.antimony_builder
                           
     def notestConstructor2(self):
         if IGNORE_TEST:

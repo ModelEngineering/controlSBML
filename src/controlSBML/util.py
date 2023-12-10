@@ -577,9 +577,10 @@ def isPositiveRealPart(complex_numbers):
     Args:
         complex_numbers: list-complex
     """
-    poles = np.array(complex_numbers)
-    reals = np.real(poles)
-    return any([r > 0 for r in reals])  
+    for number in complex_numbers:
+        if np.real(number) > 0:
+            return True
+    return False
 
 def isStablePoles(transfer_function):
     """

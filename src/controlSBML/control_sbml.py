@@ -60,7 +60,7 @@ from controlSBML.option_management.option_manager import OptionManager
 import controlSBML.constants as cn
 import controlSBML.msgs as msgs
 from controlSBML.option_set import OptionSet
-from controlSBML.grid import Grid
+from controlSBML.grid import Grid, Point
 
 import os
 import numpy as np
@@ -110,13 +110,12 @@ SAVE_PATH = os.path.join(cn.DATA_DIR, "control_sbml.csv")
 class ControlSBML(OptionSet):
 
     def __init__(self, model_reference:str, roadrunner=None, save_path:str=None,
-                 is_culmulative_data:bool=False, **kwargs):
+                 **kwargs):
         """
         model_reference: str
             string, SBML file or Roadrunner object
         roadrunner: ExtendedRoadrunner
-        save_path: str (path to file where results are saved)
-        is_culmulative_data: bool (keep data from each design)
+        save_path: str (path to file where results are saved after a design)
         Plot options:
             ax: axis for plot
             figure: figure object
@@ -152,7 +151,6 @@ class ControlSBML(OptionSet):
         """
         # First initializations
         self.model_reference = model_reference
-        self.is_culmulative_data = is_culmulative_data
         if roadrunner is None:
             roadrunner = makeRoadrunner(model_reference)
         self._roadrunner = roadrunner
@@ -524,9 +522,8 @@ class ControlSBML(OptionSet):
         sbml_system.plotSISOClosedLoop(response_ts, option_set.setpoint, **plot_options)
         return response_ts, builder
 
-    # FIXME: implement plot_grid 
     def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=True, is_plot_grid:bool=False, 
-                       save_path=None, **kwargs):
+                       save_path:str=None, num_process:int=1, **kwargs):
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
         Persists the closed loop design (kp, ki, kf) if a design is found.
@@ -536,6 +533,7 @@ class ControlSBML(OptionSet):
             is_greedy: bool (if True, use greedy algorithm)
             kwargs: dict (persistent options)
             is_plot_grid: bool (if True, plot the grid with mean squared error)
+            num_process: int (number of processes to use)
         Returns:
             Timeseries
             AntimonyBuilder
@@ -545,14 +543,14 @@ class ControlSBML(OptionSet):
         if save_path is None:
             save_path = self.save_path
         if save_path is not None:
-            if os.path.isfile(save_path) and (not self.is_culmulative_data):
+            if os.path.isfile(save_path):
                 os.remove(save_path)
         designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(),
                 setpoint=option_set.setpoint, is_steady_state=option_set.is_steady_state, times=option_set.times,
                 sign=option_set.sign,
                 input_name=self.getInputName(option_set=option_set),
                 output_name=self.getOutputName(option_set=option_set), save_path=save_path)
-        designer.designAlongGrid(grid, is_greedy=is_greedy)
+        designer.designAlongGrid(grid, is_greedy=is_greedy, num_process=num_process)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
@@ -572,7 +570,8 @@ class ControlSBML(OptionSet):
 
     def plotDesign(self, kp_spec:bool=False, ki_spec:bool=False, kf_spec:bool=False, min_parameter_value:float=0,
                                  max_parameter_value:float=10, num_restart:int=3, 
-                                 num_coordinate:int=3, is_greedy:bool=True, is_report:bool=True, **kwargs):
+                                 num_coordinate:int=3, is_greedy:bool=True, is_report:bool=False, 
+                                 num_process:int=1, **kwargs):
         """
         Plots the results of a closed loop design. The design is specified by the parameters kp_spec, ki_spec, and kf_spec.
            None or False: do not include the parameter
@@ -603,7 +602,7 @@ class ControlSBML(OptionSet):
                 output_name=self.getOutputName(option_set=option_set), save_path=self.save_path)
         designer.design(kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec,
                 num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
-            num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report)
+            num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
@@ -634,7 +633,7 @@ class ControlSBML(OptionSet):
             save_path = self.save_path
         option_set = self.getOptionSet(**kwargs)
         sbml_system, _ = self.getSystem(**option_set)
-        designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(), save_path=self.save_path)
+        designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(), save_path=save_path)
         if designer.design_result_df is None:
             msgs.warn("No design found!")
             return None, None

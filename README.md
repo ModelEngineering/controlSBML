@@ -121,7 +121,7 @@ _version.py.
         - plotFitMIMOTransferFunction
     * Input can be species, parameter, compartment. Output can be floating species, flux.
     * Fixed and enhanced logging for ctl.NonlinearIOSystem, providing logs for both updfcn and outfcn.
-    * Implemented designer to automatically parameterize SISO closed loop system.
+    * Implemented designer to automatically parameterize SISO closed loop system. The designer does a grid search in parallel and plots the results. Control parameters can that can be specified are kp (proportional control), ki (integral control), and kf (parameter of the sensor filter). Differential control is not currently supported because of the absence of enablements for this in Tellurium.
 * 1.0.11 3/1/2023
     * Ensure that state variables are never negative.
 * 1.0.10

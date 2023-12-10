@@ -8,16 +8,21 @@ import controlSBML.constants as cn
 from controlSBML import util
 from controlSBML import msgs 
 from controlSBML.timeseries import Timeseries
-from controlSBML.grid import Grid
-from controlSBML.siso_design_evaluator import SISODesignEvaluator
+from controlSBML.sbml_system import SBMLSystem
+from controlSBML.grid import Grid, Point
+from controlSBML.siso_design_evaluator import SISODesignEvaluator, EvaluatorResult
 from controlSBML.option_management.option_manager import OptionManager
 
+import collections
 import control
 import matplotlib.pyplot as plt
+import multiprocessing
 import numpy as np
 import os
 import pandas as pd
+import random
 import seaborn as sns
+from typing import List
 
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
@@ -30,6 +35,9 @@ LOWPASS_POLE = 1e4 # Pole for low pass filter
 COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
 COL_CLOSED_LOOP_SYSTEM_TS = "closed_loop_system_ts"
 PARAMETER_DISPLAY_DCT = {cn.CP_KP: r'$k_p$', cn.CP_KI: r'$k_i$', cn.CP_KF: r'$k_f$'}
+
+Workunit = collections.namedtuple("Workunit",
+    "system input_name output_name setpoint times is_greedy num_restart is_report")    
 
 
 ##################################################################
@@ -161,11 +169,13 @@ class SISOClosedLoopDesigner(object):
         self.kd = None
         self.kf = None
 
-    def _searchForFeasibleClosedLoopSystem(self, value_dct, max_iteration=10):
+    @staticmethod
+    def _searchForFeasibleClosedLoopSystem(evaluator, value_dct, max_iteration=10):
         """
         Does a greedy search to find values of the parameters that are minimally stable.
 
         Args:
+            evaluator: SISClosedLoopEvaluator
             value_dct: dict (name: value)
                 key: name of parameter
                 value: value of parameter or None
@@ -175,8 +185,7 @@ class SISOClosedLoopDesigner(object):
                 key: name of parameter
                 value: value of parameter or None
         """
-        evaluator = SISODesignEvaluator(self.system, input_name=self.input_name,
-                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times)
+        new_evaluator = evaluator.copy(is_set_outputs=False)
         MINIMAL_FACTOR = 0.01
         factor = 0.5
         def mult(dct, factor):
@@ -191,7 +200,7 @@ class SISOClosedLoopDesigner(object):
         dct = dict(value_dct)
         last_stable_dct = None
         for _ in range(max_iteration):
-            if evaluator.evaluate(**dct):
+            if new_evaluator.evaluate(**dct):
                 if factor < MINIMAL_FACTOR:
                     break
                 else:
@@ -264,6 +273,10 @@ class SISOClosedLoopDesigner(object):
             # Find the range for the color bar
             min_mse = self.design_result_df[cn.MSE].min()
             max_mse = self.design_result_df[cn.MSE].max()
+            if np.isclose(min_mse, max_mse):
+                min_mse = min_mse*0.9
+                if np.isclose(max_mse, 0):
+                    max_mse =0.1 
             #
             fig, axes = plt.subplots(3, 1)
             mgr.setFigure()  # Set the current figure
@@ -278,7 +291,7 @@ class SISOClosedLoopDesigner(object):
 
     def design(self, kp_spec=False, ki_spec=False, kf_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
-               num_coordinate=3, save_path=None, is_report:bool=False):
+               num_coordinate=3, save_path=None, num_process:int=1, is_report:bool=False):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -290,6 +303,7 @@ class SISOClosedLoopDesigner(object):
             num_coordinate: int (number of coordinates for a parameter; minimum is 2)
             save_path: str (path to save the results)
             is_report: bool (provide progress report)
+            num_process: int (number of processes to use)
         """
         def addAxis(grid, parameter_name, parameter_spec):
             """
@@ -315,14 +329,13 @@ class SISOClosedLoopDesigner(object):
                 msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
                 msgs.warn(msg)
         # Initializations
-        evaluator = SISODesignEvaluator(self.system, input_name=self.input_name,
-                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times, save_path=save_path)
         grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
         addAxis(grid, cn.CP_KP, kp_spec)
         addAxis(grid, cn.CP_KI, ki_spec)
         addAxis(grid, cn.CP_KF, kf_spec)
         #
-        return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, is_report=is_report)
+        return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, is_report=is_report,
+                                    num_process=num_process)
 
     def simulateTransferFunction(self, transfer_function=None, period=None):
         """
@@ -348,7 +361,7 @@ class SISOClosedLoopDesigner(object):
         return new_times, predictions
 
     def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1,
-                        is_report:bool=False):
+                        is_report:bool=False, num_process:int=1):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
 
@@ -357,36 +370,95 @@ class SISOClosedLoopDesigner(object):
             is_greedy: bool (if True, then a greedy search is done to find a feasible system)
             num_restart: int (number of times to start the search) 
             is_report: bool (provide progress report)
+            num_proc: int (number of processes to use)
         """
         # Initial check
         if self.open_loop_transfer_function is not None:
             if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
                 msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
                 msgs.warn(msg)
-        # Initializations
-        evaluator = SISODesignEvaluator(self.system, input_name=self.input_name,
-                                    output_name=self.output_name, setpoint=self.setpoint, times=self.times,
-                                    save_path=self.save_path)
-        iteration = 0
-        total_iteration = num_restart*grid.num_point
-        for _ in range(num_restart):
-            grid.recalculatePoints()
-            # Iterate to find values
-            for point in grid.points:
+        # Start the processes
+        workunit = Workunit(system=self.system.copy(), 
+                            input_name=self.input_name, 
+                            output_name=self.output_name, 
+                            setpoint=self.setpoint, 
+                            times=self.times,
+                            is_greedy=is_greedy, 
+                            num_restart=num_restart, 
+                            is_report=is_report)
+        points = grid.points
+        random.shuffle(points)   # Process in random order
+        num_point = int(len(points)//num_process)
+        manager = multiprocessing.Manager()
+        return_dct = manager.dict()
+        if num_process == 1:
+            procnum = 0
+            self.evaluatePoints(procnum, workunit, points, return_dct)
+            merged_result = return_dct[0]
+        else:
+            jobs = []
+            for procnum in range(num_process):
                 if is_report:
+                    print("**Starting process %d" % procnum)
+                pos = min(num_point, len(points))
+                these_points = points[:pos]
+                points = points[pos:]
+                p = multiprocessing.Process(target=self.evaluatePoints, args=(procnum, workunit, these_points, return_dct))
+                jobs.append(p)
+                p.start()
+            # Wait for the processes to finish
+            for proc in jobs:
+                proc.join()
+            # Collect the results
+            evaluator_results = list(return_dct.values())
+            merged_result = EvaluatorResult.merge(evaluator_results)
+        # Write the save file
+        if self.save_path is not None:
+            pd.DataFrame(merged_result).to_csv(self.save_path)
+        # Construct SISODesignEvaluator
+        df = pd.DataFrame(merged_result)
+        final_evaluator = SISODesignEvaluator.makeFromDataframe(self.system,
+                self.input_name, self.output_name, df, setpoint=self.setpoint, times=self.times,
+                save_path=self.save_path)
+        # Record the result
+        self.residual_mse = final_evaluator.residual_mse
+        self.set(kp=final_evaluator.kp, ki=final_evaluator.ki, kf=final_evaluator.kf)
+        if self.residual_mse is not None:
+            self.history.add()
+
+    @classmethod
+    def evaluatePoints(cls, procnum, workunit, points, return_dct):
+        """
+        Calculates MSE for the specified points. Runs as a separate process.
+
+        Args:
+            procnum: int (process number)
+            workunit: Workunit
+            points: list-Point
+            return_dct: dict (key: procnum, value: SISODesignEvaluator)
+        Returns:
+            EvaluatorResult
+        """
+        # Initializations
+        evaluator = SISODesignEvaluator(workunit.system,
+                                        input_name=workunit.input_name,
+                                        output_name=workunit.output_name,
+                                        setpoint=workunit.setpoint,
+                                        times=workunit.times)
+        iteration = 0
+        # Iterate to find values
+        for _ in range(workunit.num_restart):
+            for point in points:
+                if workunit.is_report:
                     iteration += 1
-                    percent = int(100*iteration/total_iteration)
-                    print("**Evaluating point %d (%d%%): %s" % (iteration, percent, str(point)))
-                if is_greedy:
-                    new_point = self._searchForFeasibleClosedLoopSystem(point, max_iteration=10)
+                    percent = int(100*iteration/(workunit.num_restart*len(points)))
+                    print("**%d (%d, %d%%): %s" % (procnum, iteration, percent, str(point)))
+                if workunit.is_greedy:
+                    new_point = cls._searchForFeasibleClosedLoopSystem(evaluator, point, max_iteration=10)
                 else:
                     new_point = point
                 evaluator.evaluate(**new_point)
-        # Record the result
-        self.residual_mse = evaluator.residual_mse
-        self.set(kp=evaluator.kp, ki=evaluator.ki, kf=evaluator.kf)
-        if self.residual_mse is not None:
-            self.history.add()
+        return_dct[procnum] = evaluator.evaluator_result
 
     @property
     def design_result_df(self):
