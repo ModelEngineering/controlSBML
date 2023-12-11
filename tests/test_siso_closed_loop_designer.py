@@ -6,6 +6,7 @@ import controlSBML.constants as cn
 from controlSBML.grid import Grid, Point
 from controlSBML.siso_design_evaluator import SISODesignEvaluator
 import helpers
+from controlSBML.timeseries import Timeseries
 
 import copy
 import control
@@ -73,7 +74,8 @@ TIMES = np.linspace(0, 20, 200)
 PARAMETER_DCT = {p: n+1 for n, p in enumerate(cn.CONTROL_PARAMETERS)}
 SETPOINT = 3
 SAVE_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer.csv")
-REMOVE_FILES = [SAVE_PATH]
+SAVE1_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer1.csv")
+REMOVE_FILES = [SAVE_PATH, SAVE1_PATH]
 if False:
     # Required to construct the transfer function
     builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
@@ -304,20 +306,42 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer = cld.SISOClosedLoopDesigner(system, linear_tf, times=times, setpoint=5)
         designer.design(kp_spec=True, ki_spec=True, num_restart=2, max_value=100)
         designer.evaluate(is_plot=IS_PLOT, figsize=FIGSIZE)
-
-    def testBug2(self):
+    
+    def testBug3(self):
         if IGNORE_TEST:
             return
         # Setup
         url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
-        ctlsb = ControlSBML(url)
+        ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
         ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
-        _ = ctlsb.plotClosedLoop(setpoint=80, sign=-1, kp=1, ki=0.001, kf=None, figsize=FIGSIZE,
-                                  times=np.linspace(0, 100, 1000), is_plot=False)
-        _ = ctlsb.plotDesign(kp_spec=True, ki_spec=True, figsize=FIGSIZE, max_parameter_value=1, is_plot=IS_PLOT)
-        self.assertIsNotNone(ctlsb.kp)
+        #
+        grid = ctlsb.getGrid(kp_spec=True, ki_spec=False, num_coordinate=4, is_random=False)
+        axis = grid.getAxis("kp")
+        axis.setMinValue(0.1)
+        axis.setMaxValue(10)
+        ts, builder = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_greedy=False, 
+                                           is_plot=IS_PLOT, save_path=SAVE1_PATH)
+        self.assertTrue(isinstance(ts, Timeseries))
+
+    def testBug4(self):
+        if IGNORE_TEST:
+            return
+        # Setup
+        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
+        ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+        #
+        grid = ctlsb.getGrid(kp_spec=True, ki_spec=False, num_coordinate=40, is_random=False)
+        axis = grid.getAxis("kp")
+        axis.setMinValue(0.1)
+        axis.setMaxValue(10)
+        ts, builder = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT,
+                                           num_process=-1, is_greedy=False, save_path=SAVE1_PATH)
+        self.assertTrue(isinstance(ts, Timeseries))
 
     def testFindFeasibleClosedLoopSystem(self):
         if IGNORE_TEST:

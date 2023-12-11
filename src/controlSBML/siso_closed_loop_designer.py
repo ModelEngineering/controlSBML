@@ -371,8 +371,10 @@ class SISOClosedLoopDesigner(object):
             is_greedy: bool (if True, then a greedy search is done to find a feasible system)
             num_restart: int (number of times to start the search) 
             is_report: bool (provide progress report)
-            num_proc: int (number of processes to use)
+            num_proc: int (number of processes to use; -1 means use all available processors)
         """
+        if num_process < 0:
+            num_process = multiprocessing.cpu_count()
         # Initial check
         if self.open_loop_transfer_function is not None:
             if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
@@ -415,12 +417,12 @@ class SISOClosedLoopDesigner(object):
             evaluator_results = list(return_dct.values())
             merged_result = EvaluatorResult.merge(evaluator_results)
         # Write the save file
+        self._design_result_df = pd.DataFrame(merged_result)
         if self.save_path is not None:
-            pd.DataFrame(merged_result).to_csv(self.save_path)
+            self.design_result_df.to_csv(self.save_path)
         # Construct SISODesignEvaluator
-        df = pd.DataFrame(merged_result)
         final_evaluator = SISODesignEvaluator.makeFromDataframe(self.system,
-                self.input_name, self.output_name, df, setpoint=self.setpoint, times=self.times,
+                self.input_name, self.output_name, self.design_result_df, setpoint=self.setpoint, times=self.times,
                 save_path=self.save_path)
         # Record the result
         self.residual_mse = final_evaluator.residual_mse
@@ -443,7 +445,7 @@ class SISOClosedLoopDesigner(object):
             EvaluatorResult
         """
         def iterate(count:int, iteration:int):
-            point_idx = count % workunit.num_restart
+            point_idx = count % len(points)
             point = points[point_idx]
             #for point in points:
             if workunit.is_report:
@@ -471,8 +473,8 @@ class SISOClosedLoopDesigner(object):
                 iteration += 1
                 residual_cnt = count % num_process
                 if residual_cnt == 0:
-                    new_count = int(count/num_process)
-                    iterate(new_count, iteration)
+                    # Is the 0th index
+                    iterate(count, iteration)
         else:
             for count in range(num_iteration):
                 iteration += 1

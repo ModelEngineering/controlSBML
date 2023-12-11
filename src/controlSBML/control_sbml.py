@@ -533,7 +533,7 @@ class ControlSBML(OptionSet):
             is_greedy: bool (if True, use greedy algorithm)
             kwargs: dict (persistent options)
             is_plot_grid: bool (if True, plot the grid with mean squared error)
-            num_process: int (number of processes to use)
+            num_process: int (number of processes to use; -1 means use all available)
         Returns:
             Timeseries
             AntimonyBuilder
