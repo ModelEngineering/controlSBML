@@ -18,5 +18,6 @@ sympy
 tabulate
 tellurium
 tomli
+tqdm
 twine
 urllib3

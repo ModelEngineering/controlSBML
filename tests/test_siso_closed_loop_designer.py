@@ -225,7 +225,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer = self.makeDesigner()
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
         grid.addAxis("kp")
-        designer.designAlongGrid(grid, is_report=IGNORE_TEST)
+        designer.designAlongGrid(grid, num_process=2)
         self.assertGreater(designer.kp, 0)
         self.assertIsNone(designer.ki)
         self.assertIsNone(designer.kf)
@@ -335,7 +335,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
     def testEvaluatePoints(self):
         if IGNORE_TEST:
             return
-        points = [Point(kp=1), Point(kp=2), Point(kp=3)]
+        points = np.repeat(Point(kp=1), 100)
         self.init()
         workunit = cld.Workunit(system=self.system.copy(), 
                             input_name=INPUT_NAME,
@@ -346,8 +346,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
                             is_greedy=False,
                             num_restart=1)
         return_dct = {}
-        self.designer.evaluatePoints(1, workunit, points, return_dct)
-        evaluator_result = return_dct[1]
+        self.designer.evaluatePoints(0, 1, workunit, points, return_dct)
+        evaluator_result = return_dct[0]
         self.assertEqual(len(evaluator_result[cn.MSE]), len(points))
 
 

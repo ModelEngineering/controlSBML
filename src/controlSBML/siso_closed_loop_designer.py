@@ -23,6 +23,7 @@ import pandas as pd
 import random
 import seaborn as sns
 from typing import List
+from tqdm import tqdm
 
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
@@ -393,7 +394,7 @@ class SISOClosedLoopDesigner(object):
         return_dct = manager.dict()
         if num_process == 1:
             procnum = 0
-            self.evaluatePoints(procnum, workunit, points, return_dct)
+            self.evaluatePoints(procnum, num_process, workunit, points, return_dct)
             merged_result = return_dct[0]
         else:
             jobs = []
@@ -403,7 +404,8 @@ class SISOClosedLoopDesigner(object):
                 pos = min(num_point, len(points))
                 these_points = points[:pos]
                 points = points[pos:]
-                p = multiprocessing.Process(target=self.evaluatePoints, args=(procnum, workunit, these_points, return_dct))
+                p = multiprocessing.Process(target=self.evaluatePoints, 
+                                            args=(procnum, num_process, workunit, these_points, return_dct))
                 jobs.append(p)
                 p.start()
             # Wait for the processes to finish
@@ -427,37 +429,68 @@ class SISOClosedLoopDesigner(object):
             self.history.add()
 
     @classmethod
-    def evaluatePoints(cls, procnum, workunit, points, return_dct):
+    def evaluatePoints(cls, procnum, num_process, workunit, points, return_dct):
         """
         Calculates MSE for the specified points. Runs as a separate process.
 
         Args:
             procnum: int (process number)
+            num_process: int (number of processes)
             workunit: Workunit
             points: list-Point
             return_dct: dict (key: procnum, value: SISODesignEvaluator)
         Returns:
             EvaluatorResult
         """
+        def iterate(count:int, iteration:int):
+            point_idx = count % workunit.num_restart
+            point = points[point_idx]
+            #for point in points:
+            if workunit.is_report:
+                iteration += 1
+                percent = int(100*iteration/(workunit.num_restart*len(points)))
+                print("**%d (%d, %d%%): %s" % (procnum, iteration, percent, str(point)))
+            if workunit.is_greedy:
+                new_point = cls._searchForFeasibleClosedLoopSystem(evaluator, point, max_iteration=10)
+            else:
+                new_point = point
+            evaluator.evaluate(**new_point)
+        #
         # Initializations
         evaluator = SISODesignEvaluator(workunit.system,
                                         input_name=workunit.input_name,
                                         output_name=workunit.output_name,
                                         setpoint=workunit.setpoint,
                                         times=workunit.times)
-        iteration = 0
         # Iterate to find values
-        for _ in range(workunit.num_restart):
-            for point in points:
-                if workunit.is_report:
-                    iteration += 1
-                    percent = int(100*iteration/(workunit.num_restart*len(points)))
-                    print("**%d (%d, %d%%): %s" % (procnum, iteration, percent, str(point)))
-                if workunit.is_greedy:
-                    new_point = cls._searchForFeasibleClosedLoopSystem(evaluator, point, max_iteration=10)
-                else:
-                    new_point = point
-                evaluator.evaluate(**new_point)
+        num_iteration = workunit.num_restart*len(points)
+        iteration = 0
+        if procnum == 0:
+            iteration_tot = num_iteration*num_process
+            for count in tqdm(range(iteration_tot)):
+                iteration += 1
+                residual_cnt = count % num_process
+                if residual_cnt == 0:
+                    new_count = int(count/num_process)
+                    iterate(new_count, iteration)
+        else:
+            for count in range(num_iteration):
+                iteration += 1
+                iterate(count, iteration)
+            # point_idx = num_iteration % workunit.num_restart
+            # point = points[point_idx]
+            # #for point in points:
+            # #if workunit.is_report:
+            # if False:
+            #     iteration += 1
+            #     percent = int(100*iteration/(workunit.num_restart*len(points)))
+            #     print("**%d (%d, %d%%): %s" % (procnum, iteration, percent, str(point)))
+            # if workunit.is_greedy:
+            #     new_point = cls._searchForFeasibleClosedLoopSystem(evaluator, point, max_iteration=10)
+            # else:
+            #     new_point = point
+            # evaluator.evaluate(**new_point)
+        # Return the result
         return_dct[procnum] = evaluator.evaluator_result
 
     @property
