@@ -229,7 +229,7 @@ class SISOClosedLoopDesigner(object):
         """
         def makePlot(parameter_name1, parameter_name2, ax, vmin=None, vmax=None):
             plot_df = self.design_result_df.pivot_table(index=parameter_name1, columns=parameter_name2,
-                                                  values=cn.MSE, aggfunc='mean')
+                                                  values=cn.MSE, aggfunc='min')
             plot_df = plot_df.sort_index(ascending=False)
             plot_df.columns = [util.roundToDigits(c, 3) for c in plot_df.columns]
             plot_df.index = [util.roundToDigits(c, 3) for c in plot_df.index]

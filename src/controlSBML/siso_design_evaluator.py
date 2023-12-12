@@ -137,15 +137,26 @@ class SISODesignEvaluator:
         merged_evaluator = merged_evaluator.copy()
         results = [e.evaluator_result for e in evaluators]
         merged_evaluator.evaluator_result = EvaluatorResult.merge(results)
-        for evaluator in evaluators:
-            if evaluator.residual_mse is None:
-                continue
-            if merged_evaluator.residual_mse is None:
-                update(evaluator, merged_evaluator)
-                continue
-            if evaluator.residual_mse < merged_evaluator.residual_mse:
-                update(evaluator, merged_evaluator)
-                continue
+        df = pd.DataFrame(merged_evaluator.evaluator_result)
+        ser = df[cn.MSE].dropna()
+        min_mse = np.min(ser)
+        idx = ser[ser == min_mse].index[0]
+        if cn.CP_KP in df.columns:
+            merged_evaluator.kp = df[cn.CP_KP].values[idx]
+        if cn.CP_KI in df.columns:
+            merged_evaluator.ki = df[cn.CP_KI].values[idx]
+        if cn.CP_KF in df.columns:
+            merged_evaluator.kf = df[cn.CP_KF].values[idx]
+        if False:
+            for evaluator in evaluators:
+                if evaluator.residual_mse is None:
+                    continue
+                if merged_evaluator.residual_mse is None:
+                    update(evaluator, merged_evaluator)
+                    continue
+                if evaluator.residual_mse < merged_evaluator.residual_mse:
+                    update(evaluator, merged_evaluator)
+                    continue
         return merged_evaluator
         
     def copy(self, is_set_outputs:bool=True):

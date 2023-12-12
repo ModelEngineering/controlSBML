@@ -1,5 +1,6 @@
 CTLSB.plotSBMLSystem - does a plot with multiple inputs and multiple outputs.
 plotDesignResults - does plots of MSE for 1, 2, or 3 parameters.
+plot grid for 1 and 3 parameters
 Noise & disturbances
 MISO
 Bugs

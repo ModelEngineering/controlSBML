@@ -63,7 +63,7 @@ k0 = 0
 k1 = 1
 k2 = 2
 k3 = 3
-end
+endmean
 """
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
 INPUT_NAME = "S0"
