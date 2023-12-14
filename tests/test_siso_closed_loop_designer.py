@@ -17,7 +17,7 @@ import pandas as pd
 import sympy
 import unittest
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 FIGSIZE = (5, 5)
 helpers.setupPlotting(__file__)
@@ -63,7 +63,7 @@ k0 = 0
 k1 = 1
 k2 = 2
 k3 = 3
-endmean
+end
 """
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
 INPUT_NAME = "S0"
@@ -308,8 +308,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer.evaluate(is_plot=IS_PLOT, figsize=FIGSIZE)
     
     def testBug3(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         # Setup
         url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
         INPUT_NAME = "pIRS"

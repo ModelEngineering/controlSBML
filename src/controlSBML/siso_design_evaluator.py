@@ -205,7 +205,7 @@ class SISODesignEvaluator:
         for key, value in original_value_dct.items():
             if value is None:
                 del value_dct[key]
-        is_feasible, residual_mse = self._calculateMse(**value_dct)
+        is_feasible, residual_mse = self.calculateMse(**value_dct)
         # Save the results
         self.evaluator_result.add(**value_dct, mse=residual_mse)
         self.evaluator_result.writeCsv(self.save_path)
@@ -217,7 +217,7 @@ class SISODesignEvaluator:
             update(residual_mse=residual_mse, **value_dct)
         return True
     
-    def _calculateMse(self, max_output:float=1e6, min_output:float=0, **parameter_dct:dict):
+    def calculateMse(self, max_output:float=1e6, min_output:float=0, **parameter_dct:dict):
         """
         Attempts to calculate the mean squared error of the closed loop system. Reports if system is unstable.
 

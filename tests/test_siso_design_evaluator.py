@@ -128,10 +128,10 @@ class TestSISODesignEvaluator(unittest.TestCase):
         if IGNORE_TEST:
             return
         parameter_dct = {cn.CP_KP: 1, cn.CP_KI: 1, cn.CP_KF: 1}
-        is_feasible, mse = self.evaluator_unstable._calculateMse(**parameter_dct)
+        is_feasible, mse = self.evaluator_unstable.calculateMse(**parameter_dct)
         self.assertFalse(is_feasible)
         #
-        is_feasible, mse = self.evaluator_stable._calculateMse(**parameter_dct)
+        is_feasible, mse = self.evaluator_stable.calculateMse(**parameter_dct)
         self.assertTrue(is_feasible)
         self.assertTrue(mse > 0)
 

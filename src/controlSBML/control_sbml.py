@@ -523,7 +523,7 @@ class ControlSBML(OptionSet):
         return response_ts, builder
 
     def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=True, is_plot_grid:bool=False, 
-                       save_path:str=None, num_process:int=1, **kwargs):
+                       save_path:str=None, num_process:int=-1, **kwargs):
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
         Persists the closed loop design (kp, ki, kf) if a design is found.
@@ -571,7 +571,7 @@ class ControlSBML(OptionSet):
     def plotDesign(self, kp_spec:bool=False, ki_spec:bool=False, kf_spec:bool=False, min_parameter_value:float=0,
                                  max_parameter_value:float=10, num_restart:int=3, 
                                  num_coordinate:int=3, is_greedy:bool=True, is_report:bool=False, 
-                                 num_process:int=1, **kwargs):
+                                 num_process:int=-1, **kwargs):
         """
         Plots the results of a closed loop design. The design is specified by the parameters kp_spec, ki_spec, and kf_spec.
            None or False: do not include the parameter

@@ -390,24 +390,25 @@ class SISOClosedLoopDesigner(object):
                             num_restart=num_restart, 
                             is_report=is_report)
         points = grid.points
+        adj_num_process = min(num_process, len(points))
         random.shuffle(points)   # Process in random order
-        num_point = int(len(points)//num_process)
+        num_point = int(len(points)//adj_num_process)
         manager = multiprocessing.Manager()
         return_dct = manager.dict()
-        if num_process == 1:
+        if adj_num_process == 1:
             procnum = 0
-            self.evaluatePoints(procnum, num_process, workunit, points, return_dct)
+            self.evaluatePoints(procnum, adj_num_process, workunit, points, return_dct)
             merged_result = return_dct[0]
         else:
             jobs = []
-            for procnum in range(num_process):
+            for procnum in range(adj_num_process):
                 if is_report:
                     print("**Starting process %d" % procnum)
                 pos = min(num_point, len(points))
                 these_points = points[:pos]
                 points = points[pos:]
                 p = multiprocessing.Process(target=self.evaluatePoints, 
-                                            args=(procnum, num_process, workunit, these_points, return_dct))
+                                            args=(procnum, adj_num_process, workunit, these_points, return_dct))
                 jobs.append(p)
                 p.start()
             # Wait for the processes to finish
@@ -479,19 +480,6 @@ class SISOClosedLoopDesigner(object):
             for count in range(num_iteration):
                 iteration += 1
                 iterate(count, iteration)
-            # point_idx = num_iteration % workunit.num_restart
-            # point = points[point_idx]
-            # #for point in points:
-            # #if workunit.is_report:
-            # if False:
-            #     iteration += 1
-            #     percent = int(100*iteration/(workunit.num_restart*len(points)))
-            #     print("**%d (%d, %d%%): %s" % (procnum, iteration, percent, str(point)))
-            # if workunit.is_greedy:
-            #     new_point = cls._searchForFeasibleClosedLoopSystem(evaluator, point, max_iteration=10)
-            # else:
-            #     new_point = point
-            # evaluator.evaluate(**new_point)
         # Return the result
         return_dct[procnum] = evaluator.evaluator_result
 
