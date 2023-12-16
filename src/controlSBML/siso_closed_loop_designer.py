@@ -8,22 +8,18 @@ import controlSBML.constants as cn
 from controlSBML import util
 from controlSBML import msgs 
 from controlSBML.timeseries import Timeseries
-from controlSBML.sbml_system import SBMLSystem
-from controlSBML.grid import Grid, Point
-from controlSBML.siso_design_evaluator import SISODesignEvaluator, EvaluatorResult
+from controlSBML.grid import Grid
 from controlSBML.option_management.option_manager import OptionManager
+from controlSBML.parallel_search import ParallelSearch
+from controlSBML.point_evaluator import PointEvaluator
 
 import collections
 import control
 import matplotlib.pyplot as plt
-import multiprocessing
 import numpy as np
 import os
 import pandas as pd
-import random
 import seaborn as sns
-from typing import List
-from tqdm import tqdm
 
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
@@ -33,15 +29,12 @@ BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
 LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
-COL_CLOSED_LOOP_SYSTEM = "closed_loop_system"
-COL_CLOSED_LOOP_SYSTEM_TS = "closed_loop_system_ts"
 PARAMETER_DISPLAY_DCT = {cn.CP_KP: r'$k_p$', cn.CP_KI: r'$k_i$', cn.CP_KF: r'$k_f$'}
 
 Workunit = collections.namedtuple("Workunit",
     "system input_name output_name setpoint times is_greedy num_restart is_report")    
 
 
-##################################################################
 def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
     # Construct the transfer functions
     if open_loop_transfer_function is None:
@@ -102,8 +95,6 @@ class SISOClosedLoopDesigner(object):
         self.end_time = self.times[-1]
         self.num_point = len(self.times)
         self.sign = sign
-        # Internal state
-        self.history = _History(self, is_history=is_history)
         # Outputs
         self.kp = None
         self.ki = None
@@ -115,8 +106,6 @@ class SISOClosedLoopDesigner(object):
         #
         self._initializeDesigner()
         self.siso = None # SISOClosedLoopSystem
-        # 
-        self.history.add()
 
     @property
     def closed_loop_transfer_function(self):
@@ -124,7 +113,6 @@ class SISOClosedLoopDesigner(object):
             return None
         return _calculateClosedLoopTransferFunction(open_loop_transfer_function=self.open_loop_transfer_function, kp=self.kp, ki=self.ki,
                                       kf=self.kf, sign=self.sign)
-    
     @property
     def closed_loop_timeseries(self):
         _, closed_loop_ts = self.simulateTransferFunction(transfer_function=self.closed_loop_transfer_function)
@@ -146,7 +134,6 @@ class SISOClosedLoopDesigner(object):
                 continue
             self.__setattr__(name, value)
         self.closed_loop_system = None
-        self.history.add()
 
     def get(self):
         """
@@ -170,56 +157,6 @@ class SISOClosedLoopDesigner(object):
         self.kd = None
         self.kf = None
 
-    @staticmethod
-    def _searchForFeasibleClosedLoopSystem(evaluator, value_dct, max_iteration=10):
-        """
-        Does a greedy search to find values of the parameters that are minimally stable.
-
-        Args:
-            evaluator: SISClosedLoopEvaluator
-            value_dct: dict (name: value)
-                key: name of parameter
-                value: value of parameter or None
-            max_iteration: int (maximum number of iterations)
-        Returns:
-            dict: {name: value} or None (no stable result found)
-                key: name of parameter
-                value: value of parameter or None
-        """
-        new_evaluator = evaluator.copy(is_set_outputs=False)
-        MINIMAL_FACTOR = 0.01
-        factor = 0.5
-        def mult(dct, factor):
-            new_dct = {}
-            for name, value in dct.items():
-                if value is None:
-                    new_dct[name] = None
-                else:
-                    new_dct[name] = factor*value
-            return new_dct
-        # Iterate to find values
-        dct = dict(value_dct)
-        last_stable_dct = None
-        for _ in range(max_iteration):
-            if new_evaluator.evaluate(**dct):
-                if factor < MINIMAL_FACTOR:
-                    break
-                else:
-                    # Try a bigger factor
-                    factor = 1 + factor
-                    last_stable_dct = dict(dct)
-            else:
-                if last_stable_dct is not None:
-                    dct = dict(last_stable_dct)
-                    break
-                else:
-                    factor = factor/2
-            dct = mult(dct, factor)
-        # Return the result
-        if last_stable_dct is None:
-            return None
-        return dct
-    
     def plotDesignResult(self, **kwargs):
         """
         Plots the design results.
@@ -229,7 +166,7 @@ class SISOClosedLoopDesigner(object):
         """
         def makePlot(parameter_name1, parameter_name2, ax, vmin=None, vmax=None):
             plot_df = self.design_result_df.pivot_table(index=parameter_name1, columns=parameter_name2,
-                                                  values=cn.MSE, aggfunc='min')
+                                                  values=cn.SCORE, aggfunc='min')
             plot_df = plot_df.sort_index(ascending=False)
             plot_df.columns = [util.roundToDigits(c, 3) for c in plot_df.columns]
             plot_df.index = [util.roundToDigits(c, 3) for c in plot_df.index]
@@ -260,7 +197,7 @@ class SISOClosedLoopDesigner(object):
             # Line plot
             ax = mgr.getAx()
             parameter_name = parameter_names[0]
-            yv = self.design_result_df[cn.MSE]
+            yv = self.design_result_df[cn.SCORE].values
             xv = self.design_result_df[parameter_name]
             ax.stem(xv, yv)
             ax.set_xlabel(parameter_name)
@@ -272,8 +209,8 @@ class SISOClosedLoopDesigner(object):
         elif len(parameter_names) == 3:
             # Multple 2D plots
             # Find the range for the color bar
-            min_mse = self.design_result_df[cn.MSE].min()
-            max_mse = self.design_result_df[cn.MSE].max()
+            min_mse = self.design_result_df[cn.SCORE].min()
+            max_mse = self.design_result_df[cn.SCORE].max()
             if np.isclose(min_mse, max_mse):
                 min_mse = min_mse*0.9
                 if np.isclose(max_mse, 0):
@@ -292,7 +229,7 @@ class SISOClosedLoopDesigner(object):
 
     def design(self, kp_spec=False, ki_spec=False, kf_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
-               num_coordinate=3, save_path=None, num_process:int=1, is_report:bool=False):
+               num_coordinate=3, save_path=None, num_process:int=-1, is_report:bool=False):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -362,7 +299,7 @@ class SISOClosedLoopDesigner(object):
         return new_times, predictions
 
     def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1,
-                        is_report:bool=False, num_process:int=1):
+                        is_report:bool=False, num_process:int=-1):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
 
@@ -373,115 +310,32 @@ class SISOClosedLoopDesigner(object):
             is_report: bool (provide progress report)
             num_proc: int (number of processes to use; -1 means use all available processors)
         """
-        if num_process < 0:
-            num_process = multiprocessing.cpu_count()
-        # Initial check
-        if self.open_loop_transfer_function is not None:
-            if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
-                msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
-                msgs.warn(msg)
-        # Start the processes
-        workunit = Workunit(system=self.system.copy(), 
-                            input_name=self.input_name, 
-                            output_name=self.output_name, 
-                            setpoint=self.setpoint, 
-                            times=self.times,
-                            is_greedy=is_greedy, 
-                            num_restart=num_restart, 
-                            is_report=is_report)
-        points = grid.points
-        adj_num_process = min(num_process, len(points))
-        random.shuffle(points)   # Process in random order
-        num_point = int(len(points)//adj_num_process)
-        manager = multiprocessing.Manager()
-        return_dct = manager.dict()
-        if adj_num_process == 1:
-            procnum = 0
-            self.evaluatePoints(procnum, adj_num_process, workunit, points, return_dct)
-            merged_result = return_dct[0]
-        else:
-            jobs = []
-            for procnum in range(adj_num_process):
-                if is_report:
-                    print("**Starting process %d" % procnum)
-                pos = min(num_point, len(points))
-                these_points = points[:pos]
-                points = points[pos:]
-                p = multiprocessing.Process(target=self.evaluatePoints, 
-                                            args=(procnum, adj_num_process, workunit, these_points, return_dct))
-                jobs.append(p)
-                p.start()
-            # Wait for the processes to finish
-            for proc in jobs:
-                proc.join()
-            # Collect the results
-            evaluator_results = list(return_dct.values())
-            merged_result = EvaluatorResult.merge(evaluator_results)
-        # Write the save file
-        self._design_result_df = pd.DataFrame(merged_result)
-        if self.save_path is not None:
-            self.design_result_df.to_csv(self.save_path)
-        # Construct SISODesignEvaluator
-        final_evaluator = SISODesignEvaluator.makeFromDataframe(self.system,
-                self.input_name, self.output_name, self.design_result_df, setpoint=self.setpoint, times=self.times,
-                save_path=self.save_path)
+        point_evaluator = PointEvaluator(self.system.copy(), self.input_name, self.output_name, 
+                                            self.setpoint, self.times, is_greedy=is_greedy)
+        parallel_search = ParallelSearch(point_evaluator, grid.points, num_process=num_process, is_report=is_report)
+        search_results = []
+        for _ in range(num_restart):
+            parallel_search.search()
+            search_results.append(parallel_search.getSearchResults())
+        # Merge the results and sort by score
+        search_result_df = pd.concat(search_results)
+        search_result_df = search_result_df.reset_index()
+        if len(search_result_df) == 0:
+            self.kp, self.ki, self.kf = None, None, None
+            return
+        # Have search results
+        search_result_df = search_result_df.sort_values(cn.SCORE)
         # Record the result
-        self.residual_mse = final_evaluator.residual_mse
-        self.set(kp=final_evaluator.kp, ki=final_evaluator.ki, kf=final_evaluator.kf)
-        if self.residual_mse is not None:
-            self.history.add()
-
-    @classmethod
-    def evaluatePoints(cls, procnum, num_process, workunit, points, return_dct):
-        """
-        Calculates MSE for the specified points. Runs as a separate process.
-
-        Args:
-            procnum: int (process number)
-            num_process: int (number of processes)
-            workunit: Workunit
-            points: list-Point
-            return_dct: dict (key: procnum, value: SISODesignEvaluator)
-        Returns:
-            EvaluatorResult
-        """
-        def iterate(count:int, iteration:int):
-            point_idx = count % len(points)
-            point = points[point_idx]
-            #for point in points:
-            if workunit.is_report:
-                iteration += 1
-                percent = int(100*iteration/(workunit.num_restart*len(points)))
-                print("**%d (%d, %d%%): %s" % (procnum, iteration, percent, str(point)))
-            if workunit.is_greedy:
-                new_point = cls._searchForFeasibleClosedLoopSystem(evaluator, point, max_iteration=10)
-            else:
-                new_point = point
-            evaluator.evaluate(**new_point)
-        #
-        # Initializations
-        evaluator = SISODesignEvaluator(workunit.system,
-                                        input_name=workunit.input_name,
-                                        output_name=workunit.output_name,
-                                        setpoint=workunit.setpoint,
-                                        times=workunit.times)
-        # Iterate to find values
-        num_iteration = workunit.num_restart*len(points)
-        iteration = 0
-        if procnum == 0:
-            iteration_tot = num_iteration*num_process
-            for count in tqdm(range(iteration_tot)):
-                iteration += 1
-                residual_cnt = count % num_process
-                if residual_cnt == 0:
-                    # Is the 0th index
-                    iterate(count, iteration)
-        else:
-            for count in range(num_iteration):
-                iteration += 1
-                iterate(count, iteration)
-        # Return the result
-        return_dct[procnum] = evaluator.evaluator_result
+        self.residual_mse = search_result_df.loc[0, cn.SCORE]
+        if cn.CP_KP in search_result_df.columns:
+            self.kp = search_result_df.loc[0, cn.CP_KP]
+        if cn.CP_KI in search_result_df.columns:
+            self.ki = search_result_df.loc[0, cn.CP_KI]
+        if cn.CP_KF in search_result_df.columns:
+            self.kf = search_result_df.loc[0, cn.CP_KF]
+        # Save the results
+        if self.save_path is not None:
+            search_result_df.to_csv(self.save_path, index=False)
 
     @property
     def design_result_df(self):
@@ -576,73 +430,6 @@ class SISOClosedLoopDesigner(object):
             self.system.plotSISOClosedLoop(simulated_ts, self.setpoint, markers=["", ""], title=title, **kwargs)
             if is_plot:
                 plt.show()
-            self.history.add()
-        return simulated_ts, antimony_builder
-
-class _History(object):
-    # Maintains history of changes to design choices
-    def __init__(self, designer, is_history=True):
-        self.designer = designer
-        self.is_history = is_history
-        self._dct = None
-        self.clear()
-
-    def __len__(self):
-        first = cn.CONTROL_PARAMETERS[0]
-        return len(self._dct[first])
-    
-    def clear(self):
-        self._dct = {}
-        for name in cn.CONTROL_PARAMETERS:
-            self._dct[name] = []
-        self._dct[COL_CLOSED_LOOP_SYSTEM] = []
-        self._dct[cn.SETPOINT] = []
-        self._dct[cn.MSE] = []
-
-    def add(self):
-        if not self.is_history:
-            return
-        for name in cn.CONTROL_PARAMETERS:
-            self._dct[name].append(self.designer.__getattribute__(name))
-        self._dct[COL_CLOSED_LOOP_SYSTEM].append(self.designer.closed_loop_system)
-        self._dct[cn.SETPOINT].append(self.designer.setpoint)
-        self._dct[cn.MSE].append(self.designer.residual_mse)
-
-    def undo(self):
-        _ = self._dct.pop()
-
-    def report(self):
-        """
-        Creates a dataframe of the history
-
-        Returns:
-            pd.DataFrame
-        """
-        df = pd.DataFrame(self._dct)
-        return df
-
-    def get(self, idx):
-        """
-        Returns the SISOClosedLoopDesigner at the specified index.
-
-        Args:
-            idx: int
-        Returns:
-            SISOClosedLoopDesigner
-        """
-        if idx > len(self) - 1:
-            raise ValueError("idx must be less than %d" % len(self))
-        # Construct entries for the desired history element
-        dct = {}
-        for name in self._dct.keys():
-            dct[name] = self._dct[name][idx]
-        designer = SISOClosedLoopDesigner(self.designer.system, self.designer.open_loop_transfer_function,
-                                          times=self.designer.times,
-                                          setpoint=SETPOINT, is_steady_state=self.designer.is_steady_state,
-                                          is_history=self.designer.history.is_history, sign=self.designer.sign)
-        for name in cn.CONTROL_PARAMETERS:
-            designer.__setattr__(name, dct[name])
-        designer.closed_loop_system = dct[COL_CLOSED_LOOP_SYSTEM]
-        designer.residual_mse = dct[cn.MSE]
-        designer.history.add()
-        return designer
+            return simulated_ts, antimony_builder
+        else:
+            return None, None

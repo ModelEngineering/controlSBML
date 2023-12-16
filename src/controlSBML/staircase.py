@@ -33,6 +33,11 @@ class Staircase(object):
         self._updateState()
         #self.staircase_arr is dynamically
 
+    def __repr__(self):
+        dct = {"initial_value": self.initial_value, "num_step": self.num_step,
+               "final_value": self.final_value, "num_point": self.num_point}
+        return str(dct)
+
     def setNumPoint(self, num_point):
         self.num_point = num_point
 

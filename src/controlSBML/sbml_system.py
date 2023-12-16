@@ -16,7 +16,6 @@ import tellurium as te
 
 class SBMLSystem(object):
 
-    #FIXME: Do not require roadrunner for constructor so can pass a pickleable object
     def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,
                  model_id="model", is_steady_state=False, roadrunner=None):
         """
@@ -70,7 +69,7 @@ class SBMLSystem(object):
             self._roadrunner = makeRoadrunner(self.model_reference)
         return self._roadrunner
 
-    # FIXME: Does not copy updates to the antimony 
+    # FIXME: Does not copy updates to the antimony?
     @property
     def antimony_builder(self):
         if self._antimony_builder is None:
@@ -100,12 +99,9 @@ class SBMLSystem(object):
         return self._output_names
             
     #################### METHODS ####################
-    def copy(self, is_serializable:bool=False):
+    def copy(self):
         """
         Copies the SBML object.
-
-        Args:
-            is_serializable (bool, optional): Does not not create the roadrunner object. Defaults to False.
 
         Returns:
             _type_: _description_
@@ -114,8 +110,6 @@ class SBMLSystem(object):
                             output_names=self._specified_output_names,
                             is_fixed_input_species=self.is_fixed_input_species, model_id=self.model_id,
                             is_steady_state=self.is_steady_state)
-        #system.antimony_builder = self.antimony_builder.copy()
-        #system.symbol_dct = dict(self.symbol_dct)
         return system
     
     def __eq__(self, other):
@@ -322,12 +316,11 @@ class SBMLSystem(object):
             is_steady_state = self.is_steady_state
         if num_point is None:
             num_point = int(cn.POINTS_PER_TIME*(end_time - start_time))
-        self.roadrunner.reset()
         if is_steady_state:
             self.setSteadyState()
         return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=False)
     
-    def _simulate(self, start_time, end_time, num_point, antimony_builder=None, is_steady_state=False, is_reload=True):
+    def _simulate(self, start_time, end_time, num_point, antimony_builder=None, is_steady_state=False, is_reload=False):
         """
         Simulates the system the roadrunner object.
 
@@ -345,8 +338,16 @@ class SBMLSystem(object):
         """
         if antimony_builder is None:
             antimony_builder = self.antimony_builder
+        antimony = str(antimony_builder)
+        if antimony[-1] == "\n":
+            antimony = antimony[:-1]
         if is_reload:
-            self._roadrunner = te.loada(str(antimony_builder))
+            try:
+                self._roadrunner = te.loada(str(antimony_builder))
+            except Exception as exp:
+                raise ValueError("Cannot reload antimony: %s" % exp)
+        else:
+            self.roadrunner.reset()
         if is_steady_state:
             self.setSteadyState()
         selections = list(self.input_names)
@@ -355,6 +356,16 @@ class SBMLSystem(object):
         data = self.roadrunner.simulate(start_time, end_time, num_point, selections=selections)
         ts = Timeseries(data)
         return ts
+    
+    def isInitialized(self)->bool:
+        """
+        Determines if the system has been initialized.
+
+        Returns
+        -------
+        bool
+        """
+        return self._antimony_builder is not None
 
     # FIXME: Delete since duplicated in controlSBML 
     def plotModel(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, **kwargs):
@@ -456,7 +467,7 @@ class SBMLSystem(object):
         builder.makeStaircase(input_name, times=times, initial_value=initial_value,
                                             num_step=num_step, final_value=final_value)
         ts = self._simulate(start_time=times[0], antimony_builder=builder, end_time=times[-1], num_point=len(times),
-                            is_steady_state=is_steady_state)
+                            is_steady_state=is_steady_state, is_reload=True)
         return ts, builder
     
     @staticmethod 

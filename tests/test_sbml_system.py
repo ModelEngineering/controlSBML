@@ -72,7 +72,7 @@ class TestSBMLSystem(unittest.TestCase):
         if IGNORE_TEST:
             return
         for name in SPECIES_NAMES:
-            self.assertEqual(self.system.get(name), self.system.roadrunner[name])
+            self.assertEqual(self.system.get(name), self.system._roadrunner[name])
 
     def testSet(self):
         if IGNORE_TEST:

@@ -80,6 +80,7 @@ OUTPUT = "output"
 OUT_STATE = "out_state"
 PARAMS = "params"
 POINTS_PER_TIME = 10
+SCORE = "score"
 SETPOINT = "setpoint"
 START_TIME = 0  # Default start time
 STATE = "state"

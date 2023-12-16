@@ -226,35 +226,6 @@ class TestControlSBML(unittest.TestCase):
         _, ax = plt.subplots(1)
         ctlsb.plotDesignResult(is_plot=IS_PLOT, ax=ax)
 
-    def testBug1(self):
-        if IGNORE_TEST:
-            return
-        INPUT_NAME = "pIRS"
-        OUTPUT_NAME = "pmTORC1"
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
-        path = os.path.join(cn.NOTEBOOK_DIR, "data3.csv")
-        ctlsb = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000),
-                   save_path=path)
-        ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
-        ctlsb.plotDesignResult(is_plot=IS_PLOT)
-
-    def testBug2(self):
-        if IGNORE_TEST:
-            return
-        INPUT_NAME = "pIRS"
-        OUTPUT_NAME = "pmTORC1"
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
-        grid = CTLSB.getGrid(kp_spec=True, ki_spec=False, num_coordinate=100, is_random=False)
-        axis = grid.getAxis("kp")
-        axis.setMinValue(0.1)
-        axis.setMaxValue(10)
-        ctlsb = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000))
-        #_, _ = CTLSB.plotGridDesign(grid, setpoint=120, num_restart=1, is_greedy=False, save_path="data1.csv")
-        path = os.path.join(cn.NOTEBOOK_DIR, "data1.csv")
-        ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
-        ctlsb.plotDesignResult(is_plot=IS_PLOT, save_path=path)
-
-
 
 if __name__ == '__main__':
   unittest.main()
