@@ -226,6 +226,18 @@ class TestControlSBML(unittest.TestCase):
         _, ax = plt.subplots(1)
         ctlsb.plotDesignResult(is_plot=IS_PLOT, ax=ax)
 
+    def testPerformance(self):
+        if IGNORE_TEST:
+            return
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
+        ctlsb = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False)
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        _, builder = ctlsb.plotTransferFunctionFit(num_numerator=2, num_denominator=3, initial_value=20, final_value=25,
+                                  fit_start_time=1000, times=np.linspace(0, 10000, 100000),
+                                  is_plot=IS_PLOT)
+
 
 if __name__ == '__main__':
   unittest.main()

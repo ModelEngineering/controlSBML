@@ -29,9 +29,12 @@ NUMERATOR_PREFIX = "n"
 DENOMINATOR_PREFIX = "d"
 MAX_ABS_RESIDUAL = 10
 
+global _mse_history
+
 
 ################## FUNCTIONS ####################
-def _makeParameters(num_numerator, num_denominator):
+def _makeParameters(num_numerator, num_denominator, min_value=MIN_PARAMETER_VALUE, max_value=MAX_PARAMETER_VALUE,
+                    initial_value=INITIAL_PARAMETER_VALUE):
     """
     Makes the parameters used to construct a transfer function.
 
@@ -39,6 +42,9 @@ def _makeParameters(num_numerator, num_denominator):
     ----------
     num_numerator: int (number of numerator terms)
     num_denominator: int (number of denominator terms)
+    min_value: float
+    max_value: float
+    initial_value: float (if None, choose random value)
 
     Returns
     -------
@@ -46,15 +52,19 @@ def _makeParameters(num_numerator, num_denominator):
     """
     pfit = lmfit.Parameters()
     for idx in range(num_numerator):
+        if initial_value is None:
+            initial_value = np.random.uniform(min_value, max_value)
         pfit.add(name='%s%d' % (NUMERATOR_PREFIX, idx),
-              min=MIN_PARAMETER_VALUE,
-              value=INITIAL_PARAMETER_VALUE,
-              max=MAX_PARAMETER_VALUE)
+              min=min_value,
+              value=initial_value,
+              max=max_value)
     for idx in range(num_denominator):
+        if initial_value is None:
+            initial_value = np.random.uniform(min_value, max_value)
         pfit.add(name='%s%d' % (DENOMINATOR_PREFIX, idx),
-              min=MIN_PARAMETER_VALUE,
-              value=INITIAL_PARAMETER_VALUE,
-              max=MAX_PARAMETER_VALUE)
+              min=min_value,
+              value=initial_value,
+              max=max_value)
     return pfit
 
 def _makeTransferFunction(parameters):
@@ -117,6 +127,26 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     -------
     float
     """
+    def isDone(last_history:int=10, min_history:int=50, threshold:float=1e-3):
+        """
+        Checks if further progress is unlikely.
+
+        Returns
+        -------
+        bool
+            True if MSEs are not changing significantly
+        """
+        if len(_mse_history) < min_history:
+            return False
+        history_arr = np.array(_mse_history)
+        median_mse = np.median(history_arr)
+        credible_history_arr = history_arr[history_arr < median_mse]
+        last_arr = credible_history_arr[-last_history:]
+        metric = np.var(last_arr)/median_mse
+        return metric < threshold
+    #
+    global _mse_history
+    #
     times, inputs = data_in
     tf = _makeTransferFunction(parameters)
     times, y_arr = control.forced_response(tf, T=times, U=inputs)
@@ -125,6 +155,11 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     is_bad = any(is_bads)
     if is_bad:
         residuals = np.repeat(1e10, len(times))
+    mse = np.sum(residuals**2)/len(residuals)
+    _mse_history.append(mse)
+    if isDone():
+        # Force the minimizer to stop
+        residuals = np.repeat(0, len(residuals))
     return residuals
 
 
@@ -147,6 +182,7 @@ class SISOTransferFunctionBuilder(object):
             self.input_name = sbml_system.input_names[0]
         if self.output_name is None:
             self.output_name = sbml_system.output_names[0]
+        #
 
     def copy(self):
         return SISOTransferFunctionBuilder(self.sbml_system, input_name=self.input_name, output_name=self.output_name)
@@ -317,6 +353,8 @@ class SISOTransferFunctionBuilder(object):
             parameters: lmfit.Parameters
             antimony_builder: AntimonyBuilder
         """
+        global _mse_history
+        #
         # Get the calibration data
         new_staircase = staircase.copy()
         data_ts, antimony_builder = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
@@ -340,6 +378,7 @@ class SISOTransferFunctionBuilder(object):
         data_out = sel_ts[self.output_name]
         # Do the fit
         parameters = _makeParameters(num_numerator, num_denominator)
+        _mse_history = []   # History of mean squared errors
         mini = lmfit.Minimizer(_calculateTransferFunctionResiduals,
                                parameters, fcn_args=(data_in, data_out))
         minimizer_result = mini.leastsq()

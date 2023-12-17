@@ -325,6 +325,7 @@ class SISOClosedLoopDesigner(object):
             return
         # Have search results
         search_result_df = search_result_df.sort_values(cn.SCORE)
+        search_result_df = search_result_df.reset_index()
         # Record the result
         self.residual_mse = search_result_df.loc[0, cn.SCORE]
         if cn.CP_KP in search_result_df.columns:
