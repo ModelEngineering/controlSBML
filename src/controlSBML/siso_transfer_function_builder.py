@@ -142,7 +142,7 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
         median_mse = np.median(history_arr)
         credible_history_arr = history_arr[history_arr < median_mse]
         last_arr = credible_history_arr[-last_history:]
-        metric = np.var(last_arr)/median_mse
+        metric = np.std(last_arr)/median_mse
         return metric < threshold
     #
     global _mse_history
