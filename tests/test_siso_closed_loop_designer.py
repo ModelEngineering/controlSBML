@@ -251,19 +251,20 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         designer = self.makeDesigner()
-        if not os.path.isfile(SAVE_PATH):
-            designer.design(kp_spec=True, ki_spec=True, kf_spec=True, min_value=0.1, max_value=10, 
-                 num_coordinate=5, num_restart=1, is_report=IGNORE_TEST)
-        design_result_df = pd.read_csv(SAVE_PATH)
         def test(parameter_names):
-            names = list(parameter_names)
-            names.append(cn.SCORE)
-            designer._design_result_df = design_result_df[names]
-            designer.plotDesignResult(is_plot=IS_PLOT, figsize=(5,5))
+            dct = {}
+            for spec in cn.CONTROL_PARAMETER_SPECS:
+                if spec in parameter_names:
+                    dct[spec] = True
+                else:
+                    dct[spec] = False
+            designer.design(min_value=0.1, max_value=10, 
+                 num_coordinate=4, num_restart=1, is_report=IGNORE_TEST, **dct)
+            designer.plotDesignResult(is_plot=IS_PLOT, figsize=(15,15))
         #
-        test(["kp", "ki", "kf"])
-        test(["kp", "ki"])
-        test(["kp"])
+        test(["kp_spec", "ki_spec", "kf_spec"])
+        test(["kp_spec", "ki_spec"])
+        test(["kp_spec"])
 
     def test_closed_loop_tf(self):
         # Checks that the closed loop transfer function is calculated correctly

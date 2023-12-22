@@ -116,6 +116,10 @@ CP_KP = "kp"
 CP_KI = "ki"
 CP_KF = "kf"
 CONTROL_PARAMETERS = [CP_KP, CP_KI, CP_KF]
+KP_SPEC = "kp_spec"
+KI_SPEC = "ki_spec"
+KF_SPEC = "kf_spec"
+CONTROL_PARAMETER_SPECS = [KP_SPEC, KI_SPEC, KF_SPEC]
 
 # Default values of options
 SIM_DCT = dict(

@@ -74,9 +74,6 @@ C_INITIAL_VALUE = "initial_value"
 C_FINAL_VALUE = "final_value"
 C_NUM_STEP = "num_step"
 C_TIMES = "times"
-C_KP = "kp"
-C_KI = "ki"
-C_KF = "kf"
 C_SIGN = "sign"
 C_INPUT_NAMES = "input_names"
 C_OUTPUT_NAMES = "output_names"
@@ -85,13 +82,13 @@ C_IS_STEADY_STATE = "is_steady_state"
 C_MARKERS = "markers"
 STAIRCASE_OPTIONS = [C_INITIAL_VALUE, C_FINAL_VALUE, C_NUM_STEP]
 TIMES_OPTIONS = [C_TIMES]
-CLOSED_LOOP_PARAMETERS = [C_KP, C_KI, C_KF, C_SETPOINT, C_SIGN]
+CLOSED_LOOP_PARAMETERS = [cn.CP_KP, cn.CP_KI, cn.CP_KF, C_SETPOINT, C_SIGN]
 SYSTEM_SPECIFICATION = [C_INPUT_NAMES, C_OUTPUT_NAMES, C_IS_FIXED_INPUT_SPECIES, C_IS_STEADY_STATE]
 PLOT_OPTIONS = list(cn.PLOT_KWARGS)
 PLOT_OPTIONS.extend(cn.FIG_KWARGS)
 PLOT_OPTIONS.append(C_MARKERS)
 OPTIONS = STAIRCASE_OPTIONS + TIMES_OPTIONS + CLOSED_LOOP_PARAMETERS + PLOT_OPTIONS + SYSTEM_SPECIFICATION
-CONTROL_PARAMETERS = [C_KP, C_KI, C_KF]
+CONTROL_PARAMETERS = [cn.CP_KP, cn.CP_KI, cn.CP_KF]
 FIGSIZE = (5, 5)
 INITIAL_OPTION_DCT = {cn.O_TITLE: "", cn.O_SUPTITLE: "", cn.O_WRITEFIG: False,
                         cn.O_XLABEL: "Time (sec)", cn.O_YLABEL: "Concentration",
@@ -345,7 +342,7 @@ class ControlSBML(OptionSet):
     
     def getParameterStr(self, parameters:List[str], **kwargs):
         """
-        Provides a string representation of a persistent option.
+        Provides a string representation for parameter values.
         Args:
             parameters: list-str (list of parameters)
         Returns:
@@ -354,7 +351,7 @@ class ControlSBML(OptionSet):
         stg = ""
         for name in parameters:
             if name in kwargs.keys():
-                if kwargs[name] is not None:
+                if isinstance(kwargs[name], float):
                     stg += "{}={} ".format(name, np.round(kwargs[name], 4))
         return stg
 
@@ -520,12 +517,12 @@ class ControlSBML(OptionSet):
                 times=option_set.times, is_steady_state=sbml_system.is_steady_state, inplace=False, initial_input_value=None,
                 )
         if (not "title" in plot_options) or (len(plot_options["title"]) == 0):
-            plot_options["title"] = self.getParameterStr([C_KP, C_KI, C_KF], **option_set)
+            plot_options["title"] = self.getParameterStr([cn.CP_KP, cn.CP_KI, cn.CP_KF], **option_set)
         _ = plot_options.setdefault(C_MARKERS, False)
         sbml_system.plotSISOClosedLoop(response_ts, option_set.setpoint, **plot_options)
         return response_ts, builder
 
-    def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=True, is_plot_grid:bool=False, 
+    def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=False, is_plot_grid:bool=False, 
                        save_path:str=None, num_process:int=-1, **kwargs):
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
