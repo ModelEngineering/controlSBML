@@ -304,7 +304,10 @@ class ControlSBML(OptionSet):
                 is_fixed_input_species=option_set.is_fixed_input_species,
                 is_steady_state=option_set.is_steady_state,
                 roadrunner=self._roadrunner)
-        transfer_function_builder = SISOTransferFunctionBuilder(sbml_system, input_name=self.getInputName(option_set=option_set),
+        if self.input_names is None:
+            transfer_function_builder = None
+        else:
+            transfer_function_builder = SISOTransferFunctionBuilder(sbml_system, input_name=self.getInputName(option_set=option_set),
                 output_name=self.getOutputName(option_set=option_set))
         return sbml_system, transfer_function_builder
     

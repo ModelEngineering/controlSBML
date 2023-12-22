@@ -237,6 +237,34 @@ class TestControlSBML(unittest.TestCase):
         _, builder = ctlsb.plotTransferFunctionFit(num_numerator=2, num_denominator=3, initial_value=20, final_value=25,
                                   fit_start_time=1000, times=np.linspace(0, 10000, 100000),
                                   is_plot=IS_PLOT)
+        
+    def testBug1(self):
+        if IGNORE_TEST:
+            return
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
+        ctlsb = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False)
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2, initial_value=20, final_value=25,
+                                  time=2000, times=np.linspace(0, 10000, 100000))
+        
+    def testGetPossibleInputs(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MDL)
+        input_str = ctlsb.getPossibleInputs()
+        self.assertTrue(isinstance(input_str, str))
+        self.assertTrue(len(input_str) > 0)
+        
+    def testGetPossibleOutputs(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = ControlSBML(LINEAR_MDL)
+        output_str = ctlsb.getPossibleOutputs()
+        self.assertTrue(isinstance(output_str, str))
+        self.assertTrue(len(output_str) > 0)
+
 
 
 if __name__ == '__main__':

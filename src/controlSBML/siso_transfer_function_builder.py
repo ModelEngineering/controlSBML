@@ -370,6 +370,8 @@ class SISOTransferFunctionBuilder(object):
             start_idx = np.sum(ms_times <= cn.MS_IN_SEC*fit_start_time)
         if fit_end_time is not None:
             end_idx = np.sum(ms_times <= cn.MS_IN_SEC*fit_end_time)
+        if np.isclose(start_idx, end_idx):
+            msgs.error("Start time is greater than end time")
         sel_ms_times = ms_times[start_idx:end_idx]
         sel_ts = data_ts.loc[sel_ms_times]
         staircase_arr = sel_ts[staircase_column_name].values
