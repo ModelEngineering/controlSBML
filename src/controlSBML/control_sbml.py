@@ -351,7 +351,7 @@ class ControlSBML(OptionSet):
         stg = ""
         for name in parameters:
             if name in kwargs.keys():
-                if isinstance(kwargs[name], float):
+                if util.isNumber(kwargs[name]):
                     stg += "{}={} ".format(name, np.round(kwargs[name], 4))
         return stg
 
