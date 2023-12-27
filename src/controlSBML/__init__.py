@@ -1,4 +1,3 @@
-# Model urls
 from controlSBML._version import __version__
 from controlSBML.control_sbml import ControlSBML
 from controlSBML.util import plotOneTS, plotManyTS

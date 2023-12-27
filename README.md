@@ -106,22 +106,9 @@ that continuous integration is done only *without* ``slycot``.
 _version.py.
 
 ## Version History
-* 1.1.0
-    * Fixed bug with ``makeFiler``
-    * readTheDocs documentation for element factories
-    * Improved consistency of API for element factories
-    * Added ``makeAribtrarySignal``
-    * ``makeAdder`` handles minus signs
-    * NonlinearIOSystem inputs can be constant value (fixed species) or constant rate (add a boundary synthesis reaction)
-    * Plot MIMO Bode plots
-    * Staircase class with method to create staircase based on fractional deviation.
-    * Convenience methods for system identification:
-        - plotStaircaseResponse
-        - fitMIMOTransferFunction
-        - plotFitMIMOTransferFunction
-    * Input can be species, parameter, compartment. Output can be floating species, flux.
-    * Fixed and enhanced logging for ctl.NonlinearIOSystem, providing logs for both updfcn and outfcn.
-    * Implemented designer to automatically parameterize SISO closed loop system. The designer does a grid search in parallel and plots the results. Control parameters can that can be specified are kp (proportional control), ki (integral control), and kf (parameter of the sensor filter). Differential control is not currently supported because of the absence of enablements for this in Tellurium.
+* 1.1.01
+    * Complete change in the architecture. Instead of using NonlinearIOSystems in the python control package, controlSBML generates Antimony code to implement staircase functions and closed loops.
+    * Creation of a consistent API.
 * 1.0.11 3/1/2023
     * Ensure that state variables are never negative.
 * 1.0.10
