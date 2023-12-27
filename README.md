@@ -3,24 +3,12 @@
  the [Systems Biology Markup Language (SBML)](https://co.mbine.org/standards/sbml), a community standard for representing
 models of biological models, especially chemical reaction networks.
 ``controlSBML`` provides the following:
+  * Read SBML models, viewing candidate inputs, and outputs, and running simulations.
+  * System identification, including the creation of (SISO) transfer function objects from the python control systems library
+  * Creating Antimony simulations of closed loop systems
+  * Design of closed loop systems
 
-* Enalbing the use of
-the [CalTech ``control`` package](http://python-control.sourceforge.net/manual/) on SBML models.
-* System identification of SBML models.
-* Factories that create elements of closed loop systems such as PID controllers, filters, and adders.
-* Simplified construction of entire closed loop systems characterized by SBML models.
-
-SBML models are characterized in terms of inputs and outputs. Inputs are anything that can be manipulated directly during a simulation. Examples of inputs are: concentrations of chemical species (floating or fixed), compartment sizes, and parameters. Outputs are anything that can change during a simulation. This includes species concentrations and reaction fluxes. The
-semantics of setting an input to particular value is that this is its value in the simulation from the time until
-it is changed again or the simulation ends.
-
-``controlSBML`` interfaes to the ``control`` package by creating two kinds of ``control`` objects for an SBML model:
-
-* ``NonlinearIOSystem``, which wraps the actual simulation of the SBML model; and
-* ``StateSpace``, which is a linear MIMO model approximation of the SBML model at a specified time in the simulation.
-
-These objects can be used in combination with other ``control`` objects to analyze system properties,
-design controllers, and construct closed loop systems.
+Examples of usage are in this [directory](
 
 ## Installation
 ``pip install controlSBML``
@@ -31,82 +19,10 @@ import controlSBML as ctl
 ctl.__version__
 ```
 
-### Installing ``slycot`` (optional)
-To get the full set of capabilities from the ``control`` package,
-you need to install ``slycot``, a package that addresses requirements
-for more sophisticated manipulation of MIMO models (e.g.,
-solving algebraic Ricotti equations).
-
-The best way is to install ``slycot`` is from binaries using ``anaconda``.
-However,
-at the present time, ``anaconda`` is difficult to set up on
-Google Collaboratory.
-
-Otherwise, you need to install from source. Below are the instructions
-for Ubuntu.
-
-* install cmake: ``pip install cmake --upgrade``
-* install sikit-build: ``pip install scikit-build``
-* install fortran: ``sudo apt-get install gfortran``
-* provide path to fortran: ``export FC=`which gfortran``
-* install BLAS: ``sudo apt-get install libatlas-base-dev``
-* clone Sylcot: ``git clone --recurse-submodules https://github.com/python-control/Slycot.git``
-* ``cd Slycot``
-* ``python setup.py install`` 
-
-## Constructing ControlSBML
-```
-ctlsb = ControlSBML(model_reference)
-```
- where
-``model_reference``can be any of the following:
-* path to a local file with the extension ``.ant`` or ``.xml``
-* a python string for an SBML or Antimony model representation
-* a URL to an XML file
-
-## Technical Summary
-
-### ``ControlSBML``
-#### Properties
-* ``roadrunner`` is the roadrunner object for the SBML model.
-* ``jacobian_df`` is the full Jacobian of the model at the current simulation time. Changes to ``roadrunner`` can change this property.
-* ``antimony`` is the antimony representation of the model.
-* ``A_df`` is the ${\bf A}$ matrix in the linear system represented as a pandas DataFrame.
-* ``B_df`` is the ${\bf B}$ matrix in the linear system represented as a pandas DataFrame.
-* ``C_df`` is the ${\bf C}$ matrix in the linear system represented as a pandas DataFrame.
-* ``state_names`` is a list of floating species that constitute the state vector.
-* ``input_names`` is a list of reaction names that specify the input vector.
-* ``output_names`` is a list of floating species that constitute the output vector.
-
-#### Methods
-* ``setTime(new_time)`` resets ``roadrunner`` and runs a simulation from time zero to the time specified.
-* ``makeStateSpace()`` creates a ``control`` state space object using the Jacobian of the model at the current simulation time.
-* ``makeNonlinearIOSystem()`` creates a ``NonlinearIOSystem`` object that simulates the SBML model.
-* ``plotTrueModel`` plots a roadrunner simulation.
-* ``plotLinearApproximation`` plots the linear approximation provided by an ${\bf A}$ matrix. The default ${\bf A}$ matrix
-is the Jacobian of the current ``RoadRunner`` instance. You can either specify a different ${\bf A}$ or set the ``RoadRunner`` instance to a different time.
-* ``plotBode`` constructs bode plots for the SISO systems formed by all combinations of inputs and outputs.
-
-### Other Functions
-* ``makeTS`` creates a time series object from an array. A time series object is a DataFrame whose index in time (in integer milliseconds),
-and the columns are variable names.
-* ``simulateSystem`` provides a simplified way to simulate a system (which may be an ``interconnect``) by creating the times and initial,
-returns a time series DataFrame.
-* ``plotOneTS`` plots a single time series DataFrame.
-* ``plotManyTS`` plots multiple time series DataFrames structured so that each column is a separate plot that compares the different times series.
-
-## Example
-
-[This notebook](https://github.com/ModelEngineering/controlSBML/blob/main/notebooks/Using-Control-SBML.ipynb) provides a simple example of using ``controlSBML``.
-
-## Developer Notes
-1. The package works with and without ``slycot``. So two virtual environments are needed for testing: ``ctl`` includes ``slycot`` and ``ctl_tst`` does not. Note
-that continuous integration is done only *without* ``slycot``.
-1. To generate a new release, update the version in pyproject.py and in
-_version.py.
-
 ## Version History
-* 1.1.01
+* 1.1.02 12/27/2023
+    * Fix bug in dependencies. Update header documentation.
+* 1.1.01 12/27/2023
     * Complete change in the architecture. Instead of using NonlinearIOSystems in the python control package, controlSBML generates Antimony code to implement staircase functions and closed loops.
     * Creation of a consistent API.
 * 1.0.11 3/1/2023
