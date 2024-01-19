@@ -64,7 +64,7 @@ from controlSBML.grid import Grid, Point
 
 import os
 import numpy as np
-from typing import List, Dict, Tuple, Union
+from typing import List, Dict, Tuple, Optional
 
 PLOT_KWARGS = list(set(cn.PLOT_KWARGS).union(cn.FIG_KWARGS))
 SETPOINT = 1
@@ -106,7 +106,7 @@ SAVE_PATH = os.path.join(cn.DATA_DIR, "control_sbml.csv")
 
 class ControlSBML(OptionSet):
 
-    def __init__(self, model_reference:str, roadrunner=None, save_path:str=None,
+    def __init__(self, model_reference:str, roadrunner=None, save_path:Optional[str]=None,
                  **kwargs):
         """
         model_reference: str
@@ -130,7 +130,7 @@ class ControlSBML(OptionSet):
         System options:
             input_names: list-str
             is_steady_state: bool (start system in steady state; default: False)
-            is_fixed_input_species: bool (concentration of input species are controlled externally; default: True)
+            is_fixed_input_species: bool (concentration of input species are controlled externally; default: False)
             output_names: list-str
         Closed loop options:
             kf: float (filter constant)
@@ -462,7 +462,8 @@ class ControlSBML(OptionSet):
         return response_ts, builder
     
     def plotTransferFunctionFit(self, num_numerator:int=cn.DEFAULT_NUM_NUMERATOR,
-                            num_denominator:int=cn.DEFAULT_NUM_DENOMINATOR, fit_start_time:float=None, fit_end_time:float=None, 
+                            num_denominator:int=cn.DEFAULT_NUM_DENOMINATOR, 
+                            fit_start_time: Optional[float]=None, fit_end_time:Optional[float]=None, 
                             **kwargs):
         """
         Simulates the staircase response and plots it. Sets the fitter result.
@@ -480,6 +481,8 @@ class ControlSBML(OptionSet):
         """
         option_set = self.getOptionSet(**kwargs)
         _, siso_transfer_function_builder = self.getSystem(**option_set)
+        if siso_transfer_function_builder is None:
+            raise ValueError("Must specify the input and output species to use this method.")
         if fit_start_time is None:
             fit_start_time = option_set.times[0]
         if fit_end_time is None:
@@ -523,7 +526,7 @@ class ControlSBML(OptionSet):
         return response_ts, builder
 
     def plotGridDesign(self, grid:Grid=None, num_restart:int=1, is_greedy:bool=False, is_plot_grid:bool=False, 
-                       save_path:str=None, num_process:int=-1, **kwargs):
+                       save_path:str="", num_process:int=-1, **kwargs):
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
         Persists the closed loop design (kp, ki, kf) if a design is found.
@@ -540,7 +543,7 @@ class ControlSBML(OptionSet):
         """
         option_set = self.getOptionSet(**kwargs)
         sbml_system, _ = self.getSystem(**option_set)
-        if save_path is None:
+        if len(save_path) == 0:
             save_path = self.save_path
         if save_path is not None:
             if os.path.isfile(save_path):

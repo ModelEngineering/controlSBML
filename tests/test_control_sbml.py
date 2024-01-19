@@ -265,6 +265,24 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(output_str, str))
         self.assertTrue(len(output_str) > 0)
 
+    def testBug2(self):
+        if IGNORE_TEST:
+            return
+        model = """
+        S1 -> S2; k*S1
+        S2 -> S1; k2*S2
+        S2 -> ; k3*S2
+
+        S1 = 10
+        S2 = 0
+        k = 1
+        k2 = 0.5
+        k3 = 0.5
+        """
+        ctlsb = ControlSBML(model)
+        with self.assertRaisesRegex(ValueError):
+            _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2)
+
 
 
 if __name__ == '__main__':

@@ -46,7 +46,7 @@ from controlSBML import util
 
 import numpy as np
 import re
-import tellurium as te
+import tellurium as te  # type: ignore
 
 IN = "_in"
 OT = "_ot"

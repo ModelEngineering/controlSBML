@@ -8,7 +8,7 @@ models of biological models, especially chemical reaction networks.
   * Creating Antimony simulations of closed loop systems
   * Design of closed loop systems
 
-Examples of usage are in this [directory](
+Examples of usage are in this [directory](https://github.com/ModelEngineering/controlSBML/tree/main/examples)
 
 ## Installation
 ``pip install controlSBML``
