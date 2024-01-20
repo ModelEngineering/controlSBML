@@ -179,7 +179,7 @@ class ControlSBML(OptionSet):
         keys = set(kwargs.keys())
         diff = keys.difference(set(OPTIONS))
         if len(diff) > 0:
-            raise ValueError("Invalid kwargs: %s" % str(diff))
+            raise ValueError("Invalid keyword arguments: %s" % str(diff))
     
     def equals(self, other:object):
         if not isinstance(other, ControlSBML):
