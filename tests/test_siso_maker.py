@@ -54,8 +54,8 @@ class TestModelMaker(unittest.TestCase):
         self.maker.makeClosedLoop(is_plot=IS_PLOT)
 
     def testRunModel(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         self.maker.runModel(LINEAR_MDL, is_plot=IS_PLOT)
 
     def testRunBiomodels(self):

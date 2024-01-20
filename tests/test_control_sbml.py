@@ -16,6 +16,7 @@ import unittest
 IGNORE_TEST = False
 IS_PLOT = False
 FIGSIZE = (5, 5)
+SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
 LINEAR_MDL = """
 model *main_model()
 // Illustrate Antimony File
@@ -282,6 +283,42 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = ControlSBML(model)
         with self.assertRaises(ValueError):
             _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2)
+    
+    def testBug3(self):
+        #if IGNORE_TEST:
+        #    return
+        # Setup
+        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
+        ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+        #
+        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=2, is_random=False)
+        axis = grid.getAxis("kP")
+        axis.setMinValue(0.1)
+        axis.setMaxValue(1.1)
+        ts, _ = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_greedy=False, 
+                                           is_plot=IS_PLOT, save_path=SAVE1_PATH)
+        self.assertTrue(isinstance(ts, Timeseries))
+
+    def testBug4(self):
+        if IGNORE_TEST:
+            return
+        # Setup
+        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
+        ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+        #
+        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=40, is_random=False)
+        axis = grid.getAxis("kP")
+        axis.setMinValue(0.1)
+        axis.setMaxValue(10)
+        ts, builder = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT,
+                                           is_greedy=False, save_path=SAVE1_PATH)
+        self.assertTrue(isinstance(ts, Timeseries))
 
 
 

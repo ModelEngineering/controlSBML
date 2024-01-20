@@ -5,6 +5,7 @@ from controlSBML.parallel_search import Evaluator
 from controlSBML.sbml_system import SBMLSystem
 
 import numpy as np
+from typing import Tuple
 
 
 ##################################################################
@@ -58,7 +59,7 @@ class PointEvaluator(Evaluator):
         result_dct[cn.SCORE] = residual_mse
         return result_dct
 
-    def _calculateMse(self, max_output:float=1e6, min_output:float=0, **parameter_dct:dict)->(bool, float):
+    def _calculateMse(self, max_output:float=1e6, min_output:float=0, **parameter_dct:dict)->Tuple[bool, any]:
         """
         Attempts to calculate the mean squared error of the closed loop system. Reports if system is unstable.
 

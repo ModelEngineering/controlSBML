@@ -353,7 +353,7 @@ class SBMLSystem(object):
         selections = list(self.input_names)
         selections.extend(self.output_names)
         selections.insert(0, cn.TIME)
-        data = self.roadrunner.simulate(start_time, end_time, num_point, selections=selections)
+        data = self.roadrunner.simulate(float(start_time), float(end_time), num_point, selections=selections)
         ts = Timeseries(data)
         return ts
     

@@ -571,6 +571,15 @@ class ControlSBML(OptionSet):
                 sign=option_set.sign,
                 input_name=self.getInputName(option_set=option_set),
                 output_name=self.getOutputName(option_set=option_set), save_path=save_path)
+        # Translate axis names
+        # FIXME: Hack to translate  axis names
+        new_axis_dct = dict(grid.axis_dct)
+        for key, value in new_axis_dct.items():
+            new_key = key.lower()
+            value.parameter_name = new_key
+            grid.axis_dct[new_key] = value
+            del grid.axis_dct[key]
+        #
         designer.designAlongGrid(grid, is_greedy=is_greedy, num_process=num_process)    # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")

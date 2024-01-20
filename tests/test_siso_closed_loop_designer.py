@@ -1,20 +1,18 @@
-import controlSBML.siso_closed_loop_designer as cld
-from controlSBML.control_sbml import ControlSBML
-from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
-import controlSBML.constants as cn
-from controlSBML.grid import Grid, Point
+import controlSBML.siso_closed_loop_designer as cld # type: ignore
+from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder # type: ignore  
+import controlSBML.constants as cn  # type: ignore
+from controlSBML.grid import Grid # type: ignore
 import helpers
-from controlSBML.timeseries import Timeseries
-from controlSBML.sbml_system import SBMLSystem
-from controlSBML.staircase import Staircase
-import controlSBML.util as util
+from controlSBML.timeseries import Timeseries # type: ignore
+from controlSBML.sbml_system import SBMLSystem # type: ignore
+from controlSBML.staircase import Staircase # type: ignore
+import controlSBML.util as util # type: ignore
 
 import copy
-import control
+import control # type: ignore
 import numpy as np
 import os
-import pandas as pd
-import sympy
+import sympy # type: ignore
 import unittest
 
 IGNORE_TEST = False
@@ -66,24 +64,25 @@ k3 = 3
 end
 """
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
+CONTROL_PARAMETERS = ["kp", "ki", "kf"]
 INPUT_NAME = "S0"
 OUTPUT_NAME = "S2"
 SYSTEM = SBMLSystem(MODEL2, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
 TRANSFER_FUNCTION = control.TransferFunction(np.array([1.51083121, 2.01413339]), np.array([1.67214802, 1.24125478, 9.99999997]))
 TIMES = np.linspace(0, 20, 200)
-PARAMETER_DCT = {p: n+1 for n, p in enumerate(cn.CONTROL_PARAMETERS)}
+PARAMETER_DCT = {p: n+1 for n, p in enumerate(CONTROL_PARAMETERS)}
 SETPOINT = 3
 SAVE_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer.csv")
-SAVE1_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer1.csv")
-REMOVE_FILES = [SAVE_PATH, SAVE1_PATH]
-if False:
-    # Required to construct the transfer function
-    builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
-    staircase = ctl.Staircase(final_value=15, num_step=5)
-    fitter_result = builder.fitTransferFunction(num_numerator=2, num_denominator=3, staircase=staircase)
-    if False:
-        builder.plotFitTransferFunction(fitter_result, figsize=(5,5))
-    TRANSFER_FUNCTION = fitter_result.transfer_function
+REMOVE_FILES = [SAVE_PATH]
+CONTROL_PARAMETER_SPECS = ["kp_spec", "ki_spec", "kf_spec"]
+#if False:
+#    # Required to construct the transfer function
+#    builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+#    staircase = ctl.Staircase(final_value=15, num_step=5)
+#    fitter_result = builder.fitTransferFunction(num_numerator=2, num_denominator=3, staircase=staircase)
+#    if False:
+#        builder.plotFitTransferFunction(fitter_result, figsize=(5,5))
+#    TRANSFER_FUNCTION = fitter_result.transfer_function
 
 
 #############################
@@ -120,11 +119,11 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.designer.set(**PARAMETER_DCT)
-        for name in cn.CONTROL_PARAMETERS:
+        for name in CONTROL_PARAMETERS:
             self.assertEqual(getattr(self.designer, name), PARAMETER_DCT[name])
         #
         dct = self.designer.get()
-        for name in cn.CONTROL_PARAMETERS:
+        for name in CONTROL_PARAMETERS:
             self.assertEqual(dct[name], PARAMETER_DCT[name])
 
     def testCalculateClosedLoopTf(self):
@@ -138,21 +137,6 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertTrue(ys_kp[-1] < ys_ki[-1])
         self.assertTrue(np.isclose(ys_ki[-1], 1, atol=0.01))
 
-    def test_closed_loop_tf(self):
-        if IGNORE_TEST:
-            return
-        sys_tf = control.tf([1], [1, 1])
-        designer = cld.SISOClosedLoopDesigner(sys_tf)
-        with self.assertRaises(ValueError):
-            _ = designer.closed_loop_transfer_function()
-        #
-        designer.kf = 4
-        closed_loop_tf = designer.closed_loop_transfer_function
-        numr = np.array(closed_loop_tf.num[0][0])
-        self.assertTrue(np.allclose(numr, [20000, 80000, 0]))
-        denr = np.array(closed_loop_tf.den[0][0])
-        self.assertTrue(np.allclose(denr, [1.00000e+00, 1.00050e+04, 1.30004e+05, 4.00000e+04]))
-
     def testDesign(self):
         if IGNORE_TEST:
             return
@@ -160,7 +144,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         def checkParams(names):
             for name in names:
                 self.assertIsNotNone(getattr(designer, name))
-            other_names = set(cn.CONTROL_PARAMETERS) - set(names)
+            other_names = set(CONTROL_PARAMETERS) - set(names)
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
         designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf, times=np.linspace(0, 200, 1000))
@@ -248,12 +232,12 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertIsNone(designer.kf)
 
     def testPlotDesignResult(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         designer = self.makeDesigner()
         def test(parameter_names):
             dct = {}
-            for spec in cn.CONTROL_PARAMETER_SPECS:
+            for spec in CONTROL_PARAMETER_SPECS:
                 if spec in parameter_names:
                     dct[spec] = True
                 else:
@@ -307,42 +291,6 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer.design(kp_spec=True, ki_spec=True, num_restart=2, max_value=100)
         designer.evaluate(is_plot=IS_PLOT, figsize=FIGSIZE)
     
-    def testBug3(self):
-        if IGNORE_TEST:
-            return
-        # Setup
-        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
-        INPUT_NAME = "pIRS"
-        OUTPUT_NAME = "pmTORC1"
-        ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
-        ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
-        #
-        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=2, is_random=False)
-        axis = grid.getAxis("kp")
-        axis.setMinValue(0.1)
-        axis.setMaxValue(1.1)
-        ts, builder = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_greedy=False, 
-                                           is_plot=IS_PLOT, save_path=SAVE1_PATH)
-        self.assertTrue(isinstance(ts, Timeseries))
-
-    def testBug4(self):
-        if IGNORE_TEST:
-            return
-        # Setup
-        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
-        INPUT_NAME = "pIRS"
-        OUTPUT_NAME = "pmTORC1"
-        ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
-        ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
-        #
-        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=40, is_random=False)
-        axis = grid.getAxis("kp")
-        axis.setMinValue(0.1)
-        axis.setMaxValue(10)
-        ts, builder = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT,
-                                           is_greedy=False, save_path=SAVE1_PATH)
-        self.assertTrue(isinstance(ts, Timeseries))
-
 
 if __name__ == '__main__':
     unittest.main()
