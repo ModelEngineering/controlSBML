@@ -1,12 +1,12 @@
-from controlSBML.control_sbml import ControlSBML
-from controlSBML import constants as cn
-from controlSBML.sbml_system import SBMLSystem
-from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
-from controlSBML.timeseries import Timeseries
-from controlSBML.antimony_builder import AntimonyBuilder
-from controlSBML.grid import Grid
+from controlSBML.control_sbml import ControlSBML # type: ignore
+from controlSBML import constants as cn # type: ignore
+from controlSBML.sbml_system import SBMLSystem # type: ignore
+from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder # type: ignore
+from controlSBML.timeseries import Timeseries # type: ignore
+from controlSBML.antimony_builder import AntimonyBuilder # type: ignore
+from controlSBML.grid import Grid # type: ignore
 
-import control
+import control # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
 import os
@@ -124,11 +124,11 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
 
-    def testPlotSISOClosedLoopSystem(self):
+    def testPlotSISOClosedLoop(self):
         if IGNORE_TEST:
             return
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb.plotClosedLoop(setpoint=3, is_plot=IS_PLOT, kp=1, figsize=FIGSIZE,
+        ts, builder = self.ctlsb.plotClosedLoop(setpoint=3, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
@@ -138,11 +138,11 @@ class TestControlSBML(unittest.TestCase):
             return
         setpoint = 5
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
+        ts, builder = self.ctlsb.plotDesign(setpoint=setpoint, sign=-1, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
-                                            num_coordinate=5)
-        # Show that kp, ki are now the defaults
-        _ = self.ctlsb.plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kp=1, figsize=FIGSIZE,
+                                            num_coordinate=5, num_process=1)
+        # Show that kP, kI are now the defaults
+        _ = self.ctlsb.plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
@@ -161,7 +161,7 @@ class TestControlSBML(unittest.TestCase):
             return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"], save_path=CSV_FILE1)
-        _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=False, is_plot=IS_PLOT,
+        _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kP_spec=True, kI_spec=False, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
                                             num_coordinate=2)
         self.assertTrue(os.path.isfile(CSV_FILE1))
@@ -178,7 +178,7 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        self.ctlsb.setOptions(kp=5, sign=-1)
+        self.ctlsb.setOptions(kP=5, sign=-1)
         self.ctlsb.plotTransferFunctionFit(is_plot=False)
         self.assertTrue(isinstance(self.ctlsb.getSystem()[0], SBMLSystem))
         self.assertTrue(isinstance(self.ctlsb.getSystem()[1], SISOTransferFunctionBuilder))
@@ -208,18 +208,18 @@ class TestControlSBML(unittest.TestCase):
             _, builder = CTLSB.plotStaircaseResponse(initial_value=20, final_value=25, is_plot=IS_PLOT)
             _ = CTLSB.plotTransferFunctionFit(figsize=FIGSIZE, num_numerator=2, num_denominator=3, initial_value=20, final_value=25,
                                             fit_start_time=2000, is_plot=IS_PLOT)
-            _ = CTLSB.plotClosedLoop(setpoint=150, kp=1, kf=None, is_plot=IS_PLOT)
-        ts, builder = CTLSB.plotDesign(setpoint=150, kp_spec=True, ki_spec=True, kf_spec=False, 
+            _ = CTLSB.plotClosedLoop(setpoint=150, kP=1, kF=None, is_plot=IS_PLOT)
+        ts, builder = CTLSB.plotDesign(setpoint=150, kP_spec=True, kI_spec=True, kF_spec=False, 
                                        num_restart=1, is_plot=IS_PLOT)
-        _ = CTLSB.plotClosedLoop(setpoint=120, kp=0.002, ki=0.019, is_plot=IS_PLOT)
-        _ = CTLSB.plotClosedLoop(setpoint=150, kp=1, is_plot=IS_PLOT)
+        _ = CTLSB.plotClosedLoop(setpoint=120, kP=0.002, kI=0.019, is_plot=IS_PLOT)
+        _ = CTLSB.plotClosedLoop(setpoint=150, kP=1, is_plot=IS_PLOT)
 
     def testPlotDesignResult(self):
         if IGNORE_TEST:
             return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"], save_path=CSV_FILE2)
-        _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kp_spec=True, ki_spec=True, is_plot=False,
+        _ = ctlsb.plotDesign(setpoint=setpoint, sign=-1, kP_spec=True, kI_spec=True, is_plot=False,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
                                             num_coordinate=4)
         plt.close('all')
@@ -247,7 +247,7 @@ class TestControlSBML(unittest.TestCase):
         OUTPUT_NAME = "pmTORC1"
         ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2, initial_value=20, final_value=25,
-                                  time=2000, times=np.linspace(0, 10000, 100000), is_plot=IS_PLOT)
+                                  fit_start_time=2000, times=np.linspace(0, 10000, 100000), is_plot=IS_PLOT)
         
     def testGetPossibleInputs(self):
         if IGNORE_TEST:
@@ -280,7 +280,7 @@ class TestControlSBML(unittest.TestCase):
         k3 = 0.5
         """
         ctlsb = ControlSBML(model)
-        with self.assertRaisesRegex(ValueError):
+        with self.assertRaises(ValueError):
             _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2)
 
 

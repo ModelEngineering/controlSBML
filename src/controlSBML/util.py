@@ -1,15 +1,16 @@
 import controlSBML.constants as cn
 import controlSBML as ctl
-import control
+import control # type: ignore
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML import msgs
 
-from docstring_expander.expander import Expander
+from docstring_expander.expander import Expander # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import seaborn as sns
+import pandas as pd # type: ignore
+import seaborn as sns # type: ignore
 import urllib.request
+from typing import Optional, List
 
 
 REPO_URL =  "https://github.com/ModelEngineering/controlSBML/raw/main"
@@ -174,8 +175,8 @@ def plotManyTS(*tss, ncol=1, names=None, **kwargs):
     mgr.doFigOpts()
     return PlotResult(ax=axes, fig=fig)
 
-def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
-      points_per_time=cn.POINTS_PER_TIME):
+def makeSimulationTimes(start_time:Optional[float]=cn.START_TIME, end_time:Optional[float]=cn.END_TIME,
+      points_per_time:Optional[int]=cn.POINTS_PER_TIME)->np.ndarray:
     """
     Constructs the times for a simulation using the simulation options.
 
@@ -187,24 +188,26 @@ def makeSimulationTimes(start_time=cn.START_TIME, end_time=cn.END_TIME,
 
     Returns
     -------
-    np.ndarray
+    np.ndarray-int
     """
-    dt = 1.0/points_per_time
-    dt_ms = int(cn.MS_IN_SEC*dt)
-    start_ms = int(start_time*cn.MS_IN_SEC)
-    end_ms = int(end_time*cn.MS_IN_SEC)
+    dt = 1.0 / float(points_per_time)   # type: ignore
+    dt_ms = int(cn.MS_IN_SEC * dt)
+    start_ms = int(start_time*float(cn.MS_IN_SEC)) # type: ignore
+    end_ms = int(end_time*cn.MS_IN_SEC)  # type: ignore
     times = np.arange(start_ms, end_ms + dt_ms, dt_ms)
-    times = times/cn.MS_IN_SEC
+    times = [int(t/cn.MS_IN_SEC) for t in times]  # type: ignore
     return np.array(times)
 
-def makePIDTransferFunction(kp=None, ki=None, kd=None, name="controller", input_name=cn.IN, output_name=cn.OUT):
+def makePIDTransferFunction(kP:Optional[float]=None, kI:Optional[float]=None,
+                            kD:Optional[float]=None, name:Optional[str]="controller",
+                            input_name:Optional[str]=cn.IN, output_name:Optional[str]=cn.OUT):
     """
     Constructs a PID transfer function.
 
     Args:
-        kp: float
-        ki: float
-        kd: float
+        kP: float
+        kI: float
+        kD: float
 
     Raises:
         ValueError: must provide at least one of kp, ki, kd
@@ -214,15 +217,15 @@ def makePIDTransferFunction(kp=None, ki=None, kd=None, name="controller", input_
     """
     is_none = True
     controller_tf = control.tf([0], [1], name=name, inputs=input_name, outputs=output_name)
-    if kp is not None:
+    if kP is not None:
         is_none = False
-        controller_tf += control.tf([kp], [1])
-    if ki is not None:
+        controller_tf += control.tf([kP], [1])
+    if kI is not None:
         is_none = False
-        controller_tf += control.tf([ki], [1, 0])
-    if kd is not None:
+        controller_tf += control.tf([kI], [1, 0])
+    if kD is not None:
         is_none = False
-        controller_tf += control.tf([kd, 0], [1])
+        controller_tf += control.tf([kD, 0], [1])
     if is_none:
         raise ValueError("At least one of kp, ki, kd, kf must be defined")
     controller_tf.name = name
@@ -230,7 +233,7 @@ def makePIDTransferFunction(kp=None, ki=None, kd=None, name="controller", input_
     controller_tf.output_labels = [output_name]
     return controller_tf
 
-def mat2DF(mat, column_names=None, row_names=None):
+def mat2DF(mat:np.array, column_names:Optional[List[str]]=None, row_names:Optional[List[str]]=None):
     """
     Converts a numpy ndarray or array-like to a DataFrame.
 
@@ -247,21 +250,21 @@ def mat2DF(mat, column_names=None, row_names=None):
             mat = np.reshape(mat, (len(mat), 1))
         if column_names is None:
             if hasattr(mat, "colnames"):
-                column_names = mat.colnames
+                column_names = mat.colnames # type: ignore
         if column_names is not None:
             if len(column_names) == 0:
                 column_names = None
         if row_names is None:
             if hasattr(mat, "rownames"):
-                if len(mat.rownames) > 0:
-                    row_names = mat.rownames
+                if len(mat.rownames) > 0:  # type: ignore
+                    row_names = mat.rownames # type: ignore
         if row_names is not None:
             if len(row_names) == 0:
                 row_names = None
         df = pd.DataFrame(mat, columns=column_names, index=row_names)
     return df
 
-def ppMat(mat, column_names=None, row_names=None, is_print=True):
+def ppMat(mat, column_names:Optional[List[str]]=None, row_names:Optional[List[str]]=None, is_print:Optional[bool]=True):
     """
     Provides a pretty print for a matrix or DataFrame)
 

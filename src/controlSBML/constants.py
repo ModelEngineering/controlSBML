@@ -1,9 +1,9 @@
 """Constants for Project."""
 import collections
-from docstring_expander.kwarg import Kwarg
+from docstring_expander.kwarg import Kwarg # type: ignore
 import matplotlib.pyplot
 import numpy as np
-import pandas as pd
+import pandas as pd # type: ignore
 import os
 
 
@@ -67,7 +67,7 @@ DATA_DIR = os.path.join(PROJECT_DIR, "data")
 BIOMODELS_ZIP_FILENAME = "biomodels.zip"
 
 # Constants
-END_TIME = 5  # Default endtime
+END_TIME = 5.0  # Default endtime
 EVENT = "event"
 INPUT = "input"
 IN = "in"
@@ -82,7 +82,7 @@ PARAMS = "params"
 POINTS_PER_TIME = 10
 SCORE = "score"
 SETPOINT = "setpoint"
-START_TIME = 0  # Default start time
+START_TIME = 0.0  # Default start time
 STATE = "state"
 STEP_VAL = 1  # Multiplier used for simulation input
 TIME = "time"
@@ -112,13 +112,13 @@ O_YLIM = "ylim"
 O_YTICKLABELS = "yticklabels"
 
 # Control parameters
-CP_KP = "kp"
-CP_KI = "ki"
-CP_KF = "kf"
+CP_KP = "kP"
+CP_KI = "kI"
+CP_KF = "kF"
 CONTROL_PARAMETERS = [CP_KP, CP_KI, CP_KF]
-KP_SPEC = "kp_spec"
-KI_SPEC = "ki_spec"
-KF_SPEC = "kf_spec"
+KP_SPEC = "kP_spec"
+KI_SPEC = "kI_spec"
+KF_SPEC = "kF_spec"
 CONTROL_PARAMETER_SPECS = [KP_SPEC, KI_SPEC, KF_SPEC]
 
 # Default values of options
@@ -191,7 +191,7 @@ for kwargs in [SIM_KWARGS, PLOT_KWARGS, FIG_KWARGS]:
     ALL_KWARGS.extend(kwargs)
 
 # TimeSeries
-MS_IN_SEC = 1000
+MS_IN_SEC = 1000.0
 SEC_IN_MS = 1.0/MS_IN_SEC
 TIMESERIES_INDEX_NAME = "miliseconds"
 TIMES = np.linspace(0, 5, 50)

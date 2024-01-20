@@ -38,7 +38,7 @@ COL_STEP_SIZE = "step_size"
 ##################################################################
 def _calculateClosedLoopTf(sys_tf=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
     # Construct the transfer functions
-    controller_tf = util.makePIDTransferFunction(kp=kp, ki=ki, kd=kd)
+    controller_tf = util.makePIDTransferFunction(kP=kp, kI=ki, kd=kd)
     # Filter
     if kf is not None:
         is_none = False

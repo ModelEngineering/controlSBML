@@ -317,7 +317,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
         ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
         #
-        grid = ctlsb.getGrid(kp_spec=True, ki_spec=False, num_coordinate=2, is_random=False)
+        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=2, is_random=False)
         axis = grid.getAxis("kp")
         axis.setMinValue(0.1)
         axis.setMaxValue(1.1)
@@ -335,7 +335,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
         ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
         #
-        grid = ctlsb.getGrid(kp_spec=True, ki_spec=False, num_coordinate=40, is_random=False)
+        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=40, is_random=False)
         axis = grid.getAxis("kp")
         axis.setMinValue(0.1)
         axis.setMaxValue(10)

@@ -21,6 +21,10 @@ import os
 import pandas as pd
 import seaborn as sns
 
+CP_KP = "kp"
+CP_KI = "ki"
+CP_KF = "kf"
+CONTROL_PARAMETERS = [CP_KP, CP_KI, CP_KF]
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
 DEFAULT_INITIAL_VALUE = 1   # Default initial value for a parameter
@@ -29,7 +33,7 @@ BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
 LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
-PARAMETER_DISPLAY_DCT = {cn.CP_KP: r'$k_p$', cn.CP_KI: r'$k_i$', cn.CP_KF: r'$k_f$'}
+PARAMETER_DISPLAY_DCT = {CP_KP: r'$k_p$', CP_KI: r'$k_i$', CP_KF: r'$k_f$'}
 
 Workunit = collections.namedtuple("Workunit",
     "system input_name output_name setpoint times is_greedy num_restart is_report")    
@@ -39,7 +43,7 @@ def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kp=No
     # Construct the transfer functions
     if open_loop_transfer_function is None:
         return None
-    controller_tf = util.makePIDTransferFunction(kp=kp, ki=ki, kd=kd)
+    controller_tf = util.makePIDTransferFunction(kP=kp, kI=ki, kD=kd)
     # Filter
     if kf is not None:
         filter_tf = control.TransferFunction([kf], [1, kf])
@@ -128,7 +132,7 @@ class SISOClosedLoopDesigner(object):
             kd (float)
             kf (float)
         """
-        value_dct = {cn.CP_KP: kp, "ki": ki, "kf": kf}
+        value_dct = {CP_KP: kp, CP_KI: ki, CP_KF: kf}
         for name, value in value_dct.items():
             if value is None:
                 continue
@@ -143,7 +147,7 @@ class SISOClosedLoopDesigner(object):
             dict: {name: value}
         """
         dct = {}
-        for name in cn.CONTROL_PARAMETERS:
+        for name in CONTROL_PARAMETERS:
             if self.__getattribute__(name) is not None:
                 value = self.__getattribute__(name)
                 dct[name] = value
@@ -186,7 +190,7 @@ class SISOClosedLoopDesigner(object):
         # Find the parameters in the design result
         parameter_names = []
         idx = list(self.design_result_df.index)[0]
-        for name in cn.CONTROL_PARAMETERS:
+        for name in CONTROL_PARAMETERS:
             if not name in self.design_result_df.columns:
                 continue
             if not np.isnan(self.design_result_df.loc[idx, name]):
@@ -268,14 +272,14 @@ class SISOClosedLoopDesigner(object):
                 msgs.warn(msg)
         # Initializations
         grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
-        addAxis(grid, cn.CP_KP, kp_spec)
-        addAxis(grid, cn.CP_KI, ki_spec)
-        addAxis(grid, cn.CP_KF, kf_spec)
+        addAxis(grid, CP_KP, kp_spec)
+        addAxis(grid, CP_KI, ki_spec)
+        addAxis(grid, CP_KF, kf_spec)
         #
         return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, is_report=is_report,
                                     num_process=num_process)
 
-    def simulateTransferFunction(self, transfer_function=None, period=None):
+    def oldsimulateTransferFunction(self, transfer_function=None, period=None):
         """
         Simulates the closed loop transfer function based on the parameters of the object.
 
@@ -312,7 +316,7 @@ class SISOClosedLoopDesigner(object):
         """
         point_evaluator = PointEvaluator(self.system.copy(), self.input_name, self.output_name, 
                                             self.setpoint, self.times, is_greedy=is_greedy)
-        parallel_search = ParallelSearch(point_evaluator, grid.points, num_process=num_process, is_report=is_report)
+        parallel_search = ParallelSearch(point_evaluator, grid.points, num_process=num_process, is_report=is_report) # type: ignore
         search_results = []
         for _ in range(num_restart):
             parallel_search.search()
@@ -328,12 +332,12 @@ class SISOClosedLoopDesigner(object):
         search_result_df = search_result_df.reset_index()
         # Record the result
         self.residual_mse = search_result_df.loc[0, cn.SCORE]
-        if cn.CP_KP in search_result_df.columns:
-            self.kp = search_result_df.loc[0, cn.CP_KP]
-        if cn.CP_KI in search_result_df.columns:
-            self.ki = search_result_df.loc[0, cn.CP_KI]
-        if cn.CP_KF in search_result_df.columns:
-            self.kf = search_result_df.loc[0, cn.CP_KF]
+        if CP_KP in search_result_df.columns:
+            self.kp = search_result_df.loc[0, CP_KP]
+        if CP_KI in search_result_df.columns:
+            self.ki = search_result_df.loc[0, CP_KI]
+        if CP_KF in search_result_df.columns:
+            self.kf = search_result_df.loc[0, CP_KF]
         # Save the results
         if self.save_path is not None:
             search_result_df.to_csv(self.save_path, index=False)
@@ -352,7 +356,7 @@ class SISOClosedLoopDesigner(object):
                 return None
         return self._design_result_df
 
-    def simulateTransferFunction(self, transfer_function=None, period=None):
+    def simulateTransferFunction(self, transfer_function=None, period=None)->tuple[np.array, np.array]:
         """
         Simulates the closed loop transfer function based on the parameters of the object.
 
@@ -411,9 +415,9 @@ class SISOClosedLoopDesigner(object):
             Timeseries (from simulation)
             AntimonyBuilder (from simulation)
         """
-        param_dct = {n: None for n in cn.CONTROL_PARAMETERS}
+        param_dct = {n: None for n in CONTROL_PARAMETERS}
         param_dct.update(self.get())
-        k_dct = {k: param_dct[k] for k in cn.CONTROL_PARAMETERS}
+        k_dct = {k: param_dct[k] for k in CONTROL_PARAMETERS}
         try:
             simulated_ts, antimony_builder = self.system.simulateSISOClosedLoop(setpoint=self.setpoint,
                                 start_time=self.start_time, end_time=self.end_time, num_point=self.num_point,
