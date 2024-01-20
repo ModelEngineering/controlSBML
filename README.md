@@ -20,6 +20,9 @@ ctl.__version__
 ```
 
 ## Version History
+* 1.1.03 1/20/2024
+    * Better error checking
+    * API uses parameter names kI, kP, kF
 * 1.1.02 12/27/2023
     * Fix bug in dependencies. Update header documentation.
 * 1.1.01 12/27/2023
