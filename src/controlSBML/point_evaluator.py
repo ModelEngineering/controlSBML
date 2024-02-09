@@ -5,7 +5,7 @@ from controlSBML.parallel_search import Evaluator
 from controlSBML.sbml_system import SBMLSystem
 
 import numpy as np
-from typing import Tuple
+from typing import Tuple, Union
 
 
 ##################################################################
@@ -46,20 +46,21 @@ class PointEvaluator(Evaluator):
                 score: float (MSE)
                 cadidate_dct keys, values
         """
-        #
-        if self.is_greedy:
-            new_dct = self._searchForFeasibleClosedLoopSystem(**candidate_dct)
-            if new_dct is None:
-                result_dct[cn.SCORE] = None
-                return result_dct
-        else:
-            new_dct = dict(candidate_dct)
+        # FIXME
+#        if self.is_greedy:
+#            new_dct = self._searchForFeasibleClosedLoopSystem(**candidate_dct)
+#            if new_dct is None:
+#                result_dct[cn.SCORE] = None
+#                return result_dct
+#        else:
+#            new_dct = dict(candidate_dct)
+        new_dct = dict(candidate_dct)
         result_dct = dict(new_dct)
-        _, residual_mse = self._calculateMse(**new_dct)
-        result_dct[cn.SCORE] = residual_mse
+        _, residual_mse = self._calculateMse(**new_dct)   # type: ignore
+        result_dct[cn.SCORE] = residual_mse # type: ignore
         return result_dct
 
-    def _calculateMse(self, max_output:float=1e6, min_output:float=0, **parameter_dct:dict)->Tuple[bool, any]:
+    def _calculateMse(self, max_output:float=1e6, min_output:float=0, **parameter_dct:dict)->Tuple[bool, object]:
         """
         Attempts to calculate the mean squared error of the closed loop system. Reports if system is unstable.
 
@@ -98,7 +99,7 @@ class PointEvaluator(Evaluator):
         mse = np.mean(residuals**2)
         return True, mse
     
-    def _searchForFeasibleClosedLoopSystem(self, max_iteration:int=10, **parameter_dct)->dict:
+    def _searchForFeasibleClosedLoopSystem(self, max_iteration:int=10, **parameter_dct)->Union[dict, None]:
         """
         Does a greedy search to find values of the parameters that are minimally stable.
 

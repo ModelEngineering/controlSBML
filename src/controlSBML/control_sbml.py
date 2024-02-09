@@ -6,10 +6,6 @@ There are 3 types of API calls:
 * getters: return a value
 * plotters: plot a result; return Timeseries of data plotted and AntimonyBuilder used to generate the data; may update state
 
-ControlSBML has "persistent options" that are maintained across calls to the plot* APIs. 
-Persistent options relate to staircase definition (initial_value, final_value, num_step), times, closed loop parameters,
-and plot options.
-
 Typical Usage:
 
     # Examine an SBML model
@@ -94,7 +90,7 @@ OPTIONS = STAIRCASE_OPTIONS + TIMES_OPTIONS + CLOSED_LOOP_PARAMETERS + PLOT_OPTI
 CONTROL_PARAMETERS = [cn.CP_KP, cn.CP_KI, cn.CP_KF]
 FIGSIZE = (5, 5)
 INITIAL_OPTION_DCT = {cn.O_TITLE: "", cn.O_SUPTITLE: "", cn.O_WRITEFIG: False,
-                        cn.O_XLABEL: "Time (sec)", cn.O_YLABEL: "Concentration",
+                        cn.O_XLABEL: "time", cn.O_YLABEL: "concentration",
                         cn.O_FIGSIZE: FIGSIZE,
                         cn.O_IS_PLOT: True,
                         C_IS_FIXED_INPUT_SPECIES: True,
@@ -168,8 +164,8 @@ class ControlSBML(OptionSet):
     def copy(self):
         ctlsb = ControlSBML(self.model_reference)
         ctlsb._fitter_result = self._fitter_result.copy()
-        persistent_options = self.getOptions()
-        ctlsb.setOptions(**persistent_options)
+        options = self.getOptions()
+        ctlsb.setOptions(**options)
         return ctlsb
     
     def _checkKwargs(self, **kwargs):
@@ -261,7 +257,7 @@ class ControlSBML(OptionSet):
     
     def getOptions(self, options:Optional[dict]=None):
         """
-        Gets current values of the persistent options
+        Gets current values of the options
 
         Returns: dict. Keys are listed below by category.
             STAIRCASE_OPTIONS: initial_value, final_value, num_step
@@ -373,13 +369,13 @@ class ControlSBML(OptionSet):
     ############ SETTERS ##############
     def resetOptions(self):
         """
-        Resets the persistent options to their default values.
+        Resets the options to their default values.
         """
         self.setOptions(**INITIAL_OPTION_DCT)
 
     def setOptions(self, **kwargs):
         """
-        Sets values of persistent options.
+        Sets values of options.
 
         Args:
             kwargs: dict of options
@@ -437,11 +433,12 @@ class ControlSBML(OptionSet):
         Plots the original model.
 
         Args:
-            kwargs: dict (persistent options)
+            kwargs: dict (plot options)
         
         Returns:
             Timeseries
         """
+        self._checkKwargs(**kwargs)
         kwargs[cn.O_AX2] = 0
         option_set = self.getOptionSet(**kwargs)
         self._roadrunner.reset()
@@ -460,7 +457,7 @@ class ControlSBML(OptionSet):
             initial_value: float (initial value of the staircase; default is the minimum value of the input if it's a species)
             final_value: float (final value of the staircase)
             num_step: int (number of steps in the staircase)
-            kwargs: dict (persistent options)
+            kwargs: dict (plot options)
 
         Returns:
             Timeseries
@@ -468,6 +465,7 @@ class ControlSBML(OptionSet):
                 columns: <output_name>, staircase
             AntimonyBuilder
         """
+        self._checkKwargs(**kwargs)
         option_set = self.getOptionSet(**kwargs)
         _, siso_transfer_function_builder = self.getSystem(**option_set)
         staircase = self.getStaircase(**option_set)
@@ -488,12 +486,13 @@ class ControlSBML(OptionSet):
             num_denominator: int (number of denominator terms)
             fit_start_time: float (time at which fitting starts)
             fit_end_time: float (time at which fitting ends)
-            kwargs: (Persistent options)
+            kwargs: (plot options)
 
         Returns:
             Timeseries (predicted, staircase)
             AntimonyBuilder
         """
+        self._checkKwargs(**kwargs)
         option_set = self.getOptionSet(**kwargs)
         _, siso_transfer_function_builder = self.getSystem(**option_set)
         if siso_transfer_function_builder is None:
@@ -510,12 +509,15 @@ class ControlSBML(OptionSet):
             siso_transfer_function_builder.plotFitterResult(self._fitter_result, **self._getPlotOptions(**option_set))
         return self._fitter_result.time_series, self._fitter_result.antimony_builder
     
-    def plotClosedLoop(self, **kwargs):
+    def plotClosedLoop(self, kP:Optional[float]=None, kI:Optional[float]=None, kF:Optional[float]=None, **kwargs):
         """
         Plots the closed loop response. Control parameters not explicity specified are None.
 
         Args:
-            kwargs: dict (persistent options)
+            kP: proportional control parameter
+            kI: integral control parameter
+            kF: filter parameter
+            kwargs: plot options
         Returns:
             Timeseries
             AntimonyBuilder
@@ -532,7 +534,7 @@ class ControlSBML(OptionSet):
         sbml_system, _ = self.getSystem(**option_set)
         response_ts, builder = sbml_system.simulateSISOClosedLoop(input_name=self.getInputName(option_set=option_set),
                                                                   output_name=self.getOutputName(option_set=option_set),
-                kp=option_set.kP, ki=option_set.kI, kf=option_set.kF, setpoint=option_set.setpoint, sign=option_set.sign,
+                kp=kP, ki=kI, kf=kF, setpoint=option_set.setpoint, sign=option_set.sign,
                 times=option_set.times, is_steady_state=sbml_system.is_steady_state, inplace=False, initial_input_value=None,
                 )
         if (not "title" in plot_options) or (len(plot_options["title"]) == 0):
@@ -541,7 +543,7 @@ class ControlSBML(OptionSet):
         sbml_system.plotSISOClosedLoop(response_ts, option_set.setpoint, **plot_options)
         return response_ts, builder
 
-    def plotGridDesign(self, grid:Optional[Grid]=None, num_restart:Optional[int]=1,
+    def plotGridDesign(self, grid:Grid, num_restart:Optional[int]=1,
                        is_greedy:Optional[bool]=False, is_plot_grid:Optional[bool]=False, 
                        save_path:Optional[str]="", num_process:Optional[int]=-1, **kwargs):
         """
@@ -551,7 +553,7 @@ class ControlSBML(OptionSet):
         Args:
             grid: Grid (grid of values for the control parameters)
             is_greedy: bool (if True, use greedy algorithm)
-            kwargs: dict (persistent options)
+            kwargs: dict (plot options)
             is_plot_grid: bool (if True, plot the grid with mean squared error)
             num_process: int (number of processes to use; -1 means use all available)
         Returns:
@@ -616,7 +618,7 @@ class ControlSBML(OptionSet):
             max_parameter_value: float (maximum value for kP, kI, kF; may be a dictionary)
             num_coordinate: int (number of coordinate descent iterations)
             is_greedy: bool (if True, use greedy algorithm)
-            kwargs: dict (persistent options)
+            kwargs: dict (plot options)
             is_report: bool (report progress on the design search)
         Returns:
             Timeseries
