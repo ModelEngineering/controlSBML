@@ -1,9 +1,9 @@
-import controlSBML.constants as cn
+import controlSBML.constants as cn  # type: ignore
 import controlSBML as ctl
-import controlSBML.siso_transfer_function_builder as stb
-from controlSBML.sbml_system import SBMLSystem
-from controlSBML.staircase import Staircase
-import controlSBML.util as util
+import controlSBML.siso_transfer_function_builder as stb  # type: ignore
+from controlSBML.sbml_system import SBMLSystem # type: ignore
+from controlSBML.staircase import Staircase # type: ignore
+import controlSBML.util as util # type: ignore
 import helpers
 
 import copy
@@ -12,12 +12,12 @@ import numpy as np
 import os
 import unittest
 import shutil
-import tellurium as te
+import tellurium as te # type: ignore
 import tempfile
 
 
 IGNORE_TEST = True
-IS_PLOT = True
+IS_PLOT = False
 PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
@@ -143,8 +143,8 @@ class TestSBMLSystem(unittest.TestCase):
         self.assertEqual(self.response_ts["S1_staircase"].values[-1], self.final_value)
 
     def testPlotStaircaseResponse(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         self.init()
         plot_result = self.builder.plotStaircaseResponse(self.response_ts, is_plot=IS_PLOT)
         self.assertTrue(isinstance(plot_result, util.PlotResult))

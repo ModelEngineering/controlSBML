@@ -100,3 +100,6 @@ class Options(dict):
                   for k, v in dct.items()}, default_dcts=[dct])
             opts_lst.append(opts)
         return opts_lst
+    
+    def asDict(self):
+        return dict(self)

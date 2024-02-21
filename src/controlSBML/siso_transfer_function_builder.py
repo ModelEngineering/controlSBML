@@ -14,9 +14,9 @@ from controlSBML import util
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.staircase import Staircase
 
-import control
-from docstring_expander.expander import Expander
-import lmfit
+import control # type: ignore
+from docstring_expander.expander import Expander # type: ignore
+import lmfit # type: ignore
 import numpy as np
 
 
@@ -127,6 +127,7 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     -------
     float
     """
+    global _mse_history
     def isDone(last_history:int=10, min_history:int=50, threshold:float=1e-3):
         """
         Checks if further progress is unlikely.
@@ -136,16 +137,15 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
         bool
             True if MSEs are not changing significantly
         """
-        if len(_mse_history) < min_history:
+        global _mse_history
+        if len(_mse_history) < min_history:  # type: ignore
             return False
-        history_arr = np.array(_mse_history)
+        history_arr = np.array(_mse_history)  # type: ignore
         median_mse = np.median(history_arr)
         credible_history_arr = history_arr[history_arr < median_mse]
         last_arr = credible_history_arr[-last_history:]
         metric = np.std(last_arr)/median_mse
         return metric < threshold
-    #
-    global _mse_history
     #
     times, inputs = data_in
     tf = _makeTransferFunction(parameters)
@@ -274,27 +274,31 @@ class SISOTransferFunctionBuilder(object):
         new_response_ts, staircase_name, output_name = cls._extractStaircaseResponseInformation(response_ts)
         staircase_ts = response_ts[staircase_name]
         response_ts = new_response_ts
-        # Do the plots
-        plot_result = util.plotOneTS(response_ts, mgr=mgr, colors=[cn.SIMULATED_COLOR])
-        ax = plot_result.ax
-        mgr.plot_opts.set(cn.O_AX, ax)
-        mgr.plot_opts.set(cn.O_YLABEL, output_name)
-        if mgr.plot_opts[cn.O_AX2] is None:
-            ax2 = ax.twinx()
-            mgr.plot_opts[cn.O_AX2] = ax2
+        if mgr.plot_opts.asDict().get(cn.IS_PLOT, False):
+            # Do the plots
+            plot_result = util.plotOneTS(response_ts, mgr=mgr, colors=[cn.SIMULATED_COLOR])
+            ax = plot_result.ax
+            mgr.plot_opts.set(cn.O_AX, ax)
+            mgr.plot_opts.set(cn.O_YLABEL, output_name)
+            if mgr.plot_opts[cn.O_AX2] is None:
+                ax2 = ax.twinx()
+                mgr.plot_opts[cn.O_AX2] = ax2
+            else:
+                ax2 = mgr.plot_opts[cn.O_AX2]
+            # Plot the staircase
+            times = np.array(response_ts.index)/cn.MS_IN_SEC
+            ax2.plot(times, staircase_ts, color=cn.INPUT_COLOR,
+                linestyle="--")
+            cls.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
+            cls.setYAxColor(ax2, "right", cn.INPUT_COLOR)
+            ax2.set_ylabel(staircase_name)
+            mgr.doPlotOpts()
+            ax.legend([])
+            if is_fig:
+                mgr.doFigOpts()
         else:
-            ax2 = mgr.plot_opts[cn.O_AX2]
-        # Plot the staircase
-        times = np.array(response_ts.index)/cn.MS_IN_SEC
-        ax2.plot(times, staircase_ts, color=cn.INPUT_COLOR,
-            linestyle="--")
-        cls.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
-        cls.setYAxColor(ax2, "right", cn.INPUT_COLOR)
-        ax2.set_ylabel(staircase_name)
-        mgr.doPlotOpts()
-        ax.legend([])
-        if is_fig:
-            mgr.doFigOpts()
+            ax = None
+            ax2 = None
         #
         return util.PlotResult(time_series=response_ts, ax=ax, ax2=ax2)
     

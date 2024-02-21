@@ -3,7 +3,7 @@
 import controlSBML.constants as cn
 from controlSBML.option_management.options import Options
 
-from docstring_expander.expander import Expander
+from docstring_expander.expander import Expander # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
 import os
