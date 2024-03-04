@@ -177,8 +177,8 @@ class MIMOTransferFunctionBuilder(object):
         return cls._plotMIMO(response_df, tfb.SISOTransferFunctionBuilder.plotStaircaseResponse, **options)
     
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR, 
-                            num_denominator=cn.DEFAULT_NUM_DENOMINATOR, staircase=Staircase(), **sim_kwargs):
+    def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_ZERO, 
+                            num_denominator=cn.DEFAULT_NUM_POLE, staircase=Staircase(), **sim_kwargs):
         """
         Constructs transfer functions for the NonlinearIOSystem.
 

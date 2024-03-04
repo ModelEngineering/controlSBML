@@ -14,12 +14,12 @@ from controlSBML.parallel_search import ParallelSearch
 from controlSBML.point_evaluator import PointEvaluator
 
 import collections
-import control
+import control  # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
 import os
-import pandas as pd
-import seaborn as sns
+import pandas as pd  # type: ignore
+import seaborn as sns  # type: ignore
 
 CP_KP = "kp"
 CP_KI = "ki"
@@ -278,29 +278,6 @@ class SISOClosedLoopDesigner(object):
         #
         return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, is_report=is_report,
                                     num_process=num_process)
-
-    def oldsimulateTransferFunction(self, transfer_function=None, period=None):
-        """
-        Simulates the closed loop transfer function based on the parameters of the object.
-
-        Args
-            transfer_function (control.TransferFunction): closed loop transfer function
-        Returns
-            (np.array, np.array): times, predictions
-        Raises
-            ValueError: if there are no parameters defined for the closed loop transfer function
-        """
-        if transfer_function is None:
-            if self.closed_loop_transfer_function is None:
-                raise ValueError("No closed loop transfer function defined.")
-            transfer_function = self.closed_loop_transfer_function
-        if period is not None:
-            U = np.sin(2*np.pi*self.times/period)
-        else:
-            U = np.repeat(1, len(self.times))
-        U = U*self.setpoint
-        new_times, predictions = control.forced_response(transfer_function, T=self.times, U=U)
-        return new_times, predictions
 
     def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1,
                         is_report:bool=False, num_process:int=-1):

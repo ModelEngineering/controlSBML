@@ -43,8 +43,8 @@ import controlSBML.constants as cn
 import itertools
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import typing
+import pandas as pd  # type: ignore
+from typing import Optional, Callable, List
 
 DEFAULT_MIN = 0
 DEFAULT_MAX = 10
@@ -66,8 +66,9 @@ class Point(dict):
 
 
 class Axis:
-    def __init__(self, parameter_name:str, min_value:float=None, max_value:float=None, num_coordinate:int=None,
-                 is_random:bool=False, notifier=None):
+    def __init__(self, parameter_name:str, min_value:Optional[float]=DEFAULT_MIN,
+                 max_value:Optional[float]=DEFAULT_MAX, num_coordinate:Optional[int]=DEFAULT_NUM_COORDINATE,
+                 is_random:Optional[bool]=False, notifier:Optional[Callable]=None):
         """
         Specifies the axis for a parameter.
 
@@ -120,7 +121,7 @@ class Axis:
             num_coordinate: int (number of point coordinates for parameter)
         """
         self.num_coordinate = num_coordinate
-        self.notifier() 
+        self.notifier()
 
     @property
     def coordinates(self):
@@ -141,7 +142,7 @@ class Axis:
         Returns:
             float
         """
-        if idx < 0 or idx >= self.num_coordinate - 1:
+        if idx < 0 or idx >= self.num_coordinate - 1:  # type: ignore
             raise ValueError("Invalid index: {}".format(idx))
         coordinates = self.coordinates
         if self.is_random:
@@ -192,7 +193,7 @@ class Grid(object):
         self._points = None
 
     def __repr__(self)->str:
-        dct = {NAME: [], cn.MIN: [], cn.MAX: [], "num_coordinate": []}
+        dct: dict = {NAME: [], cn.MIN: [], cn.MAX: [], "num_coordinate": []}
         for parameter_name, axis in self.axis_dct.items():
             dct[NAME].append(parameter_name)
             dct[cn.MIN].append(axis.min_value)
@@ -200,8 +201,8 @@ class Grid(object):
             dct["num_coordinate"].append(axis.num_coordinate)
         return str(pd.DataFrame(dct))
 
-    def addAxis(self, parameter_name:str, min_value:float=None,
-                          max_value:float=None, num_coordinate:int=None):
+    def addAxis(self, parameter_name:str, min_value:Optional[float]=None,
+                          max_value:Optional[float]=None, num_coordinate:Optional[int]=None):
         """
         Creates an axis for a parameter.
         Args:
@@ -218,7 +219,7 @@ class Grid(object):
             num_coordinate = self.default_num_coordinate
         if parameter_name in self.axis_dct:
             raise ValueError("Parameter name already exists: {}".format(parameter_name))
-        if min_value >= max_value:
+        if min_value > max_value:
             raise ValueError("min_value must be less than max_value: {} >= {}".format(min_value, max_value))
         self.axis_dct[parameter_name] = Axis(parameter_name, min_value=min_value, max_value=max_value,
                                              num_coordinate=num_coordinate, is_random=self.is_random,
@@ -236,7 +237,7 @@ class Grid(object):
         return len(self.points)
     
     @property
-    def points(self)->typing.List[Point]:
+    def points(self)->List[Point]:
         """
         Gets the list of points.
 
@@ -247,6 +248,7 @@ class Grid(object):
             self._points = list(self._iteratePoints())
         return self._points
 
+    # FIXME: Not correctly handling case of 1 coordinate
     def _iteratePoints(self):
         """
         Creates an iterator that returns a point.
@@ -254,9 +256,12 @@ class Grid(object):
         Returns:
             Point
         """
-        index_lists = [list(range(self.axis_dct[p].num_coordinate - 1)) for p in self.axis_dct.keys()]
+        index_lists = [list(range(self.axis_dct[p].num_coordinate)) for p in self.axis_dct.keys()]
         for indices in itertools.product(*index_lists):
-            yield Point(**{a.parameter_name: a.getPointCoordinate(i) for a, i in zip(self.axis_dct.values(), indices)})
+            dct = {}
+            for idx, name in enumerate(self.axis_dct.keys()):
+                dct[name] = indices[idx]
+            yield Point(**dct)
 
     def getAxis(self, parameter_name:str)->Axis:
         """

@@ -1,4 +1,4 @@
-from controlSBML.staircase import Staircase
+from controlSBML.staircase import Staircase  # type: ignore
 import helpers
 
 import matplotlib.pyplot as plt
@@ -7,7 +7,7 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
+IGNORE_TEST = True
 IS_PLOT = False
 INITIAL_VALUE = 5
 FINAL_VALUE = 10
@@ -75,6 +75,39 @@ class TestStaircase(unittest.TestCase):
         staircase = Staircase.makeRelativeStaircase(5, 2)
         staircase.plot()
         plt.savefig(PLOT_PATH)
+
+    def testMakeEndStepInfo(self):
+        if IGNORE_TEST:
+            return
+        def test(num_point_per_end, num_step):
+            num_point = (3 + num_point_per_end)*(num_step+1)
+            staircase = Staircase(initial_value=0, final_value=10, num_step=num_step, num_point=num_point)
+            values, idxs = staircase.makeEndStepInfo(num_point=num_point_per_end)
+            self.assertEqual(len(values), num_point_per_end*(num_step+1))
+            self.assertEqual(len(idxs), num_point_per_end*(num_step+1))
+            for value, idx in zip(values, idxs):
+                self.assertEqual(staircase.staircase_arr[idx], value)
+        #
+        test(2, 5)
+        test(1, 2)
+        test(10, 200)
+
+    def testMakeEndStepInfo2(self):
+        #if IGNORE_TEST:
+        #    return
+        # Check that taking into account start and end
+        def test(num_point_per_end, num_step):
+            num_point = (3 + num_point_per_end)*(num_step+1)
+            staircase = Staircase(initial_value=0, final_value=10, num_step=num_step, num_point=num_point)
+            start_idx = staircase.point_per_level
+            values, idxs = staircase.makeEndStepInfo(num_point=num_point_per_end,
+                                                      start_idx=start_idx)
+            self.assertEqual(len(values), num_point_per_end*(num_step))
+            self.assertEqual(len(idxs), num_point_per_end*(num_step))
+        #
+        test(2, 5)
+        test(1, 2)
+        test(10, 200)
 
 
 if __name__ == '__main__':

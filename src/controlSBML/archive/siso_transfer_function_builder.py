@@ -304,8 +304,8 @@ class SISOTransferFunctionBuilder(object):
         return staircase_column, other_columns
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR,
-                            num_denominator=cn.DEFAULT_NUM_DENOMINATOR, staircase=Staircase(), 
+    def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_ZERO,
+                            num_denominator=cn.DEFAULT_NUM_POLE, staircase=Staircase(), 
                             fit_start_time=None, fit_end_time=None, **kwargs):
         """
         Constructs a transfer function for the NonlinearIOSystem.

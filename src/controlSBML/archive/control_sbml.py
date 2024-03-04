@@ -101,7 +101,7 @@ class ControlSBML(ControlPlot):
         return NonlinearIOSystem(name, self, **kwargs)
     
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def makeMIMOTransferFunctionDF(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
+    def makeMIMOTransferFunctionDF(self, num_numerator=cn.DEFAULT_NUM_ZERO, num_denominator=cn.DEFAULT_NUM_POLE,
                  staircase=None, 
                  is_fixed_input_species=False, do_simulate_on_update=False,
                  is_steady_state=True, **kwargs):
@@ -153,7 +153,7 @@ class ControlSBML(ControlPlot):
         return transfer_function_df
     
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
-    def plotBode(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
+    def plotBode(self, num_numerator=cn.DEFAULT_NUM_ZERO, num_denominator=cn.DEFAULT_NUM_POLE,
                  staircase=None, is_magnitude=True, is_phase=True, **kwargs):
         """
         Constructs bode plots for a MIMO system whose tansfer functions are obtained by system identification.
@@ -216,7 +216,7 @@ class ControlSBML(ControlPlot):
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def fitMIMOTransferFunction(self,
             input_names=None, output_names=None, staircase=Staircase(),
-            num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
+            num_numerator=cn.DEFAULT_NUM_ZERO, num_denominator=cn.DEFAULT_NUM_POLE,
             is_fixed_input_species=False,
             do_simulate_on_update=False,
             **kwargs):
@@ -258,7 +258,7 @@ class ControlSBML(ControlPlot):
     @Expander(cn.KWARGS, cn.ALL_KWARGS)
     def plotFitMIMOTransferFunction(self,
             input_names=None, output_names=None, staircase=Staircase(),
-            num_numerator=cn.DEFAULT_NUM_NUMERATOR, num_denominator=cn.DEFAULT_NUM_DENOMINATOR,
+            num_numerator=cn.DEFAULT_NUM_ZERO, num_denominator=cn.DEFAULT_NUM_POLE,
             is_fixed_input_species=False,
             do_simulate_on_update=False,
             **kwargs):

@@ -49,6 +49,7 @@ the use of the setOptions method.
 """
 
 from controlSBML.sbml_system import SBMLSystem
+from controlSBML.antimony_builder import AntimonyBuilder
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder
 from controlSBML.siso_closed_loop_designer import SISOClosedLoopDesigner
 from controlSBML.timeseries import Timeseries
@@ -168,12 +169,14 @@ class ControlSBML(OptionSet):
         ctlsb.setOptions(**options)
         return ctlsb
     
-    def _checkKwargs(self, **kwargs):
+    def _checkKwargs(self, valids:Optional[List[str]]=OPTIONS, **kwargs):
         """
         Checks that the kwargs are valid.
+        Args:
+            valids: valid keys
         """
         keys = set(kwargs.keys())
-        diff = keys.difference(set(OPTIONS))
+        diff = keys.difference(set(valids))   # type: ignore
         if len(diff) > 0:
             raise ValueError("Invalid keyword arguments: %s" % str(diff))
     
@@ -443,7 +446,8 @@ class ControlSBML(OptionSet):
         option_set = self.getOptionSet(**kwargs)
         self._roadrunner.reset()
         data = self._roadrunner.simulate(self._getStarttime(option_set),
-                                         self._getEndtime(option_set), self._getNumpoint(option_set))
+             self._getEndtime(option_set), self._getNumpoint(option_set),
+             selections=[cn.TIME, self.getInputName(option_set), self.getOutputName(option_set)])
         ts = Timeseries(data)
         if option_set.is_plot:
             util.plotOneTS(ts, markers=option_set.markers, **self._getPlotOptions(**option_set))
@@ -474,8 +478,8 @@ class ControlSBML(OptionSet):
         siso_transfer_function_builder.plotStaircaseResponse(response_ts, **self._getPlotOptions(**option_set))
         return response_ts, builder
     
-    def plotTransferFunctionFit(self, num_numerator:int=cn.DEFAULT_NUM_NUMERATOR,
-                            num_denominator:int=cn.DEFAULT_NUM_DENOMINATOR, 
+    def plotTransferFunctionFit(self, num_numerator:int=cn.DEFAULT_NUM_ZERO,
+                            num_denominator:int=cn.DEFAULT_NUM_POLE, 
                             fit_start_time: Optional[float]=None, fit_end_time:Optional[float]=None, 
                             **kwargs):
         """
@@ -492,7 +496,11 @@ class ControlSBML(OptionSet):
             Timeseries (predicted, staircase)
             AntimonyBuilder
         """
-        self._checkKwargs(**kwargs)
+        valids = ["num_numerator", "num_denominator", "fit_start_time", "fit_end_time"]
+        valids = list(set(valids).union(PLOT_OPTIONS))
+        valids = list(set(valids).union(STAIRCASE_OPTIONS))
+        valids = list(set(valids).union(TIMES_OPTIONS))
+        self._checkKwargs(valids=valids, **kwargs)
         option_set = self.getOptionSet(**kwargs)
         _, siso_transfer_function_builder = self.getSystem(**option_set)
         if siso_transfer_function_builder is None:
@@ -522,7 +530,11 @@ class ControlSBML(OptionSet):
             Timeseries
             AntimonyBuilder
         """
-        self._checkKwargs(**kwargs)
+        valids = ["kP", "kI", "kF"]
+        valids = list(set(valids).union(PLOT_OPTIONS))
+        valids = list(set(valids).union(CLOSED_LOOP_PARAMETERS))
+        valids = list(set(valids).union(TIMES_OPTIONS))
+        self._checkKwargs(valids=valids, **kwargs)
         option_set = self.getOptionSet(**kwargs)
         # Only consider the explicitly specified parameters
         for parameter_name in CONTROL_PARAMETERS:
@@ -560,7 +572,11 @@ class ControlSBML(OptionSet):
             Timeseries
             AntimonyBuilder
         """
-        self._checkKwargs(**kwargs)
+        valids = ["grid", "num_restart", "is_greedy", "is_plot_grid", "save_path", "num_process"]
+        valids = list(set(valids).union(PLOT_OPTIONS))
+        valids = list(set(valids).union(TIMES_OPTIONS))
+        valids = list(set(valids).union(CLOSED_LOOP_PARAMETERS))
+        self._checkKwargs(valids=valids, **kwargs)
         option_set = self.getOptionSet(**kwargs)
         sbml_system, _ = self.getSystem(**option_set)
         if len(save_path) == 0:  # type: ignore
@@ -602,7 +618,7 @@ class ControlSBML(OptionSet):
     def plotDesign(self, kP_spec:bool=False, kI_spec:bool=False, kF_spec:bool=False, min_parameter_value:float=0,
                                  max_parameter_value:float=10, num_restart:int=3, 
                                  num_coordinate:int=3, is_greedy:bool=True, is_report:bool=False, 
-                                 num_process:int=-1, **kwargs):
+                                 num_process:int=-1, **kwargs)->Tuple[Timeseries, AntimonyBuilder]:
         """
         Plots the results of a closed loop design. The design is specified by the parameters kP_spec, kI_spec, and kF_spec.
            None or False: do not include the parameter
@@ -624,7 +640,12 @@ class ControlSBML(OptionSet):
             Timeseries
             AntimonyBuilder
         """
-        self._checkKwargs(**kwargs)
+        valids = ["kP_spec", "kI_spec", "kF_spec", "min_parameter_value", "max_parameter_value", "num_coordinate",
+                  "is_greedy", "is_report", "num_process"]
+        valids = list(set(valids).union(PLOT_OPTIONS))
+        valids = list(set(valids).union(CLOSED_LOOP_PARAMETERS))
+        valids = list(set(valids).union(TIMES_OPTIONS))
+        self._checkKwargs(valids=valids, **kwargs)
         option_set = self.getOptionSet(**kwargs)
         sbml_system, _ = self.getSystem(**option_set)
         designer = SISOClosedLoopDesigner(sbml_system, self.getOpenLoopTransferFunction(),
@@ -637,7 +658,7 @@ class ControlSBML(OptionSet):
             num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
-            return None, None
+            return None, None  # type: ignore
         self.setOptions(kP=designer.kp, kI=designer.ki, kF=designer.kf)
         # Persist the design parameters
         self.setOptions(kP=designer.kp, kI=designer.ki, kF=designer.kf)
@@ -661,6 +682,8 @@ class ControlSBML(OptionSet):
             kwargs: dict (plot options)
             AntimonyBuilder
         """
+        valids = ["save_path"]
+        valids = list(set(valids).union(PLOT_OPTIONS))
         self._checkKwargs(**kwargs)
         if save_path is None:
             save_path = self.save_path

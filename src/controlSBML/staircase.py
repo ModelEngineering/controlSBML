@@ -3,7 +3,8 @@ import controlSBML.constants as cn
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import pandas as pd  # type: ignore
+from typing import Tuple, Optional
 
 
 C_NUM_POINT = "num_point"
@@ -32,6 +33,7 @@ class Staircase(object):
         self.name = name
         self._updateState()
         #self.staircase_arr is dynamically
+        self.step_start_idxs = None
 
     def __repr__(self):
         dct = {"initial_value": self.initial_value, "num_step": self.num_step,
@@ -51,6 +53,7 @@ class Staircase(object):
     def _updateState(self):
         self.num_level = self.num_step + 1
         self.point_per_level = int(self.num_point/self.num_level)
+        self.step_start_arr = np.array([n*self.point_per_level for n in range(self.num_level)])
 
     @property
     def staircase_arr(self):
@@ -73,7 +76,35 @@ class Staircase(object):
             staircase_arr = np.append(staircase_arr, final_values)
         #
         return staircase_arr
-        
+    
+    def makeEndStepInfo(self, start_idx:int=0, end_idx:Optional[int]=None, num_point=3)->Tuple[np.ndarray, np.ndarray]:
+        """
+        Returns information about the end of the steps.
+
+        Args:
+            num_point: int (number at the end of the step to report)
+            start_idx: int (starting index)
+            end_idx: int (ending index)
+
+        Returns
+        -------
+        np.array[float]: num_point values at the end of the steps
+        np.array[int]: indices of the points in staircase_arr
+        """
+        if num_point > self.point_per_level:
+            raise ValueError("num_point > point_per_level")
+        if end_idx is None:
+            end_idx = self.num_point - 1
+        arr = self.staircase_arr
+        trail_values = []
+        idxs = []
+        for idx in range(self.num_step+1):
+            end_pos = self.step_start_arr[idx] + self.point_per_level
+            start_pos = end_pos - num_point
+            if (start_pos >= start_idx) and (end_pos-1 <= end_idx):
+                trail_values.extend(arr[start_pos:end_pos])
+                idxs.extend(list(range(start_pos, end_pos)))
+        return np.array(trail_values), np.array(idxs)
 
     @classmethod
     def makeRelativeStaircase(cls, center=5, fractional_deviation=0.1,

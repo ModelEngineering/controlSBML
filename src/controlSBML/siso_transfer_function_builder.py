@@ -18,56 +18,72 @@ import control # type: ignore
 from docstring_expander.expander import Expander # type: ignore
 import lmfit # type: ignore
 import numpy as np
+from typing import Optional
 
 
 MIN_ELAPSED_TIME = 1e-2
 STAIRCASE = "staircase"
-MIN_PARAMETER_VALUE = -10
-MAX_PARAMETER_VALUE = 10
+MIN_PARAMETER_VALUE = -1e6
+MAX_PARAMETER_VALUE = 1e6
+MIN_INITIAL_S_VALUE = -1
+MAX_INITIAL_S_VALUE = 0
 INITIAL_PARAMETER_VALUE = 0.1
 NUMERATOR_PREFIX = "n"
 DENOMINATOR_PREFIX = "d"
+ZERO_PREFIX = "z"
+POLE_PREFIX = "p"
 MAX_ABS_RESIDUAL = 10
 
 global _mse_history
 
 
 ################## FUNCTIONS ####################
-def _makeParameters(num_numerator, num_denominator, min_value=MIN_PARAMETER_VALUE, max_value=MAX_PARAMETER_VALUE,
-                    initial_value=INITIAL_PARAMETER_VALUE):
+def makeParameters(num_zero:int, num_pole:int, gain:float, min_value:float=MIN_PARAMETER_VALUE,
+                    max_value:float=MAX_PARAMETER_VALUE,
+                    initial_value:Optional[float]=None):
     """
-    Makes the parameters used to construct a transfer function.
+    Makes the parameters used to use lmfit to search for a best fitting transfer function.
 
     Parameters
     ----------
-    num_numerator: int (number of numerator terms)
-    num_denominator: int (number of denominator terms)
+    num_zero: int (number of zeroes in the transfer function)
+    num_denominator: int (number of poles in the transfer function)
+    gain: float (gain of the transfer function)
     min_value: float
     max_value: float
     initial_value: float (if None, choose random value)
 
     Returns
     -------
-    lmfit.Parameter
+    lmfit.Parameter for zeros (begins with 'z') and poles (begins with 'p')
     """
+    def getValue():
+        if initial_value is None:
+             value = np.random.uniform(MIN_INITIAL_S_VALUE, MAX_INITIAL_S_VALUE)
+             return value
+        else:
+            return initial_value
+    #   
     pfit = lmfit.Parameters()
-    for idx in range(num_numerator):
-        if initial_value is None:
-            initial_value = np.random.uniform(min_value, max_value)
-        pfit.add(name='%s%d' % (NUMERATOR_PREFIX, idx),
+    # Gain
+    pfit.add(name="gain", min=min_value, value=gain, max=max_value)
+    # Zeros
+    for idx in range(num_zero):
+        value = getValue()
+        pfit.add(name='%s%d' % (ZERO_PREFIX, idx+1),
               min=min_value,
-              value=initial_value,
+              value=value,
               max=max_value)
-    for idx in range(num_denominator):
-        if initial_value is None:
-            initial_value = np.random.uniform(min_value, max_value)
-        pfit.add(name='%s%d' % (DENOMINATOR_PREFIX, idx),
+    # Poles
+    for idx in range(num_pole):
+        value = getValue()
+        pfit.add(name='%s%d' % (POLE_PREFIX, idx+1),
               min=min_value,
-              value=initial_value,
+              value=value,
               max=max_value)
     return pfit
 
-def _makeTransferFunction(parameters):
+def makeTransferFunction(parameters:lmfit.Parameter):
     """
     Constructs a transfer function from a dictionary representation.
 
@@ -77,40 +93,51 @@ def _makeTransferFunction(parameters):
         parameters.valuesdict(): dict
             key=n<int>: numerator coefficient for int-th element
             key=d<int>: denominator coefficient for int-th element
+            "gain": float (gain of the transfer function)
 
     Returns
     -------
     control.TransferFunction
     """
-    tf_dct = parameters.valuesdict()
-    def makeVec(letter):
-        """
-        Creates a vector for the keys are a single letter followed
-        by an index.
+    s = control.TransferFunction.s
+    tf = control.TransferFunction([1], [1])
+    for key, value in parameters.valuesdict().items():
+        if key[0] == ZERO_PREFIX:
+            tf *= (s - value)
+        elif key[0] == POLE_PREFIX:
+            tf *= 1/(s - value)
+        elif key == "gain":
+            continue
+        else:
+            import pdb; pdb.set_trace()
+            raise ValueError("Unknown key in transfer function parameters: %s" % key)
+    cur_gain = tf.dcgain()
+    tf = parameters.valuesdict()["gain"]*tf/cur_gain
+    return tf
 
-        Parameters
-        ----------
-        letter: char
 
-        Returns
-        -------
-        np.array
-        """
-        dct = {int(k[1:]): v for k, v in tf_dct.items() if k[0] == letter}
-        size = max([i for i in dct.keys()]) + 1
-        arr = list(np.repeat(0, size))
-        for idx, value in dct.items():
-            arr[idx] = value
-        return np.array(arr)
-    #
-    num_arr = makeVec(NUMERATOR_PREFIX)
-    den_arr = makeVec(DENOMINATOR_PREFIX)
-    tf = control.TransferFunction(num_arr, den_arr)
-    new_tf = util.simplifyTransferFunction(tf)
-    if len(new_tf.num[0][0]) > len(new_tf.den[0][0]):
-        # Avoid improper transfer function
-        new_tf = tf
-    return new_tf
+def simulateTransferFunction(transfer_function:control.TransferFunction, 
+                                times:np.ndarray, initial_value:float, inputs:np.ndarray)->np.ndarray:
+    """
+    Simulates the transfer function.
+
+    Parameters
+    ----------
+    transfer_function: control.TransferFunction
+    times: np.ndarray
+    initial_value: float
+    inputs: np.ndarray
+
+    Returns
+    -------
+    np.ndarray
+    """
+    result_initial = control.initial_response(transfer_function, T=times, X0=initial_value)
+    result_input = control.forced_response(transfer_function, T=times, U=inputs)
+    y_arr_input = np.reshape(result_input.y, (len(times),)) 
+    y_arr_initial = np.reshape(result_initial.y, (len(times),)) 
+    y_arr = y_arr_input + y_arr_initial
+    return y_arr
 
 def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     """
@@ -119,8 +146,9 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     Parameters
     ----------
     parameters: lmfit.Parameters
-        n<int>: numerator coefficient for int-th element
-        d<int>: denominator coefficient
+        z<int>: zero
+        p<int>: pole
+        "gain" float (gain of the transfer function)
     data_in: (list-float, list-float) (times, input signal)
     data_out: array-float (calibration data)
     Returns
@@ -128,6 +156,7 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
     float
     """
     global _mse_history
+    _mse_history = []
     def isDone(last_history:int=10, min_history:int=50, threshold:float=1e-3):
         """
         Checks if further progress is unlikely.
@@ -148,14 +177,27 @@ def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
         return metric < threshold
     #
     times, inputs = data_in
-    tf = _makeTransferFunction(parameters)
-    times, y_arr = control.forced_response(tf, T=times, U=inputs)
+    tf = makeTransferFunction(parameters)
+    y_arr = simulateTransferFunction(tf, times, data_out[0], inputs)
     residuals = data_out - y_arr
     is_bads = [np.isnan(v) or np.isinf(v) or (v is None) for v in residuals]
-    is_bad = any(is_bads)
-    if is_bad:
-        residuals = np.repeat(1e10, len(times))
+    if False:
+        is_neg_bads = [(v < 0) and b for b, v in zip(is_bads, residuals)]
+        is_pos_bads = [(v > 0) and b for b, v in zip(is_bads, residuals)]
+        residuals[is_pos_bads] = 1e6
+        residuals[is_neg_bads] = -1e6
+        other_bads = [b1 and (not b2) and (not b3) for b1, b2, b3 in zip(is_bads, is_neg_bads, is_pos_bads)]
+        # For others, randomized negative and positive residuals
+        randoms = np.random.randint(0, 2, np.sum(other_bads))
+        randoms = (randoms - 1) + randoms
+        residuals[other_bads] = randoms*1e6
+    if any(is_bads):
+        # randomized negative and positive residuals
+        randoms = np.random.randint(0, 2, np.sum(is_bads))
+        randoms = (randoms - 1) + randoms
+        residuals[is_bads] = randoms*1e6
     mse = np.sum(residuals**2)/len(residuals)
+    print(tf.poles(), tf.zeros(), tf.dcgain(), mse)
     _mse_history.append(mse)
     if isDone():
         # Force the minimizer to stop
@@ -274,7 +316,7 @@ class SISOTransferFunctionBuilder(object):
         new_response_ts, staircase_name, output_name = cls._extractStaircaseResponseInformation(response_ts)
         staircase_ts = response_ts[staircase_name]
         response_ts = new_response_ts
-        if mgr.plot_opts.asDict().get(cn.IS_PLOT, False):
+        if mgr.plot_opts.asDict().get(cn.IS_PLOT, True):
             # Do the plots
             plot_result = util.plotOneTS(response_ts, mgr=mgr, colors=[cn.SIMULATED_COLOR])
             ax = plot_result.ax
@@ -320,6 +362,7 @@ class SISOTransferFunctionBuilder(object):
         new_timeseries = timeseries[other_columns]
         return new_timeseries, staircase_column, other_columns[0]
     
+    
     @staticmethod
     def _getStaircaseColumnName(timeseries):
         all_columns = set(timeseries.columns)
@@ -328,16 +371,17 @@ class SISOTransferFunctionBuilder(object):
         return staircase_column, other_columns
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def fitTransferFunction(self, num_numerator=cn.DEFAULT_NUM_NUMERATOR,
-                            num_denominator=cn.DEFAULT_NUM_DENOMINATOR, staircase=Staircase(), 
+    def fitTransferFunction(self, num_zero=cn.DEFAULT_NUM_ZERO,
+                            num_pole=cn.DEFAULT_NUM_POLE, staircase=Staircase(), 
                             fit_start_time=None, fit_end_time=None, **kwargs):
         """
-        Constructs a transfer function for the NonlinearIOSystem.
+        Constructs a transfer function for the System. This is done by first estimating the gain to the
+        staircase input and then estimating the transients, zeroes and poles.
 
         Parameters
         ----------
-        num_numerator: int (number of numerator terms)
-        num_denominator: int (number of denominator terms)
+        num_zero: int (number of zeros)
+        num_pole: int (number of poles)
         staircase: Staircase
         fit_start_time: float (time at which fitting starts)
         fit_end_time: float (time at which fitting ends)
@@ -357,9 +401,15 @@ class SISOTransferFunctionBuilder(object):
             parameters: lmfit.Parameters
             antimony_builder: AntimonyBuilder
         """
+        def adjustArray(arr):
+            # Normalizes by mean and shapes
+            new_arr = arr - np.mean(arr)
+            new_arr = np.reshape(new_arr, (len(new_arr),))
+            return new_arr
+        #
         global _mse_history
         #
-        # Get the calibration data
+        # Get the observational data
         new_staircase = staircase.copy()
         data_ts, antimony_builder = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
         ms_times = util.cleanTimes(data_ts.index)
@@ -382,21 +432,29 @@ class SISOTransferFunctionBuilder(object):
         sel_sec_times = sel_ms_times/cn.MS_IN_SEC
         data_in = (sel_sec_times, staircase_arr)
         data_out = sel_ts[self.output_name]
+        # Estimate the gain
+        value_arr, idx_arr = new_staircase.makeEndStepInfo(start_idx=start_idx, end_idx=end_idx)
+        full_data_arr = data_ts.values[:, 0]
+        sel_idx_arr = np.array([n for n in idx_arr if (start_idx <= n) and (n <= end_idx)])
+        output_arr = full_data_arr[sel_idx_arr]  # Get the ends of the steps
+        adj_value_arr = adjustArray(value_arr)
+        adj_output_arr = adjustArray(output_arr)
+        gain = adj_output_arr.dot(adj_value_arr)/adj_value_arr.dot(adj_value_arr)
         # Do the fit
-        parameters = _makeParameters(num_numerator, num_denominator)
+        parameters = makeParameters(num_zero, num_pole, gain)
         _mse_history = []   # History of mean squared errors
-        mini = lmfit.Minimizer(_calculateTransferFunctionResiduals,
-                               parameters, fcn_args=(data_in, data_out))
-        minimizer_result = mini.leastsq()
-        residuals = _calculateTransferFunctionResiduals(minimizer_result.params, data_in, data_out)
+        out_arr = data_out.values
+        minimizer_result = lmfit.minimize(_calculateTransferFunctionResiduals, parameters, args=(data_in, out_arr),
+                                          method="differential_evolution")
+        residuals = _calculateTransferFunctionResiduals(minimizer_result.params, data_in, out_arr)
         max_abs_residual = np.max(np.abs(residuals))
         if max_abs_residual > MAX_ABS_RESIDUAL:
             msgs.warn("Possible numerical instability: max abs residual is %f" % max_abs_residual)
         rms_residuals = np.sqrt(np.mean((residuals**2)))
         stderr_dct = {k: v.stderr for k,v in minimizer_result.params.items()}
-        transfer_function = _makeTransferFunction(minimizer_result.params)
+        transfer_function = makeTransferFunction(minimizer_result.params)
         #
-        _, y_arr = control.forced_response(transfer_function, T=sel_sec_times, U=staircase_arr, X0=0)
+        y_arr = simulateTransferFunction(transfer_function, sel_sec_times, out_arr[0], staircase_arr)
         output_ts = output_ts.loc[sel_ms_times]
         output_ts[cn.O_PREDICTED] = y_arr
         output_ts[staircase_column_name] = staircase_arr

@@ -285,8 +285,8 @@ class TestControlSBML(unittest.TestCase):
             _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2)
     
     def testBug3(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         # Setup
         url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
         INPUT_NAME = "pIRS"
@@ -319,6 +319,47 @@ class TestControlSBML(unittest.TestCase):
         ts, builder = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT,
                                            is_greedy=False, save_path=SAVE1_PATH)
         self.assertTrue(isinstance(ts, Timeseries))
+
+    def testBug5(self):
+        if IGNORE_TEST:
+            return
+        # Setup
+        times = np.linspace(0, 50, 500)
+        WOLF_CTLSB = ControlSBML(cn.WOLF_URL,
+                        input_names=["s1"], output_names=["s5"], times=times)
+        df, builder = WOLF_CTLSB.plotDesign(kP_spec=.001, kI_spec=False, times=np.linspace(0, 5, 50), num_restart=1,
+                                       num_process=1, is_plot=IS_PLOT)
+        import pdb; pdb.set_trace()
+
+    def testBug6(self):
+        # Bug with setting inputs that are fixed
+        if IGNORE_TEST:
+            return
+        model = """
+            model *main();
+            species S0
+            $S1 -> S2; k1*S1
+            S2 -> S3; k2*S2
+            S3 -> S4; k3*S3
+            S4 ->; k4*S4
+            S4 + S0 ->; k0*S0*S4
+
+            $S0 = 4
+            S1 = 10
+            S2 = 0
+            S3 = 0
+            k1 =1
+            k2 =1
+            k3 = 1
+            k4 = 1
+            k0 = 1
+            end
+            """
+        try:
+            ctlsb = ControlSBML(model, input_names=["S0"], output_names=["S4"]) 
+            self.assertTrue(True)
+        except:
+            self.assertTrue(False)
 
 
 

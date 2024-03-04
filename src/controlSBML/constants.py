@@ -202,8 +202,8 @@ METFORMIN_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000001039.
 MTOR_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
 
 # Transfer function building
-DEFAULT_NUM_NUMERATOR = 1
-DEFAULT_NUM_DENOMINATOR = 3
+DEFAULT_NUM_ZERO = 1
+DEFAULT_NUM_POLE = 3
 DEFAULT_DEVIATION = 0.5
 
 # Plot line colors
