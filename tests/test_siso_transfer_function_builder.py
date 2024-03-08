@@ -250,6 +250,18 @@ class TestSBMLSystem(unittest.TestCase):
         builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
         import pdb; pdb.set_trace()
 
+    def testUniformFromLogspace(self):
+        if IGNORE_TEST:
+            return
+        def test(min_val, max_val, num):
+            values = self.fitter.__uniformFromLogspace(min_val, max_val, num)
+            self.assertEqual(len(values), num)
+            self.assertTrue(all([min_val <= v <= max_val for v in values]))
+        #
+        test(1, 10, 50)
+        test(1, 10, 10)
+        test(1, 10, 100)
+
 
 if __name__ == '__main__':
   unittest.main()

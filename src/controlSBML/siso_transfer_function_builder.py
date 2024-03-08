@@ -1,5 +1,5 @@
 """
-Builds a transfer function for a SISO NonlinearIOSystem
+Builds a transfer function for a SISO System
 
     plotStaircaseResponse: plots response to a staircase input to the transfer function
 

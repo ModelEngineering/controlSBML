@@ -1,3 +1,5 @@
+tests for poly_fitter.py
+transfer_function_builder uses transfer_function_fitter with method specification
 Use kP, kI, kF throughout, not just in control_sbml
 Remove the units from time on plots.
 Update docs on REAMDE
