@@ -9,9 +9,9 @@ from controlSBML import util
 from controlSBML.option_management.option_manager import OptionManager
 
 import matplotlib.pyplot as plt
-import pandas as pd
-import numpy as np
-import tellurium as te
+import pandas as pd  # type: ignore
+import numpy as np  # type: ignore
+import tellurium as te  # type: ignore
 
 
 class SBMLSystem(object):
@@ -437,7 +437,6 @@ class SBMLSystem(object):
             new_input_name = input_name
         builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint,
                                          initial_output_value=initial_input_value, sign=sign)
-        import pdb; pdb.set_trace()
         # Run the simulation
         result = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
                             antimony_builder=builder, is_reload=True), builder

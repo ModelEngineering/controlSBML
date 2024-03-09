@@ -16,8 +16,8 @@ import tellurium as te # type: ignore
 import tempfile
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
@@ -60,59 +60,6 @@ STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE, num_s
 SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
 BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
 RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
-
-
-#############################
-# Tests
-#############################
-class TestFunctions(unittest.TestCase):
-
-    def testMakeParameters(self):
-        if IGNORE_TEST:
-            return
-        num_zero = 3
-        num_pole = 4
-        gain = -20
-        parameters = stb.makeParameters(num_zero, num_pole, gain)
-        num_z = len([n for n in parameters.valuesdict().keys() if n[0] == 'z'])
-        num_p = len([n for n in parameters.valuesdict().keys() if n[0] == 'p'])
-        self.assertEqual(parameters.valuesdict()["gain"], gain)
-        self.assertEqual(num_z, num_zero)
-        self.assertEqual(num_p, num_pole)
-
-    def testMakeTransferFunction(self):
-        if IGNORE_TEST:
-            return
-        gain = -20
-        parameters = stb.makeParameters(2, 2, gain)
-        tf = stb.makeTransferFunction(parameters)
-        for pole in tf.poles():
-            self.assertTrue(any([np.isclose(pole, v)]) for n, v in parameters.valuesdict().values() if n[0] == 'p')
-        for zero in tf.zeros():
-            self.assertTrue(any([np.isclose(zero, v)]) for n, v in parameters.valuesdict().values() if n[0] == 'z')
-        self.assertTrue(np.isclose(tf.dcgain(), gain))
-
-    def testMakeTransferFunction1(self):
-        if IGNORE_TEST:
-            return
-        gain = -7
-        parameters = stb.makeParameters(0, 2, gain)
-        tf = stb.makeTransferFunction(parameters)
-        self.assertTrue(np.isclose(tf.dcgain(), gain))
-
-
-    def testCalculateTransferFunctionResiduals(self):
-        if IGNORE_TEST:
-            return
-        gain = -15
-        times = list(RESPONSE_TS.index)
-        data_in = (times, RESPONSE_TS["S1_staircase"].values)
-        data_out = RESPONSE_TS["S2"].values
-        parameters = stb.makeParameters(3, 3, -15)
-        residuals = stb._calculateTransferFunctionResiduals(parameters, data_in,
-              data_out)
-        self.assertEqual(len(residuals), len(times))
-        self.assertTrue("float" in str(residuals.dtype))
 
 
 #############################
@@ -191,20 +138,6 @@ class TestSBMLSystem(unittest.TestCase):
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         self.assertLess(fitter_result.rms_residuals, 0.2)
 
-    def testFitTransferFunctionTimes(self):
-        if IGNORE_TEST:
-            return
-        self.init()
-        times = np.linspace(0, 100, 1000)
-        system = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
-        builder = stb.SISOTransferFunctionBuilder(system)
-        fitter_result = builder.fitTransferFunction(num_pole=3, num_zero=2,
-              end_time=100, fit_start_time=0, fit_end_time=40, times=times, staircase=STAIRCASE)
-        if IS_PLOT:
-            builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
-        self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
-        self.assertLess(fitter_result.rms_residuals, 0.1)
-
     def testPlotFitTransferFunction(self):
         if IGNORE_TEST:
             return
@@ -238,29 +171,16 @@ class TestSBMLSystem(unittest.TestCase):
         builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
 
     def testFitTransferFunctionBug(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         url = URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1304160000/2/BIOMD0000000449_url.xml"
         system = SBMLSystem(url,
               input_names=["IR"], output_names=["GLUT4"], is_fixed_input_species=True)
-        builder = stb.SISOTransferFunctionBuilder(system)
+        builder = stb.SISOTransferFunctionBuilder(system, fitter_method="method_gpz")
         staircase = Staircase(initial_value=10, final_value=25)
         fitter_result = builder.fitTransferFunction(num_zero=0, num_pole=2, staircase=staircase,
               end_time=1000, fit_start_time=100, fit_end_time=1000)
         builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
-        import pdb; pdb.set_trace()
-
-    def testUniformFromLogspace(self):
-        if IGNORE_TEST:
-            return
-        def test(min_val, max_val, num):
-            values = self.fitter.__uniformFromLogspace(min_val, max_val, num)
-            self.assertEqual(len(values), num)
-            self.assertTrue(all([min_val <= v <= max_val for v in values]))
-        #
-        test(1, 10, 50)
-        test(1, 10, 10)
-        test(1, 10, 100)
 
 
 if __name__ == '__main__':

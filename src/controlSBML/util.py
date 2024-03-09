@@ -531,7 +531,7 @@ def compareSingleArgumentFunctions(func1, func2, arg_min, arg_max, num_point=100
     """
     values = np.linspace(arg_min, arg_max, num_point)
     squared_diff_arr = np.array([(func1(v) - func2(v))**2 for v in values])
-    mse = np.sum(squared_diff_arr)/len(values)
+    mse = np.mean(squared_diff_arr)
     if mse < max_rmse**2:
         return True
     else:
@@ -615,6 +615,8 @@ def roundToDigits(number:float, num_digits:int=2):
         number (float)
         num_digits (int, optional)
     """
+    if np.isclose(number, 0):
+        return 0
     log_number = np.log10(number)
     if log_number > 0:
         return np.round(number, num_digits)

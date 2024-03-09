@@ -54,6 +54,7 @@ class SISOTransferFunctionFitter(object):
         self.max_out_value = np.max(self.out_arr)
         self.dt = np.round(scipy.stats.mode(np.diff(timeseries.index))[0])/cn.MS_IN_SEC
         self.times = np.array([self.dt*n for n in range(len(timeseries.index))])  # Must be evenly spaced
+        self.times = np.reshape(self.times, (len(self.times),))
         self.length = len(self.times)
         self.num_zero:int = num_zero  # type: ignore
         self.num_pole:int = num_pole # type: ignore
@@ -112,7 +113,7 @@ class SISOTransferFunctionFitter(object):
                 raise ValueError("Output name not in Timeseries")
         return input_name, output_name
 
-    def _simulateTransferFunction(self,
+    def simulateTransferFunction(self,
                 transfer_function:Optional[control.TransferFunction]=None)->Tuple[np.ndarray, np.ndarray]:
         """
         Simulates the transfer function. Special handling of negative DCGain to create inverse relationships.
@@ -145,16 +146,16 @@ class SISOTransferFunctionFitter(object):
 
         Returns
         -------
-        float (MSE)
+        float (root of the mean square of residuals)
         """
-        _, y_arr = self._simulateTransferFunction(transfer_function)
+        _, y_arr = self.simulateTransferFunction(transfer_function)
         residuals = self.out_arr - y_arr
         is_bads = [np.isnan(v) or np.isinf(v) or (v is None) for v in residuals]
         if any(is_bads):
             mse = 1e6
         else:
-            mse = np.sum(residuals**2)/len(residuals)
-        return mse
+            rmse = np.sqrt(np.mean(residuals**2))
+        return rmse
     
     def fit(self, **kwargs)->None:
         """
@@ -186,7 +187,7 @@ class SISOTransferFunctionFitter(object):
         mgr = OptionManager(kwargs)
         #
         ts = Timeseries(pd.DataFrame({cn.TIME: self.times, self.output_name: self.out_arr,
-                                      cn.O_PREDICTED: self._simulateTransferFunction()[1]}))
+                                      cn.O_PREDICTED: self.simulateTransferFunction()[1]}))
         util.plotOneTS(ts, mgr=mgr,
                        colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
                        markers=["o", ""])

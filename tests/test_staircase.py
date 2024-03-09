@@ -7,7 +7,7 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
 INITIAL_VALUE = 5
 FINAL_VALUE = 10
@@ -93,8 +93,8 @@ class TestStaircase(unittest.TestCase):
         test(10, 200)
 
     def testMakeEndStepInfo2(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         # Check that taking into account start and end
         def test(num_point_per_end, num_step):
             num_point = (3 + num_point_per_end)*(num_step+1)

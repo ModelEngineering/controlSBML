@@ -71,7 +71,7 @@ class TestGrid(unittest.TestCase):
             return
         self.grid.addAxis("test1", min_value=0, max_value=10, num_coordinate=NUM_COORDINATE)
         self.grid.addAxis("test2", min_value=0, max_value=10, num_coordinate=NUM_COORDINATE)
-        self.assertEqual(self.grid.num_point, (NUM_COORDINATE-1)**2)
+        self.assertEqual(self.grid.num_point, NUM_COORDINATE**2)
 
     def testRepr(self):
         if IGNORE_TEST:

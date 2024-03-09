@@ -13,19 +13,25 @@ from typing import Optional
 
 MIN_PARAMETER_VALUE = -1e6
 MAX_PARAMETER_VALUE = 1e6
+MIN_S_VALUE = -10
+MAX_S_VALUE = 10
 INITIAL_PARAMETER_VALUE = 0.1
 NUMERATOR_PREFIX = "n"
 DENOMINATOR_PREFIX = "d"
 
 
-class polyFitter(SISOTransferFunctionFitter):
+class PolyFitter(SISOTransferFunctionFitter):
 
-    def __init__(self, *args, **kwargs):
+    def __init__(self, *args, initial_value=INITIAL_PARAMETER_VALUE, **kwargs):
         """
+        Parameters
+        ----------
+        initial_value: float (initial value for the parameters) 
         """
         super().__init__(*args, **kwargs)
         self.num_numerator = self.num_zero + 1
         self.num_denominator = self.num_pole + 1
+        self.initial_value = initial_value
     
     def copy(self):
         fitter = self.copy()
@@ -34,7 +40,7 @@ class polyFitter(SISOTransferFunctionFitter):
         fitter.num_denominator = self.num_denominator
         return fitter
     
-    def makeParameters(self, num_numerator:Optional[int]=None, num_denominator:Optional[int]=None,
+    def _makeParameters(self, num_numerator:Optional[int]=None, num_denominator:Optional[int]=None,
                        initial_value:Optional[float]=None):
         """
         Makes the parameters used to use lmfit to search for a best fitting transfer function.
@@ -51,7 +57,7 @@ class polyFitter(SISOTransferFunctionFitter):
         """
         def getValue():
             if initial_value is None:
-                value = np.random.uniform(MIN_PARAMETER_VALUE, MAX_PARAMETER_VALUE)
+                value = np.random.uniform(MIN_S_VALUE, MAX_S_VALUE)
                 return value
             else:
                 return initial_value
@@ -65,14 +71,14 @@ class polyFitter(SISOTransferFunctionFitter):
         # Numerator
         for idx in range(num_numerator):
             value = getValue()
-            pfit.add(name='%s%d' % (NUMERATOR_PREFIX, idx+1),
+            pfit.add(name='%s%d' % (NUMERATOR_PREFIX, idx),
                 min=MIN_PARAMETER_VALUE,
                 value=value,
                 max=MAX_PARAMETER_VALUE)
         # Poles
-        for idx in range(num_numerator):
+        for idx in range(num_denominator):
             value = getValue()
-            pfit.add(name='%s%d' % (DENOMINATOR_PREFIX, idx+1),
+            pfit.add(name='%s%d' % (DENOMINATOR_PREFIX, idx),
                 min=MIN_PARAMETER_VALUE,
                 value=value,
                 max=MAX_PARAMETER_VALUE)
@@ -106,13 +112,14 @@ class polyFitter(SISOTransferFunctionFitter):
             parameters: lmfit.Parameters
             antimony_builder: AntimonyBuilder
         """
-        num_numerator = kwargs.get("num_numerator", self.num_denominator)
+        num_numerator = kwargs.get("num_numerator", self.num_numerator)
         num_denominator = kwargs.get("num_denominator", self.num_denominator)
         initial_value = kwargs.get("initial_value", self.initial_value)
-        parameters = self.makeParameters(num_numerator, num_denominator, initial_value)
-        minimizer_result = lmfit.minimize(self._calculateResiduals, parameters,
-                                          method="differential_evolution")
-        self.transfer_function = self.makeTransferFunction(minimizer_result.params)
+        parameters = self._makeParameters(num_numerator, num_denominator, initial_value)
+        minimizer_result = lmfit.minimize(self._calculateResiduals, parameters, max_nfev=1000,
+                                          method="leastsq")
+                                          #method="differential_evolution")
+        self.transfer_function = self._makeTransferFunction(minimizer_result.params)
     
     def _calculateResiduals(self, parameters):
         """
@@ -127,7 +134,11 @@ class polyFitter(SISOTransferFunctionFitter):
         float (MSE)
         """
         transfer_function = self._makeTransferFunction(parameters)
-        return super()._calculateTransferFunctionResiduals(transfer_function)
+        _, y_arr = self.simulateTransferFunction(transfer_function)
+        residuals = self.out_arr - y_arr
+        is_bads = np.array([np.isnan(v) or np.isinf(v) or (v is None) or (np.abs(v) > 1e3) for v in residuals])
+        residuals[is_bads] = 1e2
+        return residuals
 
     def _makeTransferFunction(self, parameters:lmfit.Parameter):
         """
@@ -144,15 +155,18 @@ class polyFitter(SISOTransferFunctionFitter):
         control.TransferFunction
         """
         s = control.TransferFunction.s
-        numerator = 0
-        denominator = 0
+        numerator = control.TransferFunction([0], [1])
+        denominator = control.TransferFunction([0], [1])
         for key, value in parameters.valuesdict().items():
             spower = int(key[1:])
             if key[0] == NUMERATOR_PREFIX:
                 numerator += value*s**spower
             elif key[0] == DENOMINATOR_PREFIX:
-                numerator += value*s**spower
+                 denominator += value*s**spower
             else:
                 raise ValueError("Unknown key in transfer function parameters: %s" % key)
-        tf = numerator/denominator
+        if np.isclose(denominator.dcgain(), 0):
+            tf = control.TransferFunction([0], [1])
+        else:
+            tf = numerator/denominator
         return tf

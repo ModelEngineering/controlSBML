@@ -242,6 +242,8 @@ class ControlSBML(OptionSet):
             input_names = self.input_names  # type: ignore
         else:
             input_names = option_set.input_names  # type: ignore
+        if input_names is None:
+            raise ValueError("No input names specified.")
         return input_names[0]
 
     def getOutputName(self, option_set:Optional[OptionSet]=None):
@@ -256,6 +258,8 @@ class ControlSBML(OptionSet):
             output_names = self.output_names # type: ignore
         else:
             output_names = option_set.output_names # type: ignore
+        if output_names is None:
+            raise ValueError("No output names specified.")
         return output_names[0]
     
     def getOptions(self, options:Optional[dict]=None):
@@ -445,9 +449,13 @@ class ControlSBML(OptionSet):
         kwargs[cn.O_AX2] = 0
         option_set = self.getOptionSet(**kwargs)
         self._roadrunner.reset()
+        if (self.input_names is None) and (not "input_name" in kwargs.keys()):
+            selections = None
+        else:
+            selections = [cn.TIME, self.getInputName(option_set), self.getOutputName(option_set)]
         data = self._roadrunner.simulate(self._getStarttime(option_set),
              self._getEndtime(option_set), self._getNumpoint(option_set),
-             selections=[cn.TIME, self.getInputName(option_set), self.getOutputName(option_set)])
+             selections=selections)
         ts = Timeseries(data)
         if option_set.is_plot:
             util.plotOneTS(ts, markers=option_set.markers, **self._getPlotOptions(**option_set))
@@ -478,16 +486,16 @@ class ControlSBML(OptionSet):
         siso_transfer_function_builder.plotStaircaseResponse(response_ts, **self._getPlotOptions(**option_set))
         return response_ts, builder
     
-    def plotTransferFunctionFit(self, num_numerator:int=cn.DEFAULT_NUM_ZERO,
-                            num_denominator:int=cn.DEFAULT_NUM_POLE, 
+    def plotTransferFunctionFit(self, num_zero:int=cn.DEFAULT_NUM_ZERO,
+                            num_pole:int=cn.DEFAULT_NUM_POLE, 
                             fit_start_time: Optional[float]=None, fit_end_time:Optional[float]=None, 
                             **kwargs):
         """
         Simulates the staircase response and plots it. Sets the fitter result.
 
         Args:
-            num_numerator: int (number of numerator terms)
-            num_denominator: int (number of denominator terms)
+            num_zero: int (number of zeros)
+            num_pole: int (number of poles)
             fit_start_time: float (time at which fitting starts)
             fit_end_time: float (time at which fitting ends)
             kwargs: (plot options)
@@ -496,7 +504,7 @@ class ControlSBML(OptionSet):
             Timeseries (predicted, staircase)
             AntimonyBuilder
         """
-        valids = ["num_numerator", "num_denominator", "fit_start_time", "fit_end_time"]
+        valids = ["num_zero", "num_pole", "fit_start_time", "fit_end_time"]
         valids = list(set(valids).union(PLOT_OPTIONS))
         valids = list(set(valids).union(STAIRCASE_OPTIONS))
         valids = list(set(valids).union(TIMES_OPTIONS))
@@ -510,8 +518,8 @@ class ControlSBML(OptionSet):
         if fit_end_time is None:
             fit_end_time = option_set.times[-1]
         staircase = self.getStaircase(**option_set)
-        self._fitter_result = siso_transfer_function_builder.fitTransferFunction(num_numerator=num_numerator,
-                            num_denominator=num_denominator, staircase=staircase,
+        self._fitter_result = siso_transfer_function_builder.fitTransferFunction(num_zero=num_zero,
+                            num_pole=num_pole, staircase=staircase,
                             fit_start_time=fit_start_time, fit_end_time=fit_end_time, times=option_set.times)
         if self.is_plot:  # type: ignore
             siso_transfer_function_builder.plotFitterResult(self._fitter_result, **self._getPlotOptions(**option_set))

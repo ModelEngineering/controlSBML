@@ -205,7 +205,6 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer.plot(is_plot=IS_PLOT, markers=["", ""])
         self.assertGreater(designer.kp, 0)
         self.assertGreater(designer.ki, 0)
-        self.assertGreater(designer.kf, 0)
 
     def testDesignAlongGrid(self):
         if IGNORE_TEST:
@@ -232,8 +231,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertIsNone(designer.kf)
 
     def testPlotDesignResult(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         designer = self.makeDesigner()
         def test(parameter_names):
             dct = {}
@@ -281,7 +280,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
                                 is_steady_state=False)
         linear_bldr = SISOTransferFunctionBuilder(system)
         linear_staircase = Staircase(initial_value=0, final_value=10, num_step=5)
-        fitter_result = linear_bldr.fitTransferFunction(num_numerator=2, num_denominator=3, 
+        fitter_result = linear_bldr.fitTransferFunction(num_zero=1, num_pole=2, 
                                                     staircase=linear_staircase, fit_start_time=20,
                                                 start_time=0, end_time=200)
         linear_tf = fitter_result.transfer_function

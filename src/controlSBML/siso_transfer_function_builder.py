@@ -1,5 +1,5 @@
 """
-Builds a transfer function for a SISO System
+Builds a transfer function for a SISO System with options for the fitting method.
 
     plotStaircaseResponse: plots response to a staircase input to the transfer function
 
@@ -13,6 +13,8 @@ from controlSBML import msgs
 from controlSBML import util
 from controlSBML.option_management.option_manager import OptionManager
 from controlSBML.staircase import Staircase
+from controlSBML.poly_fitter import PolyFitter
+from controlSBML.gpz_fitter import GPZFitter
 
 import control # type: ignore
 from docstring_expander.expander import Expander # type: ignore
@@ -25,196 +27,20 @@ MIN_ELAPSED_TIME = 1e-2
 STAIRCASE = "staircase"
 MIN_PARAMETER_VALUE = -1e6
 MAX_PARAMETER_VALUE = 1e6
-MIN_INITIAL_S_VALUE = -1
-MAX_INITIAL_S_VALUE = 0
-INITIAL_PARAMETER_VALUE = 0.1
-NUMERATOR_PREFIX = "n"
-DENOMINATOR_PREFIX = "d"
-ZERO_PREFIX = "z"
-POLE_PREFIX = "p"
-MAX_ABS_RESIDUAL = 10
-
-global _mse_history
+METHOD_POLY = "method_poly"  # fitter method that estimates the transfer function numerator and denominator polynomials
+METHOD_GPZ = "method_gpz"  # fitter method that estimates the transfer function by estimating the gain and the poles and zeros
 
 
-################## FUNCTIONS ####################
-def makeParameters(num_zero:int, num_pole:int, gain:float, min_value:float=MIN_PARAMETER_VALUE,
-                    max_value:float=MAX_PARAMETER_VALUE,
-                    initial_value:Optional[float]=None):
-    """
-    Makes the parameters used to use lmfit to search for a best fitting transfer function.
-
-    Parameters
-    ----------
-    num_zero: int (number of zeroes in the transfer function)
-    num_denominator: int (number of poles in the transfer function)
-    gain: float (gain of the transfer function)
-    min_value: float
-    max_value: float
-    initial_value: float (if None, choose random value)
-
-    Returns
-    -------
-    lmfit.Parameter for zeros (begins with 'z') and poles (begins with 'p')
-    """
-    def getValue():
-        if initial_value is None:
-             value = np.random.uniform(MIN_INITIAL_S_VALUE, MAX_INITIAL_S_VALUE)
-             return value
-        else:
-            return initial_value
-    #   
-    pfit = lmfit.Parameters()
-    # Gain
-    pfit.add(name="gain", min=min_value, value=gain, max=max_value)
-    # Zeros
-    for idx in range(num_zero):
-        value = getValue()
-        pfit.add(name='%s%d' % (ZERO_PREFIX, idx+1),
-              min=min_value,
-              value=value,
-              max=max_value)
-    # Poles
-    for idx in range(num_pole):
-        value = getValue()
-        pfit.add(name='%s%d' % (POLE_PREFIX, idx+1),
-              min=min_value,
-              value=value,
-              max=max_value)
-    return pfit
-
-def makeTransferFunction(parameters:lmfit.Parameter):
-    """
-    Constructs a transfer function from a dictionary representation.
-
-    Parameters
-    ----------
-    parameters: lmfit.Parameter
-        parameters.valuesdict(): dict
-            key=n<int>: numerator coefficient for int-th element
-            key=d<int>: denominator coefficient for int-th element
-            "gain": float (gain of the transfer function)
-
-    Returns
-    -------
-    control.TransferFunction
-    """
-    s = control.TransferFunction.s
-    tf = control.TransferFunction([1], [1])
-    for key, value in parameters.valuesdict().items():
-        if key[0] == ZERO_PREFIX:
-            tf *= (s - value)
-        elif key[0] == POLE_PREFIX:
-            tf *= 1/(s - value)
-        elif key == "gain":
-            continue
-        else:
-            import pdb; pdb.set_trace()
-            raise ValueError("Unknown key in transfer function parameters: %s" % key)
-    cur_gain = tf.dcgain()
-    tf = parameters.valuesdict()["gain"]*tf/cur_gain
-    return tf
-
-
-def simulateTransferFunction(transfer_function:control.TransferFunction, 
-                                times:np.ndarray, initial_value:float, inputs:np.ndarray)->np.ndarray:
-    """
-    Simulates the transfer function.
-
-    Parameters
-    ----------
-    transfer_function: control.TransferFunction
-    times: np.ndarray
-    initial_value: float
-    inputs: np.ndarray
-
-    Returns
-    -------
-    np.ndarray
-    """
-    result_initial = control.initial_response(transfer_function, T=times, X0=initial_value)
-    result_input = control.forced_response(transfer_function, T=times, U=inputs)
-    y_arr_input = np.reshape(result_input.y, (len(times),)) 
-    y_arr_initial = np.reshape(result_initial.y, (len(times),)) 
-    y_arr = y_arr_input + y_arr_initial
-    return y_arr
-
-def _calculateTransferFunctionResiduals(parameters, data_in, data_out):
-    """
-    Computes the residuals for a transfer function.
-
-    Parameters
-    ----------
-    parameters: lmfit.Parameters
-        z<int>: zero
-        p<int>: pole
-        "gain" float (gain of the transfer function)
-    data_in: (list-float, list-float) (times, input signal)
-    data_out: array-float (calibration data)
-    Returns
-    -------
-    float
-    """
-    global _mse_history
-    _mse_history = []
-    def isDone(last_history:int=10, min_history:int=50, threshold:float=1e-3):
-        """
-        Checks if further progress is unlikely.
-
-        Returns
-        -------
-        bool
-            True if MSEs are not changing significantly
-        """
-        global _mse_history
-        if len(_mse_history) < min_history:  # type: ignore
-            return False
-        history_arr = np.array(_mse_history)  # type: ignore
-        median_mse = np.median(history_arr)
-        credible_history_arr = history_arr[history_arr < median_mse]
-        last_arr = credible_history_arr[-last_history:]
-        metric = np.std(last_arr)/median_mse
-        return metric < threshold
-    #
-    times, inputs = data_in
-    tf = makeTransferFunction(parameters)
-    y_arr = simulateTransferFunction(tf, times, data_out[0], inputs)
-    residuals = data_out - y_arr
-    is_bads = [np.isnan(v) or np.isinf(v) or (v is None) for v in residuals]
-    if False:
-        is_neg_bads = [(v < 0) and b for b, v in zip(is_bads, residuals)]
-        is_pos_bads = [(v > 0) and b for b, v in zip(is_bads, residuals)]
-        residuals[is_pos_bads] = 1e6
-        residuals[is_neg_bads] = -1e6
-        other_bads = [b1 and (not b2) and (not b3) for b1, b2, b3 in zip(is_bads, is_neg_bads, is_pos_bads)]
-        # For others, randomized negative and positive residuals
-        randoms = np.random.randint(0, 2, np.sum(other_bads))
-        randoms = (randoms - 1) + randoms
-        residuals[other_bads] = randoms*1e6
-    if any(is_bads):
-        # randomized negative and positive residuals
-        randoms = np.random.randint(0, 2, np.sum(is_bads))
-        randoms = (randoms - 1) + randoms
-        residuals[is_bads] = randoms*1e6
-    mse = np.sum(residuals**2)/len(residuals)
-    print(tf.poles(), tf.zeros(), tf.dcgain(), mse)
-    _mse_history.append(mse)
-    if isDone():
-        # Force the minimizer to stop
-        residuals = np.repeat(0, len(residuals))
-    return residuals
-
-
-################## CLASSES ####################
 class SISOTransferFunctionBuilder(object):
 
-    def __init__(self, sbml_system, input_name=None, output_name=None):
+    def __init__(self, sbml_system, input_name=None, output_name=None, fitter_method=METHOD_POLY):
         """
         Parameters
         ----------
         sys: SBMLSystem
         input_name: str
         output_name: str
+        fitter_method: str (method for fitting the transfer function, either 'method_poly' or 'method_gpz')
         """
         #
         self.sbml_system = sbml_system
@@ -224,10 +50,11 @@ class SISOTransferFunctionBuilder(object):
             self.input_name = sbml_system.input_names[0]
         if self.output_name is None:
             self.output_name = sbml_system.output_names[0]
-        #
+        self.fitter_method = fitter_method
 
     def copy(self):
-        return SISOTransferFunctionBuilder(self.sbml_system, input_name=self.input_name, output_name=self.output_name)
+        return SISOTransferFunctionBuilder(self.sbml_system, input_name=self.input_name, output_name=self.output_name,
+                                           fitter_method=self.fitter_method)
 
     @Expander(cn.KWARGS, cn.SIM_KWARGS)
     def makeStaircaseResponse(self, staircase=Staircase(), mgr=None, times=None,
@@ -362,7 +189,6 @@ class SISOTransferFunctionBuilder(object):
         new_timeseries = timeseries[other_columns]
         return new_timeseries, staircase_column, other_columns[0]
     
-    
     @staticmethod
     def _getStaircaseColumnName(timeseries):
         all_columns = set(timeseries.columns)
@@ -413,10 +239,8 @@ class SISOTransferFunctionBuilder(object):
         new_staircase = staircase.copy()
         data_ts, antimony_builder = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
         ms_times = util.cleanTimes(data_ts.index)
-        output_ts, staircase_column_name, _ = self._extractStaircaseResponseInformation(data_ts)
+        _, input_name, _ = self._extractStaircaseResponseInformation(data_ts)
         data_ts.index = ms_times
-        output_ts.index = ms_times
-        new_staircase.name = staircase_column_name
         #  Construct the fitting data
         start_idx = 0
         end_idx = len(ms_times)
@@ -427,53 +251,30 @@ class SISOTransferFunctionBuilder(object):
         if np.isclose(start_idx, end_idx):
             msgs.error("Start time is greater than end time")
         sel_ms_times = ms_times[start_idx:end_idx]
-        sel_ts = data_ts.loc[sel_ms_times]
-        staircase_arr = sel_ts[staircase_column_name].values
-        sel_sec_times = sel_ms_times/cn.MS_IN_SEC
-        data_in = (sel_sec_times, staircase_arr)
-        data_out = sel_ts[self.output_name]
-        # Estimate the gain
-        value_arr, idx_arr = new_staircase.makeEndStepInfo(start_idx=start_idx, end_idx=end_idx)
-        full_data_arr = data_ts.values[:, 0]
-        sel_idx_arr = np.array([n for n in idx_arr if (start_idx <= n) and (n <= end_idx)])
-        output_arr = full_data_arr[sel_idx_arr]  # Get the ends of the steps
-        adj_value_arr = adjustArray(value_arr)
-        adj_output_arr = adjustArray(output_arr)
-        gain = adj_output_arr.dot(adj_value_arr)/adj_value_arr.dot(adj_value_arr)
+        new_data_ts = data_ts.loc[sel_ms_times]
         # Do the fit
-        parameters = makeParameters(num_zero, num_pole, gain)
-        _mse_history = []   # History of mean squared errors
-        out_arr = data_out.values
-        minimizer_result = lmfit.minimize(_calculateTransferFunctionResiduals, parameters, args=(data_in, out_arr),
-                                          method="differential_evolution")
-        residuals = _calculateTransferFunctionResiduals(minimizer_result.params, data_in, out_arr)
-        max_abs_residual = np.max(np.abs(residuals))
-        if max_abs_residual > MAX_ABS_RESIDUAL:
-            msgs.warn("Possible numerical instability: max abs residual is %f" % max_abs_residual)
-        rms_residuals = np.sqrt(np.mean((residuals**2)))
-        stderr_dct = {k: v.stderr for k,v in minimizer_result.params.items()}
-        transfer_function = makeTransferFunction(minimizer_result.params)
+        if self.fitter_method == METHOD_POLY:
+            fitter = PolyFitter(new_data_ts, input_name=input_name, output_name=self.output_name)
+        elif self.fitter_method == METHOD_GPZ:
+            fitter = GPZFitter(new_data_ts, input_name=input_name, output_name=self.output_name)
+        else:
+            raise ValueError("Unknown method: %s" % self.method)
+        fitter.fit()
         #
-        y_arr = simulateTransferFunction(transfer_function, sel_sec_times, out_arr[0], staircase_arr)
-        output_ts = output_ts.loc[sel_ms_times]
-        output_ts[cn.O_PREDICTED] = y_arr
-        output_ts[staircase_column_name] = staircase_arr
-        output_ts = ctl.Timeseries(output_ts)
-        output_ts.index = sel_ms_times
+        times, y_arr = fitter.simulateTransferFunction(fitter.transfer_function)
+        df = new_data_ts.copy()
+        df[cn.O_PREDICTED] = y_arr
+        output_ts = ctl.Timeseries(df)
+        residuals = output_ts[self.output_name] - output_ts[cn.O_PREDICTED].values
+        rms_residuals = np.sqrt(np.mean(residuals**2))
         fitter_result = cn.FitterResult(
               input_name=self.input_name,
               output_name=self.output_name,
-              transfer_function=transfer_function,
-              stderr=stderr_dct,
-              nfev=minimizer_result.nfev,
-              rms_residuals = rms_residuals,
-              redchi=minimizer_result.redchi,
+              transfer_function=fitter.transfer_function,
               time_series=output_ts,
-              staircase_arr=staircase_arr,
-              staircase_name=staircase_column_name,
-              parameters=minimizer_result.params,
+              staircase_name=input_name,
               antimony_builder=antimony_builder,
-              )
+              rms_residuals=rms_residuals)
         return fitter_result
     
     @classmethod
@@ -497,8 +298,8 @@ class SISOTransferFunctionBuilder(object):
         else:
             is_fig = False
         output_name = fitter_result.output_name
-        staircase_arr = fitter_result.staircase_arr
         staircase_name = fitter_result.staircase_name
+        staircase_arr = fitter_result.time_series[staircase_name]
         transfer_function = fitter_result.transfer_function
         times = fitter_result.time_series.index
         #
@@ -515,10 +316,10 @@ class SISOTransferFunctionBuilder(object):
             ax2 = mgr.plot_opts[cn.O_AX2]
         ax2.set_ylabel(staircase_name, color=cn.INPUT_COLOR)
         ax2.plot(times/cn.MS_IN_SEC, staircase_arr, color=cn.INPUT_COLOR, linestyle="--")
-        latex = util.latexifyTransferFunction(transfer_function)
+        #latex = util.latexifyTransferFunction(transfer_function)
         if len(mgr.plot_opts[cn.O_TITLE]) == 0:
             #title = "%s->%s;  %s   " % (input_name, output_name, latex)
-            title = latex
+            title = str(transfer_function)
         else:
             title = mgr.plot_opts[cn.O_TITLE]
         cls.setYAxColor(ax, "left", cn.SIMULATED_COLOR)

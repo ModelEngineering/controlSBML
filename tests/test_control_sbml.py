@@ -40,7 +40,7 @@ S3 = 0
 end
 """
 SPECIES_NAMES = ["S1", "S2", "S3", "S4"]
-CTLSB = ControlSBML(LINEAR_MDL, final_value=10)
+CTLSB = ControlSBML(LINEAR_MDL, final_value=10, input_names=["S1"], output_names=["S3"])
 CSV_FILE1 = os.path.join(cn.TEST_DIR, "test_control_sbml1.csv")
 CSV_FILE2 = os.path.join(cn.TEST_DIR, "test_control_sbml2.csv")
 REMOVE_FILES = [CSV_FILE1, CSV_FILE2]
@@ -120,7 +120,7 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=3, is_plot=IS_PLOT, 
+        ts, builder = self.ctlsb.plotTransferFunctionFit(num_zero=0, num_pole=2, is_plot=IS_PLOT, 
                                                          figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
@@ -172,7 +172,7 @@ class TestControlSBML(unittest.TestCase):
             return
         ctlsb = self.ctlsb.copy()
         self.assertTrue(self.ctlsb.equals(ctlsb))
-        ctlsb.setSystem(input_name="S1", output_name="S3")
+        ctlsb.setSystem(input_name="S1", output_name="S2")
         self.assertFalse(self.ctlsb.equals(ctlsb))
 
     def testGetters(self):
@@ -199,7 +199,8 @@ class TestControlSBML(unittest.TestCase):
         OUTPUT_NAME = "pmTORC1"
         INPUT_NAME = "pIRS"
         URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
-        CTLSB = ControlSBML(URL, figsize=FIGSIZE, times=TIMES, markers=False)  # Specify default value of options
+        CTLSB = ControlSBML(URL, figsize=FIGSIZE, times=TIMES, markers=False,
+                            input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])  # Specify default value of options
         ts = CTLSB.plotModel(ax2=0, is_plot=IS_PLOT)
         # Define the system and plot response over a controlled range
         CTLSB = ControlSBML(URL, figsize=FIGSIZE, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME],
@@ -207,7 +208,7 @@ class TestControlSBML(unittest.TestCase):
         if True:
             _, builder = CTLSB.plotStaircaseResponse(is_plot=IS_PLOT)
             _, builder = CTLSB.plotStaircaseResponse(initial_value=20, final_value=25, is_plot=IS_PLOT)
-            _ = CTLSB.plotTransferFunctionFit(figsize=FIGSIZE, num_numerator=2, num_denominator=3, initial_value=20, final_value=25,
+            _ = CTLSB.plotTransferFunctionFit(figsize=FIGSIZE, num_zero=1, num_pole=2, initial_value=20, final_value=25,
                                             fit_start_time=2000, is_plot=IS_PLOT)
             _ = CTLSB.plotClosedLoop(setpoint=150, kP=1, kF=None, is_plot=IS_PLOT)
         ts, builder = CTLSB.plotDesign(setpoint=150, kP_spec=True, kI_spec=True, kF_spec=False, 
@@ -235,7 +236,7 @@ class TestControlSBML(unittest.TestCase):
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
-        _, builder = ctlsb.plotTransferFunctionFit(num_numerator=2, num_denominator=3, initial_value=20, final_value=25,
+        _, builder = ctlsb.plotTransferFunctionFit(num_zero=1, num_pole=2, initial_value=20, final_value=25,
                                   fit_start_time=1000, times=np.linspace(0, 10000, 100000),
                                   is_plot=IS_PLOT)
         
@@ -247,7 +248,7 @@ class TestControlSBML(unittest.TestCase):
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
-        _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2, initial_value=20, final_value=25,
+        _ = ctlsb.plotTransferFunctionFit(num_zero=0, num_pole=1, initial_value=20, final_value=25,
                                   fit_start_time=2000, times=np.linspace(0, 10000, 100000), is_plot=IS_PLOT)
         
     def testGetPossibleInputs(self):
@@ -282,7 +283,7 @@ class TestControlSBML(unittest.TestCase):
         """
         ctlsb = ControlSBML(model)
         with self.assertRaises(ValueError):
-            _ = ctlsb.plotTransferFunctionFit(num_numerator=1, num_denominator=2)
+            _ = ctlsb.plotTransferFunctionFit(num_zero=0, num_pole=1)
     
     def testBug3(self):
         if IGNORE_TEST:
@@ -329,7 +330,6 @@ class TestControlSBML(unittest.TestCase):
                         input_names=["s1"], output_names=["s5"], times=times)
         df, builder = WOLF_CTLSB.plotDesign(kP_spec=.001, kI_spec=False, times=np.linspace(0, 5, 50), num_restart=1,
                                        num_process=1, is_plot=IS_PLOT)
-        import pdb; pdb.set_trace()
 
     def testBug6(self):
         # Bug with setting inputs that are fixed
