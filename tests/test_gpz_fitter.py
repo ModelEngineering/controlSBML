@@ -71,7 +71,6 @@ class TestGPZFitter(unittest.TestCase):
             return
         self.assertTrue(isinstance(self.fitter, GPZFitter))
 
-
     def testMakeParameters(self):
         if IGNORE_TEST:
             return

@@ -133,11 +133,15 @@ class PolyFitter(SISOTransferFunctionFitter):
         -------
         float (MSE)
         """
+        BAD_RESIDUAL = 1e2
         transfer_function = self._makeTransferFunction(parameters)
-        _, y_arr = self.simulateTransferFunction(transfer_function)
-        residuals = self.out_arr - y_arr
-        is_bads = np.array([np.isnan(v) or np.isinf(v) or (v is None) or (np.abs(v) > 1e3) for v in residuals])
-        residuals[is_bads] = 1e2
+        if len(transfer_function.num[0][0]) <= len(transfer_function.den[0][0]):
+            _, y_arr = self.simulateTransferFunction(transfer_function)
+            residuals = self.out_arr - y_arr
+            is_bads = np.array([np.isnan(v) or np.isinf(v) or (v is None) or (np.abs(v) > 1e3) for v in residuals])
+            residuals[is_bads] = BAD_RESIDUAL
+        else:
+            residuals = np.ones(len(self.out_arr))*BAD_RESIDUAL
         return residuals
 
     def _makeTransferFunction(self, parameters:lmfit.Parameter):

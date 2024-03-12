@@ -247,7 +247,6 @@ class SISOTransferFunctionBuilder(object):
         if fit_end_time is not None:
             end_idx = np.sum(ms_times <= cn.MS_IN_SEC*fit_end_time)
         if np.isclose(start_idx, end_idx):
-            import pdb; pdb.set_trace()
             msgs.error("fit_start_time >= fit_end_time")
         sel_ms_times = ms_times[start_idx:end_idx]
         new_data_ts = data_ts.loc[sel_ms_times]

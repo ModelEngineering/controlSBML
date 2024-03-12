@@ -47,6 +47,8 @@ class SISOTransferFunctionFitter(object):
         min_zero_value: float
         max_zero_value: float
         """
+        if num_zero > num_pole:  # type: ignore
+            raise ValueError("num_zero must be less than or equal to num_pole.")
         self.timeseries = timeseries
         self.input_name, self.output_name = self._extractNames(timeseries, input_name, output_name)
         self.in_arr = timeseries[self.input_name].values

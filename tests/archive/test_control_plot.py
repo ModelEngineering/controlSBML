@@ -1,18 +1,15 @@
-from controlSBML.control_plot import ControlPlot
-from controlSBML.control_sbml import ControlSBML
-import helpers
+from controlSBML.control_plot import ControlPlot  # type: ignore
+from controlSBML.control_sbml import ControlSBML # type: ignore
 
-import control
-import numpy as np
-import pandas as pd
+import control  # type: ignore
+import pandas as pd  # type: ignore
 import os
 import unittest
-import tellurium as te
 
 
 IGNORE_TEST = False
 IS_PLOT = False
-helpers.setupPlotting(__file__)
+#helpers.setupPlotting(__file__)
 
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")

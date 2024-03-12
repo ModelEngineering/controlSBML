@@ -96,13 +96,18 @@ class TestPolyFitter(unittest.TestCase):
                 self.assertEqual(num_n, addOne(num_zero))
                 self.assertEqual(num_d, addOne(num_pole))
         #
-        test(2, 1, is_zero_None=False)
-        test(2, 1, is_zero_None=True)
-        test(2, 1, is_pole_None=True)
-        test(2, 1, is_zero_None=True, is_pole_None=True)
+        test(2, 3, is_zero_None=False)
+        test(2, 3, is_zero_None=True)
+        test(2, 3, is_pole_None=True)
+        test(2, 3, is_zero_None=True, is_pole_None=True)
         test(3, 4)
         test(0, 1)
-        test(1, 0)
+
+    def testZeroGreaterThanPole(self):
+        if IGNORE_TEST:
+            return
+        with self.assertRaises(ValueError):
+            PolyFitter(self.ts, num_zero=4, num_pole=3)
 
     def testMakeTransferFunction(self):
         if IGNORE_TEST:

@@ -1,13 +1,13 @@
-from controlSBML.control_sbml import ControlSBML
-from controlSBML.staircase import Staircase
-from controlSBML import util
-import controlSBML.constants as cn
-import helpers
+from controlSBML.control_sbml import ControlSBML  # type: ignore
+from controlSBML.staircase import Staircase  # type: ignore
+from controlSBML import util  # type: ignore
+import controlSBML.constants as cn  # type: ignore
+import helpers  # type: ignore
 
-import control
-import os
-import pandas as pd
-import tellurium as te
+import control  # type: ignore
+import os  # type: ignore
+import pandas as pd  # type: ignore
+import tellurium as te  # type: ignore
 import unittest
 
 
@@ -30,7 +30,7 @@ k0 = 1
 k1 = 1
 k2 = 1
 """
-helpers.setupPlotting(__file__)
+#helpers.setupPlotting(__file__)
 
 
 #############################
