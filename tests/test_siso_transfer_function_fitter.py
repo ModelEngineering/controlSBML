@@ -16,7 +16,7 @@ import tellurium as te # type: ignore
 
 IGNORE_TEST = False
 IS_PLOT = False
-PLOT_PATH = helpers.setupPlotting(__file__)
+#PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)

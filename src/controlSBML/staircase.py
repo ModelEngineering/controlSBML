@@ -128,11 +128,14 @@ class Staircase(object):
             final_value=center + max_deviation,
             num_step=num_step, num_point=num_point)
         
-    def plot(self):
+    def plot(self, is_plot=True):
         """
         Plots the staircase.
         """
-        staircase_ser = pd.Series(self.staircase_arr)
-        fig, ax = plt.subplots()
-        staircase_ser.plot(ax=ax)
-        return fig
+        if is_plot:
+            staircase_ser = pd.Series(self.staircase_arr)
+            fig, ax = plt.subplots()
+            staircase_ser.plot(ax=ax)
+            return fig
+        else:
+            return None

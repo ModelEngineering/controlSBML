@@ -1,9 +1,7 @@
 from controlSBML.staircase import Staircase  # type: ignore
-import helpers
 
 import matplotlib.pyplot as plt
 import numpy as np
-import os
 import unittest
 
 
@@ -13,7 +11,7 @@ INITIAL_VALUE = 5
 FINAL_VALUE = 10
 NUM_STEP = 5
 NUM_POINT = 100
-PLOT_PATH = helpers.setupPlotting(__file__)
+#PLOT_PATH = helpers.setupPlotting(__file__)
     
 
 class TestStaircase(unittest.TestCase):
@@ -28,9 +26,7 @@ class TestStaircase(unittest.TestCase):
         self.remove()
          
     def remove(self):
-        if os.path.isfile(PLOT_PATH):
-            if not IS_PLOT: 
-                os.remove(PLOT_PATH)
+        return
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -47,7 +43,6 @@ class TestStaircase(unittest.TestCase):
             self.assertEqual(staircase.staircase_arr[0], initial_value)
             self.assertEqual(staircase.staircase_arr[-1], final_value)
             _ = staircase.plot()
-            plt.savefig(PLOT_PATH)
         #
         test(20, 4)
         test(19, 4)
@@ -73,8 +68,7 @@ class TestStaircase(unittest.TestCase):
         if IGNORE_TEST:
             return
         staircase = Staircase.makeRelativeStaircase(5, 2)
-        staircase.plot()
-        plt.savefig(PLOT_PATH)
+        staircase.plot(is_plot=IS_PLOT)
 
     def testMakeEndStepInfo(self):
         if IGNORE_TEST:

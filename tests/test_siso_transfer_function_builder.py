@@ -18,7 +18,7 @@ import tempfile
 
 IGNORE_TEST = False
 IS_PLOT = False
-PLOT_PATH = helpers.setupPlotting(__file__)
+#PLOT_PATH = helpers.setupPlotting(__file__)
 END_TIME = 5
 DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
@@ -101,8 +101,6 @@ class TestSBMLSystem(unittest.TestCase):
         if IS_PLOT and ("var" in cn.PLOT_DIR):
             shutil.rmtree(cn.PLOT_DIR)
         #
-        if os.path.isfile(PLOT_PATH):
-            os.remove(PLOT_PATH)
 
     def testConstructor(self):
         if IGNORE_TEST:

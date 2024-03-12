@@ -22,7 +22,7 @@ DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
 NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
-helpers.setupPlotting(__file__)
+#helpers.setupPlotting(__file__)
 
 LINEAR_MDL = """
 J0: $S0 -> S1; $S0

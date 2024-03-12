@@ -18,7 +18,7 @@ import unittest
 IGNORE_TEST = False
 IS_PLOT = False
 FIGSIZE = (5, 5)
-helpers.setupPlotting(__file__)
+#helpers.setupPlotting(__file__)
 MODEL = """
 model *main_model()
 S0 -> S1; k0*S0
@@ -281,8 +281,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         linear_bldr = SISOTransferFunctionBuilder(system)
         linear_staircase = Staircase(initial_value=0, final_value=10, num_step=5)
         fitter_result = linear_bldr.plotTransferFunctionFit(num_zero=1, num_pole=2, 
-                                                    staircase=linear_staircase, fit_start_time=20,
-                                                start_time=0, end_time=200)
+                                                    staircase=linear_staircase, fit_start_time=5,
+                                                start_time=0, end_time=200, is_plot=IS_PLOT, figsize=FIGSIZE)
         linear_tf = fitter_result.transfer_function
         #
         times = np.linspace(0, 1000, 10000)

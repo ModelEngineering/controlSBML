@@ -1,20 +1,18 @@
-from controlSBML.control_analysis import ControlAnalysis
-from controlSBML.option_management.option_manager import OptionManager
-import controlSBML.constants as cn
-import helpers
+from controlSBML.control_analysis import ControlAnalysis  # type: ignore
+from controlSBML.option_management.option_manager import OptionManager  # type: ignore
+import controlSBML.constants as cn  # type: ignore
 
-import control
+import control  # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import pandas as pd # type: ignore
 import os
 import unittest
-import tellurium as te
 
 
 IGNORE_TEST = False
 IS_PLOT = False
-helpers.setupPlotting(__file__)
+#helpers.setupPlotting(__file__)
 TEST_DIR = os.path.dirname(os.path.abspath(__file__))
 ANTIMONY_FILE = os.path.join(TEST_DIR, "Model_antimony.ant")
 MODEL_FILE = os.path.join(TEST_DIR, "BIOMD0000000823.xml")

@@ -44,7 +44,7 @@ OUTPUT_NAME = "S3"
 INPUT_NAMES = ["S1", "S2"]
 OUTPUT_NAMES = ["S3", "S4"]
 #
-PLOT_PATH = helpers.setupPlotting(__file__)
+#PLOT_PATH = helpers.setupPlotting(__file__)
 
 #############################
 # Tests
@@ -61,9 +61,7 @@ class TestSBMLTransferFunctionBuilder(unittest.TestCase):
         self.remove()
         
     def remove(self):
-        if os.path.isfile(PLOT_PATH):
-            if not IS_PLOT:
-                os.remove(PLOT_PATH)
+        return
 
     def testConstructor(self):
         if IGNORE_TEST:

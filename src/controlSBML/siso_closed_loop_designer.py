@@ -264,12 +264,6 @@ class SISOClosedLoopDesigner(object):
                 return
             if isinstance(parameter_spec, float):
                 grid.addAxis(parameter_name, min_value=parameter_spec, max_value=parameter_spec, num_coordinate=1)
-        #
-        # Initial check
-        if self.open_loop_transfer_function is not None:
-            if (not util.isStablePoles(self.open_loop_transfer_function)) and (not util.isStableZeros(self.open_loop_transfer_function)):
-                msg = "The open loop transfer function has unstable poles and zeros. Design may fail."
-                msgs.warn(msg)
         # Initializations
         grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
         addAxis(grid, CP_kP, kP_spec)
@@ -410,8 +404,6 @@ class SISOClosedLoopDesigner(object):
                 text = ["%s=%f " % (name, param_dct[name]) for name in param_dct.keys()]
                 title = " ".join(text)
             self.system.plotSISOClosedLoop(simulated_ts, self.setpoint, markers=["", ""], title=title, **kwargs)
-            if is_plot:
-                plt.show()
             return simulated_ts, antimony_builder
         else:
             return None, None

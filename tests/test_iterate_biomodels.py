@@ -1,8 +1,8 @@
-from controlSBML.iterate_biomodels import iterateBiomodels
+from controlSBML.iterate_biomodels import iterateBiomodels  # type: ignore
 
 import os
 import unittest
-import tellurium as te
+import tellurium as te  # type: ignore
 
 
 IGNORE_TEST = False
