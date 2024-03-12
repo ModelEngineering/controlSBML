@@ -290,13 +290,13 @@ class AntimonyBuilder(object):
         name_ot = base_name + OT
         return name_in, name_ot
     
-    def makeFilterElement(self, kf, prefix="filter", suffix=""):
+    def makeFilterElement(self, kF, prefix="filter", suffix=""):
         """
         Makes a filter. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
         Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
 
         Args:
-            kf: float
+            kF: float
             prefix: str (beginning of the name)
             suffix: str (ending of the name)
         Returns:
@@ -309,10 +309,10 @@ class AntimonyBuilder(object):
             self.makeAddition("control_error", setpoint, "-"+name_ot)
         """
         self.addStatement("")
-        self.makeComment("Filter: kf=%s" % (str(kf)))
+        self.makeComment("Filter: kF=%s" % (str(kF)))
         name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
-        if (kf is not None) and (kf > 0):
-            statement = "%s' =  -%f*%s + %f*%s" % (name_ot, kf, name_ot, kf, name_in)
+        if (kF is not None) and (kF > 0):
+            statement = "%s' =  -%f*%s + %f*%s" % (name_ot, kF, name_ot, kF, name_in)
             self.addStatement(statement)
             self.makeAdditionStatement(name_ot, 0, is_assignment=False)   # Initialize the filter output
         else:
@@ -344,14 +344,14 @@ class AntimonyBuilder(object):
         self.addStatement(statement)
         return name_ot
     
-    def makePIControllerElement(self, kp=None, ki=None, prefix="controller", suffix=""):
+    def makePIControllerElement(self, kP=None, kI=None, prefix="controller", suffix=""):
         """
         Makes a PI controller. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
         Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
 
         Args:
-            kp: float
-            ki: float
+            kP: float
+            kI: float
             prefix: str (beginning of the name)
             suffix: str (ending of the name)
         Returns:
@@ -359,13 +359,13 @@ class AntimonyBuilder(object):
             str: name of the controller output
         Usage:
             suffix = "_S1_S3"
-            name_in, name_ot = self.makeController(kp=1, suffix=suffix)
+            name_in, name_ot = self.makeController(kP=1, suffix=suffix)
             control_error_name = self.makeControlError(setpoint, "S3", suffix=suffix)   # S3 is the output of the system
             self.makeAddition(name_in, control_error_name)  # control_error is input to the controller
             self.makeAddition("S1", name_ot)   # S1 is the input to the system and is set by the controller
         """
         self.addStatement("")
-        self.makeComment("PI Controller: kp=%s, ki=%s" % (str(kp), str(ki)))
+        self.makeComment("PI Controller: kP=%s, kI=%s" % (str(kP), str(kI)))
         name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
         # Make the integral of the control error
         integral_error_name = prefix + "_integral_error" + suffix
@@ -373,26 +373,26 @@ class AntimonyBuilder(object):
         self.addStatement(statement)
         self.makeAdditionStatement(integral_error_name, 0, is_assignment=False)   #  integral_error_name = 0
         # Construct the control law
-        if kp is not None:
-            statement = "%s := %f*%s" % (name_ot, kp, name_in)
+        if kP is not None:
+            statement = "%s := %f*%s" % (name_ot, kP, name_in)
         else:
             statement = "%s = 0" % name_ot
-        if ki is not None:
-            statement = statement + "+ %f*%s" % (ki, integral_error_name)
+        if kI is not None:
+            statement = statement + "+ %f*%s" % (kI, integral_error_name)
         self.addStatement(statement)
         return name_in, name_ot
 
-    def makeSISOClosedLoopSystem(self, input_name, output_name, kp=None, ki=None, kf=None, setpoint=0,
+    def makeSISOClosedLoopSystem(self, input_name, output_name, kP=None, kI=None, kF=None, setpoint=0,
                            noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20,
                            initial_output_value=None, sign=-1):
         """
         Args:
             input_name: str (input to system)
             output_name: str (output from system)
-            kp: float
-            ki: float
+            kP: float
+            kI: float
             kd: float
-            kf: float
+            kF: float
             setpoint: float (setpoint)
             noise_amplitude: float (Amplitude of the additions to the output)
             noise_frequency: float (Frequency of the additions to the output)
@@ -407,8 +407,8 @@ class AntimonyBuilder(object):
         # Make the elements of the closed loop
         noise_ot = self.makeSinusoidSignal(noise_amplitude, noise_frequency, prefix="noise", suffix=suffix)
         disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)
-        filter_in, filter_ot = self.makeFilterElement(kf, prefix="filter", suffix=suffix)
-        controller_in, controller_ot = self.makePIControllerElement(kp, ki, prefix="controller", suffix=suffix)
+        filter_in, filter_ot = self.makeFilterElement(kF, prefix="filter", suffix=suffix)
+        controller_in, controller_ot = self.makePIControllerElement(kP, kI, prefix="controller", suffix=suffix)
         control_error_name = self.makeControlErrorSignal(setpoint, filter_ot, sign, prefix="control_error", 
                                                          suffix=suffix)
         # Connect the pieces by specifying assignment statements

@@ -367,28 +367,7 @@ class SBMLSystem(object):
         """
         return self._antimony_builder is not None
 
-    # FIXME: Delete since duplicated in controlSBML 
-    def plotModel(self, start_time=cn.START_TIME, end_time=cn.END_TIME, num_point=None, **kwargs):
-        """
-        Plots the original model.
-
-        Args:
-            start_time: float
-            end_time: float
-            num_point: int
-            kwargs: dict (kwargs for plotOneTS)
-        Returns:
-            Timeseries
-        """
-        if num_point is None:
-            num_point = int(cn.POINTS_PER_TIME*(end_time - start_time))
-        roadrunner = makeRoadrunner(self.model_reference)
-        data = roadrunner.simulate(start_time, end_time, num_point)
-        ts = Timeseries(data)
-        util.plotOneTS(ts, **kwargs)
-        return ts
-
-    def simulateSISOClosedLoop(self, input_name=None, output_name=None, kp=None, ki=None, kf=None, setpoint=1,
+    def simulateSISOClosedLoop(self, input_name=None, output_name=None, kP=None, kI=None, kF=None, setpoint=1,
                                start_time=cn.START_TIME, end_time=cn.END_TIME, times=None, num_point=None,
                                is_steady_state=False, inplace=False, initial_input_value=None,
                                sign=-1):
@@ -398,9 +377,9 @@ class SBMLSystem(object):
         Args:
             input_name: str
             output_name: str
-            kp: float
-            ki float
-            kf: float
+            kP: float
+            kI float
+            kF: float
             setpoint: float (setpoint)
             times: np.ndarray (times for the simulation)
             start_time: float (overridden by times)
@@ -435,7 +414,7 @@ class SBMLSystem(object):
             new_input_name = builder.makeParameterNameForBoundaryReaction(input_name)
         else:
             new_input_name = input_name
-        builder.makeSISOClosedLoopSystem(new_input_name, output_name, kp=kp, ki=ki, kf=kf, setpoint=setpoint,
+        builder.makeSISOClosedLoopSystem(new_input_name, output_name, kP=kP, kI=kI, kF=kF, setpoint=setpoint,
                                          initial_output_value=initial_input_value, sign=sign)
         # Run the simulation
         result = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,

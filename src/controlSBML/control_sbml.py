@@ -30,7 +30,7 @@ Typical Usage:
 
     # Automatically design
     _ = ctlsb.plotSISOClosedLoopDesign(kP_spec=True, kI_spec=True, min_value=0, max_value=10, num_iteration=20, setpoint=4)
-    param_dct = {kp: ctlsb.kp, ki: ctlsb.ki, kf: ctlsb.kf}
+    param_dct = {kP: ctlsb.kP, kI: ctlsb.kI, kF: ctlsb.kF}
 
     # Explore variations on the design
     new_param_dct = {n: v*1.1 for n, v param_dct.items() for n in ["kP", "kI", "kF"]}
@@ -44,7 +44,7 @@ Conventions for API names. The following prefixes are used for methods:
       Follow matplotlib conventions for plot options: xlabel, ylabel, title, xlim, ylim, markers, etc.
   set: changes internal state of ControlSBML. No value is returned. Little computation is done.
 
-Many of the instance variables are set by the Options class dynamically, which is invisible to type checking. Check out
+Many of the instance variables are set by the Options class dynamically, which is invisible to type checkIng. Check out
 the use of the setOptions method.
 """
 
@@ -83,11 +83,12 @@ C_MARKERS = "markers"
 STAIRCASE_OPTIONS = [C_INITIAL_VALUE, C_FINAL_VALUE, C_NUM_STEP]
 TIMES_OPTIONS = [C_TIMES]
 CLOSED_LOOP_PARAMETERS = [cn.CP_KP, cn.CP_KI, cn.CP_KF, C_SETPOINT, C_SIGN]
-SYSTEM_SPECIFICATION = [C_INPUT_NAMES, C_OUTPUT_NAMES, C_IS_FIXED_INPUT_SPECIES, C_IS_STEADY_STATE]
+SYSTEM_SPECIFICATIONS = [C_INPUT_NAMES, C_OUTPUT_NAMES, C_IS_FIXED_INPUT_SPECIES, C_IS_STEADY_STATE,
+                        cn.FITTER_METHOD]
 PLOT_OPTIONS = list(cn.PLOT_KWARGS)
 PLOT_OPTIONS.extend(cn.FIG_KWARGS)
 PLOT_OPTIONS.append(C_MARKERS)
-OPTIONS = STAIRCASE_OPTIONS + TIMES_OPTIONS + CLOSED_LOOP_PARAMETERS + PLOT_OPTIONS + SYSTEM_SPECIFICATION
+OPTIONS = STAIRCASE_OPTIONS + TIMES_OPTIONS + CLOSED_LOOP_PARAMETERS + PLOT_OPTIONS + SYSTEM_SPECIFICATIONS
 CONTROL_PARAMETERS = [cn.CP_KP, cn.CP_KI, cn.CP_KF]
 FIGSIZE = (5, 5)
 INITIAL_OPTION_DCT = {cn.O_TITLE: "", cn.O_SUPTITLE: "", cn.O_WRITEFIG: False,
@@ -133,9 +134,9 @@ class ControlSBML(OptionSet):
             is_fixed_input_species: bool (concentration of input species are controlled externally; default: False)
             output_names: list-str
         Closed loop options:
-            kf: float (filter constant)
-            ki: float (integral control)
-            kp: float (proportional control)
+            kF: float (filter constant)
+            kI: float (integral control)
+            kP: float (proportional control)
             setpoint: float (regulation point)
             sign: -1/+1 (direction of feedback: default: -1) 
         Staircase options:
@@ -204,9 +205,9 @@ class ControlSBML(OptionSet):
             min_value (int): _description_. Defaults to 0.
             max_value (int): _description_. Defaults to 10.
             num_coordinate (int): _description_. Defaults to 10.
-            kp_spec (bool): Proportional control. Defaults to False.
-            ki_spec (bool): Integral control. Defaults to False.
-            kf_spec (bool): Filter. Defaults to False.
+            kP_spec (bool): Proportional control. Defaults to False.
+            kI_spec (bool): Integral control. Defaults to False.
+            kF_spec (bool): Filter. Defaults to False.
             is_random (bool): If True, the grid is randomly generated. Defaults to True.
         Returns:
             Grid
@@ -269,7 +270,7 @@ class ControlSBML(OptionSet):
         Returns: dict. Keys are listed below by category.
             STAIRCASE_OPTIONS: initial_value, final_value, num_step
             TIMES_OPTIONS: times
-            CLOSED_LOOP_PARAMETERS: kp, ki, kf, setpoint, sign
+            CLOSED_LOOP_PARAMETERS: kP, kI, kF, setpoint, sign
             PLOT_OPTIONS: ax ax2 end_time figure figsize is_plot
                             suptitle title writefig xlabel xlim xticklabels ylabel ylim yticklabels 
         """
@@ -297,7 +298,7 @@ class ControlSBML(OptionSet):
         Returns the SBMLSystem and SISOTransferFunctionBuilder associated with this ControlSBML object.
 
         Args:
-            kwargs: dict (options)
+            kwargs: dict (options for transfer function builder)
 
         Returns:
             SBMLSystem, TranferFunctionBuilder
@@ -321,8 +322,10 @@ class ControlSBML(OptionSet):
         if self.input_names is None:
             transfer_function_builder = None
         else:
-            transfer_function_builder = SISOTransferFunctionBuilder(sbml_system, input_name=self.getInputName(option_set=option_set),
-                output_name=self.getOutputName(option_set=option_set))
+            fitter_method = kwargs.get(cn.FITTER_METHOD, cn.DEFAULT_FITTER_METHOD)
+            transfer_function_builder = SISOTransferFunctionBuilder(sbml_system,
+                input_name=self.getInputName(option_set=option_set),
+                output_name=self.getOutputName(option_set=option_set), fitter_method=fitter_method)
         return sbml_system, transfer_function_builder
     
     def getClosedLoopTransferFunction(self, **kwargs):
@@ -352,10 +355,10 @@ class ControlSBML(OptionSet):
             parameter = getattr(self, parameter_name)
             if parameter is not None:
                 if not util.isNumber(parameter):
-                    raise ValueError("Must assign float to kp, ki, and kf before using this method.")
+                    raise ValueError("Must assign float to kP, kI, and kF before using this method.")
                 stmt = "%s = %f" % (parameter_name, parameter)
                 exec(stmt)
-        designer.set(kp=kP, ki=kI, kf=kF)
+        designer.set(kP=kP, kI=kI, kF=kF)
         return designer.closed_loop_transfer_function
     
     def getParameterStr(self, parameters:List[str], **kwargs):
@@ -488,7 +491,7 @@ class ControlSBML(OptionSet):
     
     def plotTransferFunctionFit(self, num_zero:int=cn.DEFAULT_NUM_ZERO,
                             num_pole:int=cn.DEFAULT_NUM_POLE, 
-                            fit_start_time: Optional[float]=None, fit_end_time:Optional[float]=None, 
+                            fit_start_time: Optional[float]=None, fit_end_time:Optional[float]=None,
                             **kwargs):
         """
         Simulates the staircase response and plots it. Sets the fitter result.
@@ -508,21 +511,23 @@ class ControlSBML(OptionSet):
         valids = list(set(valids).union(PLOT_OPTIONS))
         valids = list(set(valids).union(STAIRCASE_OPTIONS))
         valids = list(set(valids).union(TIMES_OPTIONS))
+        valids = list(set(valids).union(SYSTEM_SPECIFICATIONS))
         self._checkKwargs(valids=valids, **kwargs)
-        option_set = self.getOptionSet(**kwargs)
-        _, siso_transfer_function_builder = self.getSystem(**option_set)
+        _, siso_transfer_function_builder = self.getSystem(**kwargs)
         if siso_transfer_function_builder is None:
             raise ValueError("Must specify the input and output species to use this method.")
+        times = kwargs.get(C_TIMES, self.times)  # type: ignore
         if fit_start_time is None:
-            fit_start_time = option_set.times[0]
+            fit_start_time = times[0]
         if fit_end_time is None:
-            fit_end_time = option_set.times[-1]
-        staircase = self.getStaircase(**option_set)
-        self._fitter_result = siso_transfer_function_builder.fitTransferFunction(num_zero=num_zero,
+            fit_end_time = times[-1]
+        staircase = self.getStaircase(**kwargs)
+        fitter_method = kwargs.get(cn.FITTER_METHOD, cn.DEFAULT_FITTER_METHOD)
+        is_plot = kwargs.get(cn.O_IS_PLOT, True)
+        self._fitter_result = siso_transfer_function_builder.plotTransferFunctionFit(num_zero=num_zero,
                             num_pole=num_pole, staircase=staircase,
-                            fit_start_time=fit_start_time, fit_end_time=fit_end_time, times=option_set.times)
-        if self.is_plot:  # type: ignore
-            siso_transfer_function_builder.plotFitterResult(self._fitter_result, **self._getPlotOptions(**option_set))
+                            fit_start_time=fit_start_time, fit_end_time=fit_end_time, times=times,
+                            fitter_method=fitter_method, is_plot=is_plot)
         return self._fitter_result.time_series, self._fitter_result.antimony_builder
     
     def plotClosedLoop(self, kP:Optional[float]=None, kI:Optional[float]=None, kF:Optional[float]=None, **kwargs):
@@ -554,7 +559,7 @@ class ControlSBML(OptionSet):
         sbml_system, _ = self.getSystem(**option_set)
         response_ts, builder = sbml_system.simulateSISOClosedLoop(input_name=self.getInputName(option_set=option_set),
                                                                   output_name=self.getOutputName(option_set=option_set),
-                kp=kP, ki=kI, kf=kF, setpoint=option_set.setpoint, sign=option_set.sign,
+                kP=kP, kI=kI, kF=kF, setpoint=option_set.setpoint, sign=option_set.sign,
                 times=option_set.times, is_steady_state=sbml_system.is_steady_state, inplace=False, initial_input_value=None,
                 )
         if (not "title" in plot_options) or (len(plot_options["title"]) == 0):
@@ -568,7 +573,7 @@ class ControlSBML(OptionSet):
                        save_path:Optional[str]="", num_process:Optional[int]=-1, **kwargs):
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
-        Persists the closed loop design (kp, ki, kf) if a design is found.
+        Persists the closed loop design (kP, kI, kF) if a design is found.
 
         Args:
             grid: Grid (grid of values for the control parameters)
@@ -598,20 +603,12 @@ class ControlSBML(OptionSet):
                 input_name=self.getInputName(option_set=option_set),
                 output_name=self.getOutputName(option_set=option_set), save_path=save_path)
         # Translate axis names
-        # FIXME: Hack to translate  axis names
-        new_axis_dct = dict(grid.axis_dct)
-        for key, value in new_axis_dct.items():
-            new_key = key.lower()
-            value.parameter_name = new_key
-            grid.axis_dct[new_key] = value
-            del grid.axis_dct[key]
-        #
         designer.designAlongGrid(grid, is_greedy=is_greedy, num_process=num_process)    # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None
         # Persist the design parameters
-        self.setOptions(kP=designer.kp, kI=designer.ki, kF=designer.kf)
+        self.setOptions(kP=designer.kP, kI=designer.kI, kF=designer.kF)
         _ = option_set.setdefault(cn.O_YLABEL, self.getOutputName(option_set=option_set))
         response_ts, antimony_builder = self.plotClosedLoop(
                 times=option_set.times,
@@ -661,15 +658,15 @@ class ControlSBML(OptionSet):
                 sign=option_set.sign,
                 input_name=self.getInputName(option_set=option_set),
                 output_name=self.getOutputName(option_set=option_set), save_path=self.save_path)
-        designer.design(kp_spec=kP_spec, ki_spec=kI_spec, kf_spec=kF_spec,
+        designer.design(kP_spec=kP_spec, kI_spec=kI_spec, kF_spec=kF_spec,
                 num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
             num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None  # type: ignore
-        self.setOptions(kP=designer.kp, kI=designer.ki, kF=designer.kf)
+        self.setOptions(kP=designer.kP, kI=designer.kI, kF=designer.kF)
         # Persist the design parameters
-        self.setOptions(kP=designer.kp, kI=designer.ki, kF=designer.kf)
+        self.setOptions(kP=designer.kP, kI=designer.kI, kF=designer.kF)
         _ = option_set.setdefault(cn.O_YLABEL, self.getOutputName(option_set=option_set))
         response_ts, antimony_builder = self.plotClosedLoop(
                 times=option_set.times,

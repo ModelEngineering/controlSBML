@@ -128,7 +128,7 @@ class TestGPZFitter(unittest.TestCase):
         self.fitter.dcgain = dcgain
         parameters = self.fitter._makeParameters()
         tf = self.fitter._makeTransferFunction(parameters)
-        rmse = self.fitter._calculateTransferFunctionResiduals(tf)
+        rmse = self.fitter._calculateNormalizedMSE(tf)
         self.assertTrue(isinstance(rmse, float))
 
     def testFitDCGain(self):

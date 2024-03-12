@@ -176,6 +176,8 @@ class GPZFitter(SISOTransferFunctionFitter):
         adj_out_arr = self.out_arr - np.mean(self.out_arr)
         adj_in_arr = self.in_arr - np.mean(self.in_arr)
         self.dcgain = adj_out_arr.dot(adj_in_arr)/adj_in_arr.dot(adj_in_arr)
+        #
+        #self.dcgain = np.sign(slope)*np.mean(self.out_arr)/np.mean(self.in_arr)
     
     def _fitPoles(self, num_itr:Optional[int]=None)->None:
         """
@@ -193,7 +195,7 @@ class GPZFitter(SISOTransferFunctionFitter):
         for poles in self._getNext(self.min_pole_value, self.max_pole_value, num_itr, self.num_pole):
             parameters = self._makeParameters([], poles)  # type: ignore
             tf = self._makeTransferFunction(parameters)
-            mse = self._calculateTransferFunctionResiduals(tf)
+            mse = self._calculateNormalizedMSE(tf)
             if mse < best_mse:
                 best_mse = mse
                 best_poles = poles
@@ -218,7 +220,7 @@ class GPZFitter(SISOTransferFunctionFitter):
             num_itr = self.num_itr
         # Establish the baseline for comparison
         base_tf = self._makeTransferFunction(self._makeParameters([], self.poles))   # type: ignore
-        base_mse = self._calculateTransferFunctionResiduals(base_tf)
+        base_mse = self._calculateNormalizedMSE(base_tf)
         self.zeros = None  # type: ignore
         #
         def search(min_value, max_value):
@@ -229,7 +231,7 @@ class GPZFitter(SISOTransferFunctionFitter):
                     continue
                 parameters = self._makeParameters(adj_zeros, self.poles)  # type: ignore
                 tf = self._makeTransferFunction(parameters)
-                mse = self._calculateTransferFunctionResiduals(tf)
+                mse = self._calculateNormalizedMSE(tf)
                 if mse < best_mse:
                     best_mse = mse
                     best_zeros = zeros

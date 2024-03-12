@@ -10,7 +10,7 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
-CANDIDATES = [{"kp": 1}, {"ki": 2, "kp": 3}, {"kf": 4, "kp": 5}]
+CANDIDATES = [{"kP": 1}, {"kI": 2, "kP": 3}, {"kF": 4, "kP": 5}]
 
 
 class MyEvaluator(Evaluator):
@@ -68,7 +68,7 @@ class TestParallelSearch(unittest.TestCase):
         self.assertTrue(best_candidate is not None)
         if expected_score is not None:
             self.assertEqual(best_candidate[cn.SCORE], expected_score)
-        trues = [c in best_candidate.keys() for c in ["kp", "ki", "kf", "score"]]
+        trues = [c in best_candidate.keys() for c in ["kP", "kI", "kF", "score"]]
         self.assertTrue(all(trues))
 
     def testSearchOneProcess(self):

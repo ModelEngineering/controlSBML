@@ -67,7 +67,7 @@ class TestFunctions(unittest.TestCase):
     def testPlotManyTS(self):
         if IGNORE_TEST:
           return
-        df = TS.applymap(lambda v: 100*v)
+        df = TS.map(lambda v: 100*v)
         ts = Timeseries(df, times=df.index)
         util.plotManyTS(TS, ts, ylabel="values", xlabel="sec",
               is_plot=IS_PLOT, names=["first", "second"])

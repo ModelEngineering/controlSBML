@@ -1,11 +1,11 @@
-from controlSBML.sbml_system import SBMLSystem
-from controlSBML import util
-import controlSBML.constants as cn
-from controlSBML.timeseries import Timeseries
+from controlSBML.sbml_system import SBMLSystem # type: ignore
+from controlSBML import util # type: ignore
+import controlSBML.constants as cn # type: ignore
+from controlSBML.timeseries import Timeseries # type: ignore
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import pandas as pd # type: ignore
 import unittest
 
 
@@ -94,7 +94,7 @@ class TestSBMLSystem(unittest.TestCase):
         def test(is_fixed_input_species):
             system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=is_fixed_input_species)
             setpoint = 5
-            ts, _ = system.simulateSISOClosedLoop("S1", "S3", kp=2, ki=0.8, kf=0.5, setpoint=setpoint, end_time=200, num_point=1000)
+            ts, _ = system.simulateSISOClosedLoop("S1", "S3", kP=2, kI=0.8, kF=0.5, setpoint=setpoint, end_time=200, num_point=1000)
             self.assertGreater(len(ts), 0)
             if is_fixed_input_species:
                 tolerance = 0.1
@@ -147,16 +147,9 @@ class TestSBMLSystem(unittest.TestCase):
         #    return
         system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=False)
         setpoint = 5
-        ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kp=2, ki=0.8, kf=0.5,
+        ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kP=2, kI=0.8, kF=0.5,
                                            setpoint=setpoint, end_time=100, num_point=1000)
         self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), title="Closed Loop", is_plot=IS_PLOT)
-
-    def testPlotModel(self):
-        if IGNORE_TEST:
-            return
-        system = SBMLSystem(LINEAR_MDL)
-        ts = system.plotModel(is_plot=IS_PLOT)
-        self.assertTrue(isinstance(ts, Timeseries))
 
     def testGetValidSymbolsInput(self):
         if IGNORE_TEST:

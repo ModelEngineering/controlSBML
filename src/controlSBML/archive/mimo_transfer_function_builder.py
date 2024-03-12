@@ -203,7 +203,7 @@ class MIMOTransferFunctionBuilder(object):
                 sys = self.sys.getSubsystem(self.sys.name, [input_name], [output_name])
                 siso_tfb = tfb.SISOTransferFunctionBuilder(sys)
                 # FIXME: Always getting the same transfer function
-                fitter_result = siso_tfb.fitTransferFunction(num_numerator, num_denominator,
+                fitter_result = siso_tfb.plotTransferFunctionFit(num_numerator, num_denominator,
                                                              staircase=staircase_dct[input_name], **sim_kwargs)
                 fitter_dct[output_name].append(fitter_result)
         # Construct the output

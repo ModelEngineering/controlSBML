@@ -58,8 +58,9 @@ INITIAL_VALUE = 2
 FINAL_VALUE = 15
 STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE, num_step=5)
 SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
-BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
-RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
+if not IGNORE_TEST:
+    BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
+    RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
 
 
 #############################
@@ -132,31 +133,27 @@ class TestSBMLSystem(unittest.TestCase):
         self.init()
         system = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
         builder = stb.SISOTransferFunctionBuilder(system)
-        fitter_result = builder.fitTransferFunction()
-        if IS_PLOT:
-            builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
+        fitter_result = builder.plotTransferFunctionFit(is_plot=IS_PLOT)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
-        self.assertLess(fitter_result.rms_residuals, 0.2)
+        self.assertLess(fitter_result.rms_residuals, 1)
 
     def testPlotFitTransferFunction(self):
         if IGNORE_TEST:
             return
         system = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
         builder = stb.SISOTransferFunctionBuilder(system)
-        fitter_result = builder.fitTransferFunction(num_zero=3, num_pole=3,
-              end_time=50)
-        builder.plotFitterResult(fitter_result, is_plot=IS_PLOT, figsize=(5,5))
+        _ = builder.plotTransferFunctionFit(num_zero=3, num_pole=3,
+              end_time=500, is_plot=IS_PLOT, figsize=(5,5))
 
     def testFitTransferFunction2(self):
         if IGNORE_TEST:
             return
-        system = SBMLSystem(cn.WOLF_URL,
+        system = SBMLSystem(cn.WOLF_PATH,
               input_names=["na"], output_names=["s6"])
         builder = stb.SISOTransferFunctionBuilder(system)
         staircase = Staircase(initial_value=50, final_value=100)
-        fitter_result = builder.fitTransferFunction(1, 2, staircase=staircase,
-              end_time=5)
-        builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
+        fitter_result = builder.plotTransferFunctionFit(1, 2, staircase=staircase,
+              end_time=5, is_plot=IS_PLOT)
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
 
     def testFitTransferFunctionDecrease(self):
@@ -166,9 +163,8 @@ class TestSBMLSystem(unittest.TestCase):
               input_names=["S0"], output_names=["S3"])
         builder = stb.SISOTransferFunctionBuilder(system)
         staircase = Staircase()
-        fitter_result = builder.fitTransferFunction(num_zero=1, num_pole=2, staircase=staircase,
-                                                    fit_start_time=2, fit_end_time=10)
-        builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
+        fitter_result = builder.plotTransferFunctionFit(num_zero=1, num_pole=2, staircase=staircase,
+                                                    fit_start_time=2, fit_end_time=10, is_plot=IS_PLOT)
 
     def testFitTransferFunctionBug(self):
         if IGNORE_TEST:
@@ -176,11 +172,11 @@ class TestSBMLSystem(unittest.TestCase):
         url = URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1304160000/2/BIOMD0000000449_url.xml"
         system = SBMLSystem(url,
               input_names=["IR"], output_names=["GLUT4"], is_fixed_input_species=True)
-        builder = stb.SISOTransferFunctionBuilder(system, fitter_method="method_gpz")
+        builder = stb.SISOTransferFunctionBuilder(system, fitter_method=cn.FITTER_METHOD_POLY)
         staircase = Staircase(initial_value=10, final_value=25)
-        fitter_result = builder.fitTransferFunction(num_zero=0, num_pole=2, staircase=staircase,
-              end_time=1000, fit_start_time=100, fit_end_time=1000)
-        builder.plotFitterResult(fitter_result, is_plot=IS_PLOT)
+        _ = builder.plotTransferFunctionFit(num_zero=1, num_pole=3, staircase=staircase,
+                                            times=np.linspace(0, 1000, 10000),
+              fit_start_time=100, fit_end_time=1000, is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':

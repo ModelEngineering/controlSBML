@@ -67,7 +67,7 @@ class PointEvaluator(Evaluator):
         Args:
             max_output: float (maximum output)
             min_output: float (minimum output)
-            parameter_dct: dict: {name: value for eack of kp, ki, kf}
+            parameter_dct: dict: {name: value for each of kP, kI, kF}
 
         Returns:
             bool (successful simulation)

@@ -210,7 +210,7 @@ def makePIDTransferFunction(kP:Optional[float]=None, kI:Optional[float]=None,
         kD: float
 
     Raises:
-        ValueError: must provide at least one of kp, ki, kd
+        ValueError: must provide at least one of kP, kI, kD
 
     Returns:
         control.TransferFunction
@@ -227,7 +227,7 @@ def makePIDTransferFunction(kP:Optional[float]=None, kI:Optional[float]=None,
         is_none = False
         controller_tf += control.tf([kD, 0], [1])
     if is_none:
-        raise ValueError("At least one of kp, ki, kd, kf must be defined")
+        raise ValueError("At least one of kP, kI, kD, kF must be defined")
     controller_tf.name = name
     controller_tf.input_labels = [input_name]
     controller_tf.output_labels = [output_name]

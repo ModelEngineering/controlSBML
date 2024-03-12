@@ -1,4 +1,5 @@
 import controlSBML.constants as cn  # type: ignore
+from controlSBML.control_sbml import ControlSBML  # type: ignore
 from controlSBML.siso_transfer_function_fitter import SISOTransferFunctionFitter  # type: ignore
 from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuilder  # type: ignore
 from controlSBML.sbml_system import SBMLSystem # type: ignore
@@ -7,7 +8,7 @@ import controlSBML.util as util # type: ignore
 import helpers
 
 import control  # type: ignore
-import matplotlib.pyplot as plt
+import os
 import numpy as np
 import unittest
 import tellurium as te # type: ignore
@@ -21,6 +22,8 @@ DT = 0.01
 POINTS_PER_TIME = int(1.0 / DT)
 NUM_TIME = int(POINTS_PER_TIME*END_TIME) + 1
 TIMES = [n*DT for n in range(0, NUM_TIME)]
+DIR = os.path.dirname(os.path.abspath(__file__))
+TEST_PATH = os.path.join(DIR, "Varusai2018.xml")
 LINEAR_MDL = """
 // Illustrate Antimony File
 model *linear()
@@ -56,8 +59,9 @@ INITIAL_VALUE = 2
 FINAL_VALUE = 15
 STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE, num_step=5)
 SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
-BUILDER = SISOTransferFunctionBuilder(SYSTEM)
-RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
+if not IGNORE_TEST:
+    BUILDER = SISOTransferFunctionBuilder(SYSTEM)
+    RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
 
 
 #############################
@@ -66,6 +70,8 @@ RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.lin
 class TestSISOTransferFunctionFitter(unittest.TestCase):
 
     def setUp(self):
+        if IGNORE_TEST:
+            return
         self.fitter = SISOTransferFunctionFitter(RESPONSE_TS)
 
     def testConstructor(self):
@@ -76,8 +82,8 @@ class TestSISOTransferFunctionFitter(unittest.TestCase):
         self.assertEqual(self.fitter.output_name, OUTPUT_NAME)
 
     def testPlot(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.fitter.transfer_function = control.TransferFunction([1], [1, 1])
         self.fitter.plot(is_plot=IS_PLOT)
 
@@ -92,6 +98,16 @@ class TestSISOTransferFunctionFitter(unittest.TestCase):
         test(1, 10, 50)
         test(1, 10, 10)
         test(1, 10, 100)
+
+    def testBug1(self):
+        #if IGNORE_TEST:
+        #    return
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb = ControlSBML(cn.MTOR_PATH, figsize=(5, 5), times=np.linspace(0, 2000, 20000),
+                        input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+        _ = ctlsb.plotTransferFunctionFit(num_zero=1, num_pole=2, initial_value=20, final_value=25,
+                                  fit_start_time=2000, times=np.linspace(0, 10000, 100000), fitter_method="poly")
 
 
 if __name__ == '__main__':

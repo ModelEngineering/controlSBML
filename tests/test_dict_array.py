@@ -4,7 +4,7 @@ import unittest
 
 
 IGNORE_TEST = False
-DICTS = [{"kp": 1}, {"ki": 2, "kp": 3}, {"kf": 4, "kp": 5}]
+DICTS = [{"kP": 1}, {"kI": 2, "kP": 3}, {"kF": 4, "kP": 5}]
 
 #############################
 # Tests
@@ -46,7 +46,7 @@ class TestDictList(unittest.TestCase):
         if IGNORE_TEST:
             return
         dl = self.dl.copy()
-        dl.append(kp=6)
+        dl.append(kP=6)
         self.check(dl=dl)
 
     def testMakeDicts(self):
@@ -68,7 +68,7 @@ class TestDictList(unittest.TestCase):
             return
         dl = self.dl.copy()
         self.assertTrue(dl == self.dl)
-        dl.append(kp=6)
+        dl.append(kP=6)
         self.assertFalse(dl == self.dl)
 
 

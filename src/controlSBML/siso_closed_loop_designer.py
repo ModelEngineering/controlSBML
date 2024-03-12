@@ -21,10 +21,10 @@ import os
 import pandas as pd  # type: ignore
 import seaborn as sns  # type: ignore
 
-CP_KP = "kp"
-CP_KI = "ki"
-CP_KF = "kf"
-CONTROL_PARAMETERS = [CP_KP, CP_KI, CP_KF]
+CP_kP = "kP"
+CP_kI = "kI"
+CP_kF = "kF"
+CONTROL_PARAMETERS = [CP_kP, CP_kI, CP_kF]
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
 DEFAULT_INITIAL_VALUE = 1   # Default initial value for a parameter
@@ -33,20 +33,20 @@ BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
 LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
-PARAMETER_DISPLAY_DCT = {CP_KP: r'$k_p$', CP_KI: r'$k_i$', CP_KF: r'$k_f$'}
+PARAMETER_DISPLAY_DCT = {CP_kP: r'$k_p$', CP_kI: r'$k_i$', CP_kF: r'$k_f$'}
 
 Workunit = collections.namedtuple("Workunit",
     "system input_name output_name setpoint times is_greedy num_restart is_report")    
 
 
-def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kp=None, ki=None, kd=None, kf=None, sign=-1):
+def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=None, kI=None, kD=None, kF=None, sign=-1):
     # Construct the transfer functions
     if open_loop_transfer_function is None:
         return None
-    controller_tf = util.makePIDTransferFunction(kP=kp, kI=ki, kD=kd)
+    controller_tf = util.makePIDTransferFunction(kP=kP, kI=kI, kD=kD)
     # Filter
-    if kf is not None:
-        filter_tf = control.TransferFunction([kf], [1, kf])
+    if kF is not None:
+        filter_tf = control.TransferFunction([kF], [1, kF])
     else:
         filter_tf = 1
     # Closed loop transfer function
@@ -100,9 +100,9 @@ class SISOClosedLoopDesigner(object):
         self.num_point = len(self.times)
         self.sign = sign
         # Outputs
-        self.kp = None
-        self.ki = None
-        self.kf = None
+        self.kP = None
+        self.kI = None
+        self.kF = None
         self.closed_loop_system = None
         self.residual_mse = None
         self.minimizer_result = None
@@ -115,24 +115,24 @@ class SISOClosedLoopDesigner(object):
     def closed_loop_transfer_function(self):
         if self.open_loop_transfer_function is None:
             return None
-        return _calculateClosedLoopTransferFunction(open_loop_transfer_function=self.open_loop_transfer_function, kp=self.kp, ki=self.ki,
-                                      kf=self.kf, sign=self.sign)
+        return _calculateClosedLoopTransferFunction(open_loop_transfer_function=self.open_loop_transfer_function, kP=self.kP, kI=self.kI,
+                                      kF=self.kF, sign=self.sign)
     @property
     def closed_loop_timeseries(self):
         _, closed_loop_ts = self.simulateTransferFunction(transfer_function=self.closed_loop_transfer_function)
         return closed_loop_ts
     
-    def set(self, kp=None, ki=None, kf=None):
+    def set(self, kP=None, kI=None, kF=None):
         """
         Sets values of the design parameters
 
         Args:
-            kp (float)
-            ki (float)
-            kd (float)
-            kf (float)
+            kP (float)
+            kI (float)
+            kD (float)
+            kF (float)
         """
-        value_dct = {CP_KP: kp, CP_KI: ki, CP_KF: kf}
+        value_dct = {CP_kP: kP, CP_kI: kI, CP_kF: kF}
         for name, value in value_dct.items():
             if value is None:
                 continue
@@ -156,10 +156,10 @@ class SISOClosedLoopDesigner(object):
     def _initializeDesigner(self):
         self.minimizer_result = None
         self.residual_mse = None # Root mean square of residuals
-        self.kp = None
-        self.ki = None
-        self.kd = None
-        self.kf = None
+        self.kP = None
+        self.kI = None
+        self.kD = None
+        self.kF = None
 
     def plotDesignResult(self, **kwargs):
         """
@@ -231,13 +231,13 @@ class SISOClosedLoopDesigner(object):
         mgr.doPlotOpts()
         mgr.doFigOpts()
 
-    def design(self, kp_spec=False, ki_spec=False, kf_spec=False, is_greedy=True,
+    def design(self, kP_spec=False, kI_spec=False, kF_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
                num_coordinate=3, save_path=None, num_process:int=-1, is_report:bool=False):
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
-            kp_spec, ki_spec, kf_spec (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
+            kP_spec, kI_spec, kF_spec (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
             num_restart: int (number of times to restart the minimizer)
             is_greedy: bool (if True, then a greedy search is done to find a feasible system)
             min_value: float/dict (parameter name: value)
@@ -272,9 +272,9 @@ class SISOClosedLoopDesigner(object):
                 msgs.warn(msg)
         # Initializations
         grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
-        addAxis(grid, CP_KP, kp_spec)
-        addAxis(grid, CP_KI, ki_spec)
-        addAxis(grid, CP_KF, kf_spec)
+        addAxis(grid, CP_kP, kP_spec)
+        addAxis(grid, CP_kI, kI_spec)
+        addAxis(grid, CP_kF, kF_spec)
         #
         return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, is_report=is_report,
                                     num_process=num_process)
@@ -302,19 +302,19 @@ class SISOClosedLoopDesigner(object):
         search_result_df = pd.concat(search_results)
         search_result_df = search_result_df.reset_index()
         if len(search_result_df) == 0:
-            self.kp, self.ki, self.kf = None, None, None
+            self.kP, self.kI, self.kF = None, None, None
             return
         # Have search results
         search_result_df = search_result_df.sort_values(cn.SCORE)
         search_result_df = search_result_df.reset_index()
         # Record the result
         self.residual_mse = search_result_df.loc[0, cn.SCORE]
-        if CP_KP in search_result_df.columns:
-            self.kp = search_result_df.loc[0, CP_KP]
-        if CP_KI in search_result_df.columns:
-            self.ki = search_result_df.loc[0, CP_KI]
-        if CP_KF in search_result_df.columns:
-            self.kf = search_result_df.loc[0, CP_KF]
+        if CP_kP in search_result_df.columns:
+            self.kP = search_result_df.loc[0, CP_kP]
+        if CP_kI in search_result_df.columns:
+            self.kI = search_result_df.loc[0, CP_kI]
+        if CP_kF in search_result_df.columns:
+            self.kF = search_result_df.loc[0, CP_kF]
         # Save the results
         if self.save_path is not None:
             search_result_df.to_csv(self.save_path, index=False)
@@ -324,7 +324,7 @@ class SISOClosedLoopDesigner(object):
         """
         Returns:
             pd.DataFrame
-                columns: kp, ki, kf, mse
+                columns: kP, kI, kF, mse
         """
         if self._design_result_df is None:
             if (self.save_path is not None) and (os.path.isfile(self.save_path)):

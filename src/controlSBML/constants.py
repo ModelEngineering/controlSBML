@@ -62,13 +62,17 @@ for _ in range(2):
 CODE_DIR = os.path.join(PROJECT_DIR, "controlSBML")
 PLOT_DIR = PROJECT_DIR
 TEST_DIR = os.path.join(PROJECT_DIR, "tests")
+MODEL_DIR = os.path.join(PROJECT_DIR, "models")
 NOTEBOOK_DIR = os.path.join(PROJECT_DIR, "notebooks")
 DATA_DIR = os.path.join(PROJECT_DIR, "data")
 BIOMODELS_ZIP_FILENAME = "biomodels.zip"
+MTOR_PATH = os.path.join(MODEL_DIR, "Varusai2018.xml")
+WOLF_PATH = os.path.join(MODEL_DIR, "BIOMD0000000206.xml")
 
 # Constants
 END_TIME = 5.0  # Default endtime
 EVENT = "event"
+FITTER_METHOD = "fitter_method"
 INPUT = "input"
 IN = "in"
 IS_PLOT = "is_plot"
@@ -93,7 +97,9 @@ O_AX2 = "ax2"
 O_END_TIME = "end_time"
 O_FIGURE = "figure"
 O_FIGSIZE = "figsize"
+O_FINAL_VALUE = "final_value"
 O_STEP_VAL = "step_val"
+O_INITIAL_VALUE = "initial_value"
 O_IS_PLOT = "is_plot"
 O_LEGEND_CRD = "legend_crd"  # Legend coordinate
 O_LEGEND_SPEC = "legend_spec"
@@ -102,6 +108,7 @@ O_PREDICTED = "predicted"
 O_STAIRCASE = "staircase"
 O_START_TIME = "start_time"
 O_SUPTITLE = "suptitle"
+O_TIMES = "times"
 O_TITLE = "title"
 O_WRITEFIG = "writefig"  # Write the figure
 O_XLABEL = "xlabel"
@@ -121,12 +128,64 @@ KI_SPEC = "kI_spec"
 KF_SPEC = "kF_spec"
 CONTROL_PARAMETER_SPECS = [KP_SPEC, KI_SPEC, KF_SPEC]
 
+# URLs
+WOLF_URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL3352181362/2/BIOMD0000000206_url.xml"
+METFORMIN_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000001039.5?filename=Zake2021_Metformin%2BMice%2BIV.xml"
+MTOR_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
+
+# Transfer function building
+DEFAULT_NUM_ZERO = 1
+DEFAULT_NUM_POLE = 3
+DEFAULT_DEVIATION = 0.5
+
+# Plot line colors
+PREDICTED_COLOR = "blue"
+SIMULATED_COLOR = "brown"
+INPUT_COLOR = "red"
+
+COMMENT_STR = "//"
+DEFAULT_NUM_STEP = 5
+DEFAULT_INITIAL_VALUE = 0
+DEFAULT_FINAL_VALUE = 10
+DEFAULT_POINT_PER_STEP = 10
+
+# TimeSeries
+MS_IN_SEC = 1000.0
+SEC_IN_MS = 1.0/MS_IN_SEC
+TIMESERIES_INDEX_NAME = "miliseconds"
+TIMES = np.linspace(DEFAULT_INITIAL_VALUE, DEFAULT_FINAL_VALUE, DEFAULT_POINT_PER_STEP*DEFAULT_FINAL_VALUE)
+
+# Types
+TYPE_PARAMETER = "parameter"
+TYPE_BOUNDARY_SPECIES = "boundary_species"
+TYPE_FLOATING_SPECIES = "floating_species"
+TYPE_REACTION = "reaction"
+TYPE_ASSIGNMENT = "assignment"   # assignment rule
+VALID_INPUT_TYPES = [TYPE_BOUNDARY_SPECIES, TYPE_FLOATING_SPECIES, TYPE_PARAMETER, TYPE_ASSIGNMENT]
+VALID_OUTPUT_TYPES = [TYPE_BOUNDARY_SPECIES, TYPE_FLOATING_SPECIES, TYPE_PARAMETER, TYPE_ASSIGNMENT, TYPE_REACTION]
+ANTIMONY_TYPES = list(set(VALID_INPUT_TYPES + VALID_OUTPUT_TYPES))
+
+# Staircase
+DEFAULT_NUM_STEP = 5
+DEFAULT_INITIAL_VALUE = 0
+DEFAULT_FINAL_VALUE = 10
+DEFAULT_NUM_POINT = 100
+
+# Fitter methods
+FITTER_METHOD_GPZ = "gpz"
+FITTER_METHOD_POLY = "poly"
+DEFAULT_FITTER_METHOD = FITTER_METHOD_POLY
+
+
 # Default values of options
 SIM_DCT = dict(
       step_val=STEP_VAL,
       start_time=START_TIME,
       end_time=END_TIME,
       points_per_time=POINTS_PER_TIME,
+      times=TIMES,
+      initial_value=DEFAULT_INITIAL_VALUE,
+      final_value=DEFAULT_FINAL_VALUE,
       )
 # Options for a single plot
 PLOT_DCT = dict(
@@ -153,7 +212,6 @@ FIG_DCT = dict(
 
 DEFAULT_DCTS = [PLOT_DCT, FIG_DCT, SIM_DCT]
 
-
 # Must maintain this in correspondence with SIM_DCT, PLOT_DCT, FIG_DCT
 KWARGS = [
     #SIMULATION OPTIONS
@@ -162,6 +220,9 @@ KWARGS = [
     Kwarg(O_END_TIME, default=10, dtype=float, doc="end time of simulation"),
     Kwarg(O_POINTS_PER_TIME, default=10, dtype=float,
           doc="number of simulation points per time period"),
+    Kwarg(O_INITIAL_VALUE, default=DEFAULT_INITIAL_VALUE, dtype=float, doc="initial value of step input"),
+    Kwarg(O_FINAL_VALUE, default=DEFAULT_FINAL_VALUE, dtype=float, doc="final value of step input"),
+    Kwarg(O_TIMES, default=np.linspace(0, 10, 100), dtype=np.array, doc="times of simulations"),
     Kwarg(O_START_TIME, default=0, dtype=float, doc="when simulation begins"),
     #PLOT OPTIONS
     Kwarg(O_LEGEND_SPEC, default=None, dtype=LegendSpec,
@@ -189,46 +250,3 @@ FIG_KWARGS = list(FIG_DCT.keys())
 ALL_KWARGS = []
 for kwargs in [SIM_KWARGS, PLOT_KWARGS, FIG_KWARGS]:
     ALL_KWARGS.extend(kwargs)
-
-# TimeSeries
-MS_IN_SEC = 1000.0
-SEC_IN_MS = 1.0/MS_IN_SEC
-TIMESERIES_INDEX_NAME = "miliseconds"
-TIMES = np.linspace(0, 5, 50)
-
-# URLs
-WOLF_URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL3352181362/2/BIOMD0000000206_url.xml"
-METFORMIN_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000001039.5?filename=Zake2021_Metformin%2BMice%2BIV.xml"
-MTOR_URL = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
-
-# Transfer function building
-DEFAULT_NUM_ZERO = 1
-DEFAULT_NUM_POLE = 3
-DEFAULT_DEVIATION = 0.5
-
-# Plot line colors
-PREDICTED_COLOR = "blue"
-SIMULATED_COLOR = "brown"
-INPUT_COLOR = "red"
-
-COMMENT_STR = "//"
-DEFAULT_NUM_STEP = 5
-DEFAULT_INITIAL_VALUE = 0
-DEFAULT_FINAL_VALUE = 10
-DEFAULT_POINT_PER_STEP = 10
-
-# Types
-TYPE_PARAMETER = "parameter"
-TYPE_BOUNDARY_SPECIES = "boundary_species"
-TYPE_FLOATING_SPECIES = "floating_species"
-TYPE_REACTION = "reaction"
-TYPE_ASSIGNMENT = "assignment"   # assignment rule
-VALID_INPUT_TYPES = [TYPE_BOUNDARY_SPECIES, TYPE_FLOATING_SPECIES, TYPE_PARAMETER, TYPE_ASSIGNMENT]
-VALID_OUTPUT_TYPES = [TYPE_BOUNDARY_SPECIES, TYPE_FLOATING_SPECIES, TYPE_PARAMETER, TYPE_ASSIGNMENT, TYPE_REACTION]
-ANTIMONY_TYPES = list(set(VALID_INPUT_TYPES + VALID_OUTPUT_TYPES))
-
-# Staircase
-DEFAULT_NUM_STEP = 5
-DEFAULT_INITIAL_VALUE = 0
-DEFAULT_FINAL_VALUE = 10
-DEFAULT_NUM_POINT = 100

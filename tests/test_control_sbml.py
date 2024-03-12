@@ -15,6 +15,7 @@ import unittest
 
 IGNORE_TEST = False
 IS_PLOT = False
+TIMES = np.linspace(0, 1000, 10000)
 FIGSIZE = (5, 5)
 SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
 LINEAR_MDL = """
@@ -120,8 +121,9 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb.plotTransferFunctionFit(num_zero=0, num_pole=2, is_plot=IS_PLOT, 
-                                                         figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
+        ts, builder = self.ctlsb.plotTransferFunctionFit(num_zero=0, num_pole=2,
+                                                         figsize=FIGSIZE, times=np.linspace(0, 100, 1000),
+                                                         fitter_method="poly", is_plot=IS_PLOT)
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
 
@@ -154,7 +156,7 @@ class TestControlSBML(unittest.TestCase):
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, setpoint=setpoint, final_value=10, input_names=["S1"], output_names=["S3"])
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
-        grid.addAxis("kp")
+        grid.addAxis("kP")
         _ = ctlsb.plotGridDesign(grid, is_plot=IS_PLOT)
 
     def testPlotDesign1(self):
@@ -194,7 +196,6 @@ class TestControlSBML(unittest.TestCase):
     def testFullAPI(self):
         if IGNORE_TEST:
             return
-        TIMES = np.linspace(0, 10000, 10000)
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         INPUT_NAME = "pIRS"
@@ -295,10 +296,10 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = ControlSBML(url, save_path=SAVE1_PATH)
         ctlsb.setOptions(input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
         #
-        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=2, is_random=False)
+        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=10, is_random=False)
         axis = grid.getAxis("kP")
-        axis.setMinValue(0.1)
-        axis.setMaxValue(1.1)
+        axis.setMinValue(0.01)
+        axis.setMaxValue(0.1)
         ts, _ = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_greedy=False, 
                                            is_plot=IS_PLOT, save_path=SAVE1_PATH)
         self.assertTrue(isinstance(ts, Timeseries))
@@ -326,7 +327,7 @@ class TestControlSBML(unittest.TestCase):
             return
         # Setup
         times = np.linspace(0, 50, 500)
-        WOLF_CTLSB = ControlSBML(cn.WOLF_URL,
+        WOLF_CTLSB = ControlSBML(cn.WOLF_PATH,
                         input_names=["s1"], output_names=["s5"], times=times)
         df, builder = WOLF_CTLSB.plotDesign(kP_spec=.001, kI_spec=False, times=np.linspace(0, 5, 50), num_restart=1,
                                        num_process=1, is_plot=IS_PLOT)
@@ -360,6 +361,15 @@ class TestControlSBML(unittest.TestCase):
             self.assertTrue(True)
         except:
             self.assertTrue(False)
+
+    def testBug7(self):
+        # Bug with setting inputs that are fixed
+        if IGNORE_TEST:
+            return
+        # Global variables
+        INPUT_NAME = "na"
+        OUTPUT_NAME = "s5"
+        CTLSB = ControlSBML(cn.WOLF_PATH, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], times=TIMES)
 
 
 

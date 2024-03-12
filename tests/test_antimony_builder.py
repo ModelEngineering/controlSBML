@@ -1,12 +1,11 @@
-import controlSBML.constants as cn
+import controlSBML.constants as cn # type: ignore
 from controlSBML import antimony_builder as ab
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
-import re
+import re # type: ignore
 import unittest
-import tellurium as te
+import tellurium as te # type: ignore
 
 
 IGNORE_TEST = False
@@ -151,7 +150,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        name_in, name_ot = self.builder.makePIControllerElement(kp=7, suffix="_S1_S3")
+        name_in, name_ot = self.builder.makePIControllerElement(kP=7, suffix="_S1_S3")
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
@@ -161,7 +160,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
-        name_in, name_ot = builder.makePIControllerElement(kp=7, suffix="_S1_S3")
+        name_in, name_ot = builder.makePIControllerElement(kP=7, suffix="_S1_S3")
         builder.makeAdditionStatement("k0", name_ot)
         builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check(builder=builder)
@@ -171,10 +170,10 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.builder.makeBoundarySpecies("S1")
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10, setpoint=5,
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5,
                            noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20)
         self.check()
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10, setpoint=5,
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5,
                            noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20,
                            initial_output_value=33)
         self.check()
@@ -202,7 +201,7 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.builder.makeBoundarySpecies("S1")
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kp=10000, ki=1, setpoint=4)
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10000, kI=1, setpoint=4)
         data = self.check()
         self.assertTrue(np.isclose(data["S3"][-1], 4, atol=0.01))
 

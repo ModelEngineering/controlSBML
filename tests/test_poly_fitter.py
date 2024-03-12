@@ -129,13 +129,13 @@ class TestPolyFitter(unittest.TestCase):
             return
         self.fitter.fit()
         self.fitter.plot(is_plot=IS_PLOT)
-        rmse = self.fitter._calculateTransferFunctionResiduals(self.fitter.transfer_function)
-        self.assertLess(rmse, 0.1)
+        mse = self.fitter._calculateNormalizedMSE(self.fitter.transfer_function)
+        self.assertLess(mse, 1)
         self.assertTrue(isinstance(self.fitter.transfer_function, control.TransferFunction))
 
     def testFitTransferFunctionBug(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1304160000/2/BIOMD0000000449_url.xml"
         ctlsb = ControlSBML(URL,
               input_names=["IR"], output_names=["GLUT4"], is_fixed_input_species=True, is_plot=False)

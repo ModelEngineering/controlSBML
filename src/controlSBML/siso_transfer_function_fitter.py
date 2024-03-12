@@ -51,8 +51,9 @@ class SISOTransferFunctionFitter(object):
         self.input_name, self.output_name = self._extractNames(timeseries, input_name, output_name)
         self.in_arr = timeseries[self.input_name].values
         self.out_arr = timeseries[self.output_name].values
+        self.out_std = np.std(self.out_arr)
         self.max_out_value = np.max(self.out_arr)
-        self.dt = np.round(scipy.stats.mode(np.diff(timeseries.index))[0])/cn.MS_IN_SEC
+        self.dt = np.round(np.mean(np.diff(timeseries.index)))/cn.MS_IN_SEC
         self.times = np.array([self.dt*n for n in range(len(timeseries.index))])  # Must be evenly spaced
         self.times = np.reshape(self.times, (len(self.times),))
         self.length = len(self.times)
@@ -116,11 +117,14 @@ class SISOTransferFunctionFitter(object):
     def simulateTransferFunction(self,
                 transfer_function:Optional[control.TransferFunction]=None)->Tuple[np.ndarray, np.ndarray]:
         """
-        Simulates the transfer function. Special handling of negative DCGain to create inverse relationships.
+        Simulates the transfer function. Since the true fit is affine (includes a y-intercept) but the
+        transfer function assumes 0 initial conditions, a fit is first done by adjusting for the mean of
+        the input and the output.
 
         Parameters
         ----------
         transfer_function: control.TransferFunction
+        initial_condition: float (initial condition for state space model; default is 0)
 
         Returns
         -------
@@ -129,16 +133,16 @@ class SISOTransferFunctionFitter(object):
         """
         if transfer_function is None:
             transfer_function = self.transfer_function
-        sign = np.sign(transfer_function.dcgain())  # type: ignore
-        result_input = control.forced_response(sign*transfer_function, T=self.times, U=self.in_arr)
+        in_arr = self.in_arr - np.mean(self.in_arr)
+        result_input = control.forced_response(transfer_function, T=self.times, U=in_arr)
         y_arr_output = np.reshape(result_input.y, (self.length,)) 
-        if sign < 0:
-            y_arr_output = self.max_out_value - y_arr_output
+        y_arr_output = y_arr_output + np.mean(self.out_arr)
         return self.times, y_arr_output
 
-    def _calculateTransferFunctionResiduals(self, transfer_function:control.TransferFunction)->float:
+    def _calculateNormalizedMSE(self, transfer_function:control.TransferFunction)->float:
         """
-        Computes the residuals for a transfer function specified by parameters.
+        Computes the mean squared error residuals for a transfer function normalized by the standard deviation of
+        the output.
 
         Parameters
         ----------
@@ -154,8 +158,8 @@ class SISOTransferFunctionFitter(object):
         if any(is_bads):
             mse = 1e6
         else:
-            rmse = np.sqrt(np.mean(residuals**2))
-        return rmse
+            mse = np.sqrt(np.mean(residuals**2))
+        return mse/self.out_std
     
     def fit(self, **kwargs)->None:
         """
@@ -186,8 +190,9 @@ class SISOTransferFunctionFitter(object):
         # Initializations
         mgr = OptionManager(kwargs)
         #
+        predictions = self.simulateTransferFunction()[1]
         ts = Timeseries(pd.DataFrame({cn.TIME: self.times, self.output_name: self.out_arr,
-                                      cn.O_PREDICTED: self.simulateTransferFunction()[1]}))
+                                      cn.O_PREDICTED: predictions}))
         util.plotOneTS(ts, mgr=mgr,
                        colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
                        markers=["o", ""])

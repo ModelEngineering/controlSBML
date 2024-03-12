@@ -123,7 +123,7 @@ class SISOMaker(object):
         try:
             ts, _ = self.system.simulateSISOClosedLoop(input_name=self.input_name, output_name=self.output_name,
                                                     setpoint=setpoint,
-                                           kp=1, ki=None, kf=None, is_steady_state=False)
+                                           kP=1, kI=None, kF=None, is_steady_state=False)
         except Exception as error:
             raise ValueError("Error in closed loop for %s: %s" % (self.model_id, error))
         # Make the plot

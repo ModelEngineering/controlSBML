@@ -16,31 +16,26 @@ from controlSBML.staircase import Staircase
 from controlSBML.poly_fitter import PolyFitter
 from controlSBML.gpz_fitter import GPZFitter
 
-import control # type: ignore
 from docstring_expander.expander import Expander # type: ignore
-import lmfit # type: ignore
 import numpy as np
-from typing import Optional
 
 
 MIN_ELAPSED_TIME = 1e-2
 STAIRCASE = "staircase"
 MIN_PARAMETER_VALUE = -1e6
 MAX_PARAMETER_VALUE = 1e6
-METHOD_POLY = "method_poly"  # fitter method that estimates the transfer function numerator and denominator polynomials
-METHOD_GPZ = "method_gpz"  # fitter method that estimates the transfer function by estimating the gain and the poles and zeros
 
 
 class SISOTransferFunctionBuilder(object):
 
-    def __init__(self, sbml_system, input_name=None, output_name=None, fitter_method=METHOD_POLY):
+    def __init__(self, sbml_system, input_name=None, output_name=None, fitter_method=cn.FITTER_METHOD_POLY):
         """
         Parameters
         ----------
         sys: SBMLSystem
         input_name: str
         output_name: str
-        fitter_method: str (method for fitting the transfer function, either 'method_poly' or 'method_gpz')
+        fitter_method: str (method for fitting the transfer function, either 'poly' or 'gpz')
         """
         #
         self.sbml_system = sbml_system
@@ -196,8 +191,8 @@ class SISOTransferFunctionBuilder(object):
         staircase_column = list(all_columns.difference(other_columns))[0]
         return staircase_column, other_columns
 
-    @Expander(cn.KWARGS, cn.SIM_KWARGS)
-    def fitTransferFunction(self, num_zero=cn.DEFAULT_NUM_ZERO,
+    @Expander(cn.KWARGS, cn.ALL_KWARGS)
+    def plotTransferFunctionFit(self, num_zero=cn.DEFAULT_NUM_ZERO,
                             num_pole=cn.DEFAULT_NUM_POLE, staircase=Staircase(), 
                             fit_start_time=None, fit_end_time=None, **kwargs):
         """
@@ -211,7 +206,7 @@ class SISOTransferFunctionBuilder(object):
         staircase: Staircase
         fit_start_time: float (time at which fitting starts)
         fit_end_time: float (time at which fitting ends)
-        kwargs: dict (simulation options as described below)
+        kwargs: dict (options as described below)
         #@expand
 
         Returns
@@ -233,11 +228,14 @@ class SISOTransferFunctionBuilder(object):
             new_arr = np.reshape(new_arr, (len(new_arr),))
             return new_arr
         #
-        global _mse_history
-        #
+        fitter_method = kwargs.get(cn.FITTER_METHOD, self.fitter_method)
+        new_kwargs = dict(kwargs)
+        if cn.FITTER_METHOD in new_kwargs:
+            del new_kwargs[cn.FITTER_METHOD]
+        mgr = OptionManager(new_kwargs)
         # Get the observational data
         new_staircase = staircase.copy()
-        data_ts, antimony_builder = self.makeStaircaseResponse(staircase=new_staircase, **kwargs)
+        data_ts, antimony_builder = self.makeStaircaseResponse(staircase=new_staircase, **mgr.sim_opts)
         ms_times = util.cleanTimes(data_ts.index)
         _, input_name, _ = self._extractStaircaseResponseInformation(data_ts)
         data_ts.index = ms_times
@@ -253,15 +251,17 @@ class SISOTransferFunctionBuilder(object):
         sel_ms_times = ms_times[start_idx:end_idx]
         new_data_ts = data_ts.loc[sel_ms_times]
         # Do the fit
-        if self.fitter_method == METHOD_POLY:
-            fitter = PolyFitter(new_data_ts, input_name=input_name, output_name=self.output_name)
-        elif self.fitter_method == METHOD_GPZ:
-            fitter = GPZFitter(new_data_ts, input_name=input_name, output_name=self.output_name)
+        if fitter_method == cn.FITTER_METHOD_POLY:
+            fitter = PolyFitter(new_data_ts, input_name=input_name, output_name=self.output_name,
+                                num_zero=num_zero, num_pole=num_pole)
+        elif fitter_method == cn.FITTER_METHOD_GPZ:
+            fitter = GPZFitter(new_data_ts, input_name=input_name, output_name=self.output_name,
+                                num_zero=num_zero, num_pole=num_pole)
         else:
-            raise ValueError("Unknown method: %s" % self.method)
+            raise ValueError("Unknown method: %s" % fitter_method)
         fitter.fit()
         #
-        times, y_arr = fitter.simulateTransferFunction(fitter.transfer_function)
+        _, y_arr = fitter.simulateTransferFunction(fitter.transfer_function)
         df = new_data_ts.copy()
         df[cn.O_PREDICTED] = y_arr
         output_ts = ctl.Timeseries(df)
@@ -275,58 +275,9 @@ class SISOTransferFunctionBuilder(object):
               staircase_name=input_name,
               antimony_builder=antimony_builder,
               rms_residuals=rms_residuals)
+        is_plot = kwargs.get(cn.IS_PLOT, True)
+        if is_plot:
+            new_kwargs = dict(mgr.plot_opts.asDict())
+            new_kwargs.update(mgr.fig_opts.asDict())
+            fitter.plot(**new_kwargs) 
         return fitter_result
-    
-    @classmethod
-    @Expander(cn.KWARGS, cn.PLOT_KWARGS)
-    def plotFitterResult(cls, fitter_result, mgr=None, **kwargs):
-        """
-        Plots the results of fitting a transfer function for the NonlinearIOSystem.
-        If an option manager is specified, then the caller handles figure generation.
-
-        Parameters
-        ----------
-        fitter_result: FitterResult
-        mgr: OptionManager
-        kwargs: dict
-        #@expand
-        """
-        # Initializations
-        if mgr is None:
-            is_fig = True
-            mgr = OptionManager(kwargs)
-        else:
-            is_fig = False
-        output_name = fitter_result.output_name
-        staircase_name = fitter_result.staircase_name
-        staircase_arr = fitter_result.time_series[staircase_name]
-        transfer_function = fitter_result.transfer_function
-        times = fitter_result.time_series.index
-        #
-        ts = fitter_result.time_series.drop(staircase_name, axis=1)
-        util.plotOneTS(ts, mgr=mgr,
-                       colors=[cn.SIMULATED_COLOR, cn.PREDICTED_COLOR],
-                       markers=["o", ""])
-        ax = mgr.plot_opts[cn.O_AX]
-        mgr.plot_opts.set(cn.O_YLABEL, output_name)
-        if mgr.plot_opts[cn.O_AX2] is None:
-            ax2 = ax.twinx()
-            mgr.plot_opts[cn.O_AX2] = ax2
-        else:
-            ax2 = mgr.plot_opts[cn.O_AX2]
-        ax2.set_ylabel(staircase_name, color=cn.INPUT_COLOR)
-        ax2.plot(times/cn.MS_IN_SEC, staircase_arr, color=cn.INPUT_COLOR, linestyle="--")
-        #latex = util.latexifyTransferFunction(transfer_function)
-        if len(mgr.plot_opts[cn.O_TITLE]) == 0:
-            #title = "%s->%s;  %s   " % (input_name, output_name, latex)
-            title = str(transfer_function)
-        else:
-            title = mgr.plot_opts[cn.O_TITLE]
-        cls.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
-        cls.setYAxColor(ax2, "right", cn.INPUT_COLOR)
-        ax.set_title(title, y=0.2, pad=-14, fontsize=14, loc="right")
-        mgr.doPlotOpts()
-        ax.legend([output_name, cn.O_PREDICTED], loc="upper left")
-        if is_fig:
-            mgr.doFigOpts()
-        return util.PlotResult(time_series=fitter_result.time_series, ax=ax, ax2=ax2)
