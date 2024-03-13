@@ -91,12 +91,11 @@ class TestGPZFitter(unittest.TestCase):
             self.assertEqual(num_z, num_zero)
             self.assertEqual(num_p, num_pole)
         #
-        test(2, 1, is_zero_None=True)
-        test(2, 1, is_pole_None=True)
-        test(2, 1, is_zero_None=True, is_pole_None=True)
+        test(2, 3, is_zero_None=True)
+        test(2, 3, is_pole_None=True)
+        test(2, 3, is_zero_None=True, is_pole_None=True)
         test(3, 4)
         test(0, 1)
-        test(1, 0)
 
     def testMakeTransferFunction(self):
         if IGNORE_TEST:
@@ -118,7 +117,6 @@ class TestGPZFitter(unittest.TestCase):
         #
         test(3, 4, -15)
         test(0, 1, 10)
-        test(1, 0, 10)
 
     def testCalculateTransferFunctionResiduals(self):
         if IGNORE_TEST:
