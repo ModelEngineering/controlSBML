@@ -1,12 +1,12 @@
-from controlSBML import util
-from controlSBML.timeseries import Timeseries
-import controlSBML.constants as cn
+from controlSBML import util  # type: ignore
+from controlSBML.timeseries import Timeseries # type: ignore
+import controlSBML.constants as cn  # type: ignore
 import controlSBML as ctl
 
-import control
-import pandas as pd
+import control # type: ignore
+import pandas as pd # type: ignore
 import numpy as np
-import tellurium as te
+import tellurium as te # type: ignore
 import unittest
 
 
@@ -63,6 +63,27 @@ class TestFunctions(unittest.TestCase):
           return
         util.plotOneTS(TS, ylabel="values", xlabel="sec",
               is_plot=IS_PLOT)
+        
+    def testSubsetDct(self):
+        if IGNORE_TEST:
+          return
+        dct = {"a": 1, "b": 2, "c": 3}
+        subset = util.subsetDct(dct, ["a", "c"])
+        self.assertTrue(len(subset) == 2)
+        self.assertTrue("b" not in subset)
+
+    def testDifferenceDct(self):
+        if IGNORE_TEST:
+          return
+        dct1 = {"a": 1, "b": 2, "c": 3}
+        dct2 = {"a": 1, "b": 2, "c": 3}
+        diff = util.differenceDct(dct1, dct2)
+        self.assertTrue(len(diff) == 0)
+        #
+        dct2 = {"a": 1, "b": 2}
+        diff = util.differenceDct(dct1, dct2)
+        self.assertTrue(len(diff) == 1)
+        self.assertTrue("c" in diff)
 
     def testPlotManyTS(self):
         if IGNORE_TEST:

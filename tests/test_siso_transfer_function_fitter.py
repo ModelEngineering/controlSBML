@@ -105,7 +105,7 @@ class TestSISOTransferFunctionFitter(unittest.TestCase):
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         ctlsb = ControlSBML(cn.MTOR_PATH, figsize=(5, 5), times=np.linspace(0, 2000, 20000),
-                        input_names=[INPUT_NAME], output_names=[OUTPUT_NAME])
+                        input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         _ = ctlsb.plotTransferFunctionFit(num_zero=1, num_pole=2, initial_value=20, final_value=25,
                                   fit_start_time=2000, times=np.linspace(0, 10000, 100000), fitter_method="poly")
 

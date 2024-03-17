@@ -623,6 +623,38 @@ def roundToDigits(number:float, num_digits:int=2):
     required_decimal = -int(log_number) + num_digits
     return np.round(number, required_decimal)
 
+def subsetDct(dct, keys):
+    """
+    Returns a subset of a dictionary.
+
+    Args:
+        dct: dict
+        keys: list-str
+    Returns:
+        dict
+    """
+    new_dct = {}
+    for key in keys:
+        if key in dct.keys():
+            new_dct[key] = dct[key]
+    return new_dct
+
+def differenceDct(dct1, dct2):
+    """
+    Returns the difference between two dictionaries.
+
+    Args:
+        dct1: dict
+        dct2: dict
+    Returns:
+        dict
+    """
+    new_dct = {}
+    for key, value in dct1.items():
+        if key not in dct2.keys():
+            new_dct[key] = value
+    return new_dct
+
 
 ############### CLASSES ################
 

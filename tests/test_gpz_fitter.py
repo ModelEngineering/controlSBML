@@ -184,11 +184,11 @@ class TestGPZFitter(unittest.TestCase):
         plt.show()
 
     def testFitTransferFunctionBug(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1304160000/2/BIOMD0000000449_url.xml"
         ctlsb = ControlSBML(URL,
-              input_names=["IR"], output_names=["GLUT4"], is_fixed_input_species=True, is_plot=False)
+              input_name="IR", output_name="GLUT4", is_fixed_input_species=True, is_plot=False)
         ts, _ = ctlsb.plotStaircaseResponse(initial_value=10, final_value=25, times=np.linspace(0, 1.5, 150),
                                             is_plot=False)
         plt.close()

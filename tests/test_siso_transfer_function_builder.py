@@ -58,9 +58,8 @@ INITIAL_VALUE = 2
 FINAL_VALUE = 15
 STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE, num_step=5)
 SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
-if not IGNORE_TEST:
-    BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
-    RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
+BUILDER = stb.SISOTransferFunctionBuilder(SYSTEM)
+RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
 
 
 #############################
@@ -131,7 +130,8 @@ class TestSBMLSystem(unittest.TestCase):
         self.init()
         system = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
         builder = stb.SISOTransferFunctionBuilder(system)
-        fitter_result = builder.plotTransferFunctionFit(is_plot=IS_PLOT)
+        fitter_result = builder.plotTransferFunctionFit(is_plot=IS_PLOT,
+                                                        figsize=(5,5))
         self.assertTrue(isinstance(fitter_result.time_series, ctl.Timeseries))
         self.assertLess(fitter_result.rms_residuals, 1)
 

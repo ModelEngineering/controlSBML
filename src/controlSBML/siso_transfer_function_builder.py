@@ -39,12 +39,21 @@ class SISOTransferFunctionBuilder(object):
         """
         #
         self.sbml_system = sbml_system
-        self.input_name = input_name
-        self.output_name = output_name
-        if self.input_name is None:
+        #
+        if input_name is None:
+            if (sbml_system.input_names is None) or (len(sbml_system.input_names) == 0):
+                raise ValueError("No input name specified")
             self.input_name = sbml_system.input_names[0]
-        if self.output_name is None:
+        else:
+            self.input_name = input_name
+        #
+        if output_name is None:
+            if (sbml_system.output_names is None) or (len(sbml_system.output_names) == 0):
+                raise ValueError("No output name specified")
             self.output_name = sbml_system.output_names[0]
+        else:
+            self.output_name = output_name
+        #
         self.fitter_method = fitter_method
 
     def copy(self):
@@ -238,7 +247,7 @@ class SISOTransferFunctionBuilder(object):
         data_ts, antimony_builder = self.makeStaircaseResponse(staircase=new_staircase, **mgr.sim_opts)
         ms_times = util.cleanTimes(data_ts.index)
         _, input_name, _ = self._extractStaircaseResponseInformation(data_ts)
-        data_ts.index = ms_times
+        data_ts.index = ms_times.astype(int)
         #  Construct the fitting data
         start_idx = 0
         end_idx = len(ms_times)
