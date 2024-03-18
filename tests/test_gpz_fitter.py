@@ -189,10 +189,10 @@ class TestGPZFitter(unittest.TestCase):
         URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1304160000/2/BIOMD0000000449_url.xml"
         ctlsb = ControlSBML(URL,
               input_name="IR", output_name="GLUT4", is_fixed_input_species=True, is_plot=False)
-        ts, _ = ctlsb.plotStaircaseResponse(initial_value=10, final_value=25, times=np.linspace(0, 1.5, 150),
+        result = ctlsb.plotStaircaseResponse(initial_value=10, final_value=25, times=np.linspace(0, 1.5, 150),
                                             is_plot=False)
         plt.close()
-        fitter = GPZFitter(ts, num_itr=5)
+        fitter = GPZFitter(result.timeseries, num_itr=5)
         fitter.fit()
         fitter.plot(title="FitTransferFunctionBug", is_plot=IS_PLOT)
         self.assertLess(len(fitter.poles), 3)

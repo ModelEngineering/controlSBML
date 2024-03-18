@@ -13,7 +13,6 @@ import numpy as np
 import unittest
 import tellurium as te # type: ignore
 
-
 IGNORE_TEST = False
 IS_PLOT = False
 #PLOT_PATH = helpers.setupPlotting(__file__)
@@ -59,9 +58,8 @@ INITIAL_VALUE = 2
 FINAL_VALUE = 15
 STAIRCASE= Staircase(initial_value=INITIAL_VALUE, final_value=FINAL_VALUE, num_step=5)
 SYSTEM = SBMLSystem(LINEAR_MDL, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
-if not IGNORE_TEST:
-    BUILDER = SISOTransferFunctionBuilder(SYSTEM)
-    RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
+BUILDER = SISOTransferFunctionBuilder(SYSTEM)
+RESPONSE_TS, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, END_TIME, NUM_TIME))
 
 
 #############################
@@ -72,7 +70,8 @@ class TestSISOTransferFunctionFitter(unittest.TestCase):
     def setUp(self):
         if IGNORE_TEST:
             return
-        self.fitter = SISOTransferFunctionFitter(RESPONSE_TS)
+        if not hasattr(self, "fitter"):
+            self.fitter = SISOTransferFunctionFitter(RESPONSE_TS)
 
     def testConstructor(self):
         if IGNORE_TEST:
@@ -100,8 +99,8 @@ class TestSISOTransferFunctionFitter(unittest.TestCase):
         test(1, 10, 100)
 
     def testBug1(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         ctlsb = ControlSBML(cn.MTOR_PATH, figsize=(5, 5), times=np.linspace(0, 2000, 20000),

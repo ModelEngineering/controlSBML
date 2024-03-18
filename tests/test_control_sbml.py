@@ -92,31 +92,31 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.ctlsb = CTLSB.copy()
-        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S1", "S2", "S3"])
-        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S2"])
-        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
-        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, markers=False)
-        self.assertTrue(isinstance(ts, Timeseries))
+        result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S1", "S2", "S3"])
+        result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S2"])
+        result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
+        result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, markers=False)
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
 
     def testPlotStaircaseResponse(self):
         if IGNORE_TEST:
             return
         self.ctlsb = CTLSB.copy()
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb.plotStaircaseResponse(is_plot=IS_PLOT, figsize=FIGSIZE,
+        result = self.ctlsb.plotStaircaseResponse(is_plot=IS_PLOT, figsize=FIGSIZE,
                                                        times=np.linspace(0, 100, 1000))
-        self.assertTrue(isinstance(ts, Timeseries))
-        self.assertTrue(isinstance(builder, AntimonyBuilder))
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
+        self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
 
     def testPlotTransferFunctionFit(self):
         if IGNORE_TEST:
             return
         ctlsb = CTLSB.copy()
-        ts, builder = ctlsb.plotTransferFunctionFit(num_zero=0, num_pole=2,
+        result = ctlsb.plotTransferFunctionFit(num_zero=0, num_pole=2,
                                                          figsize=FIGSIZE, times=np.linspace(0, 100, 1000),
                                                          fitter_method="poly", is_plot=IS_PLOT)
-        self.assertTrue(isinstance(ts, Timeseries))
-        self.assertTrue(isinstance(builder, AntimonyBuilder))
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
+        self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
 
     def testPlotSISOClosedLoop(self):
         if IGNORE_TEST:
@@ -134,13 +134,13 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = CTLSB.copy()
         setpoint = 5
         ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
+        result = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
                                             num_coordinate=5, num_process=10)
         # Show that kP, kI are now the defaults
         _ = ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
-        self.assertTrue(isinstance(ts, Timeseries))
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
 
     def testPlotDesignKwargs(self):
@@ -199,7 +199,7 @@ class TestControlSBML(unittest.TestCase):
         URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
         CTLSB = ControlSBML(URL, figsize=FIGSIZE, times=TIMES, markers=False,
                             input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
-        ts = CTLSB.plotModel(ax2=0, is_plot=IS_PLOT)
+        _ = CTLSB.plotModel(ax2=0, is_plot=IS_PLOT)
         # Define the system and plot response over a controlled range
         CTLSB = ControlSBML(URL, figsize=FIGSIZE, input_name=INPUT_NAME, output_name=OUTPUT_NAME,
                          times=np.linspace(0, 1000, 10000),
@@ -210,7 +210,7 @@ class TestControlSBML(unittest.TestCase):
             _ = CTLSB.plotTransferFunctionFit(figsize=FIGSIZE, num_zero=1, num_pole=2, initial_value=20, final_value=25,
                                             fit_start_time=200, is_plot=IS_PLOT)
             _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, kF=None, is_plot=IS_PLOT)
-        ts, builder = CTLSB.plotDesign(setpoint=150, kP_spec=True, kI_spec=True, kF_spec=False, 
+        _ = CTLSB.plotDesign(setpoint=150, kP_spec=True, kI_spec=True, kF_spec=False, 
                                        num_restart=1, is_plot=IS_PLOT)
         _ = CTLSB._plotClosedLoop(setpoint=120, kP=0.002, kI=0.019, is_plot=IS_PLOT)
         _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, is_plot=IS_PLOT)
@@ -235,7 +235,7 @@ class TestControlSBML(unittest.TestCase):
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
-        _, builder = ctlsb.plotTransferFunctionFit(num_zero=1, num_pole=2, initial_value=20, final_value=25,
+        _ = ctlsb.plotTransferFunctionFit(num_zero=1, num_pole=2, initial_value=20, final_value=25,
                                   fit_start_time=1000, times=np.linspace(0, 10000, 100000),
                                   is_plot=IS_PLOT)
         
@@ -323,7 +323,7 @@ class TestControlSBML(unittest.TestCase):
         times = np.linspace(0, 50, 500)
         WOLF_CTLSB = ControlSBML(cn.WOLF_PATH,
                         input_name="s1", output_name="s5", times=times)
-        df, builder = WOLF_CTLSB.plotDesign(kP_spec=.001, kI_spec=False, times=np.linspace(0, 5, 50), num_restart=1,
+        _ = WOLF_CTLSB.plotDesign(kP_spec=.001, kI_spec=False, times=np.linspace(0, 5, 50), num_restart=1,
                                        num_process=1, is_plot=IS_PLOT)
 
     def testBug6(self):

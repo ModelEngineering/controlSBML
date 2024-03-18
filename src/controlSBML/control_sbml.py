@@ -56,6 +56,7 @@ import controlSBML.constants as cn
 import controlSBML.msgs as msgs
 from controlSBML.grid import Grid
 
+from collections import namedtuple
 import os
 import control  # type: ignore
 import numpy as np
@@ -126,6 +127,13 @@ OPTION_KEYS = list(OPTION_DCT.keys())
 SIMULATION_KEYS = list(SIMULATION_DCT.keys())
 #
 SAVE_PATH = os.path.join(cn.DATA_DIR, "control_sbml.csv")
+
+# Returned results
+DesignResult = namedtuple("DesignResult", ["timeseries", "antimony_builder"])
+GridDesignResult = namedtuple("GridDesignResult", ["timeseries", "antimony_builder"])
+ModelResult = namedtuple("ModelResult", ["timeseries"])
+StaircaseResponseResult = namedtuple("StaircaseResponseResult", ["timeseries", "antimony_builder"])
+TransferFunctionFitResult = namedtuple("TransferFunctionFitResult", ["timeseries", "antimony_builder"]) 
 
 
 class ControlSBML(object):
@@ -428,13 +436,13 @@ class ControlSBML(object):
         # Calculate defaults if required
         if initial_value is None:
             if is_assign_from_simulation:
-                ts = self.plotModel(is_plot=False, selections=[input_name])
-                initial_value = ts[input_name].min()
+                result = self.plotModel(is_plot=False, selections=[input_name])
+                initial_value = result.timeseries[input_name].min()
             else:
                 initial_value = cn.DEFAULT_INITIAL_VALUE
         if final_value is None:
             if is_assign_from_simulation:
-                final_value = ts[input_name].max()
+                final_value = result.timeseries[input_name].max()
             else:
                 final_value = cn.DEFAULT_INITIAL_VALUE
         if num_step is None:
@@ -446,7 +454,7 @@ class ControlSBML(object):
     def plotModel(self, 
                   times:Optional[np.ndarray[float]]=None,
                   selections:Optional[List[str]]=None,
-                  **kwargs)->Timeseries:
+                  **kwargs)->ModelResult:
         """
         Plots the SBML model without modification.
 
@@ -456,7 +464,8 @@ class ControlSBML(object):
             kwargs: dict (plot options)
         
         Returns:
-            Timeseries
+            ModelResult
+                timeseries: Timeseries
         """
         options = list(PLOT_KEYS)
         options.extend(TIMES_KEYS)
@@ -471,15 +480,17 @@ class ControlSBML(object):
             selections = list(set(selections))
         data = self._roadrunner.simulate(times[0], times[-1], len(times), selections=selections)  # type: ignore
         ts = Timeseries(data)
-        util.plotOneTS(ts, **plot_dct)
-        return ts
+        is_plot = kwargs.get(cn.O_IS_PLOT, True)
+        if is_plot:
+            util.plotOneTS(ts, **plot_dct)
+        return ModelResult(timeseries=ts)
     
     def plotStaircaseResponse(self,
                               initial_value:Optional[float]=None,
                               final_value:Optional[float]=None,
                               num_step:Optional[int]=cn.DEFAULT_NUM_STEP,
                               times:Optional[np.ndarray]=None,
-                              **kwargs)->Tuple[Timeseries, AntimonyBuilder]:
+                              **kwargs)->StaircaseResponseResult:
         """
         Simulates the staircase response and plots it.
 
@@ -491,10 +502,9 @@ class ControlSBML(object):
             kwargs: dict (plot options)
 
         Returns:
-            Timeseries
-                index: time (ms)
-                columns: <output_name>, staircase
-            AntimonyBuilder
+            StaircaseResponseResult
+                timeseries: Timeseries
+                antimony_builder: AntimonyBuilder
         """
         self._checkKwargs(**kwargs, valids=PLOT_KEYS)
         times = self._getTimes(times=times)
@@ -505,7 +515,7 @@ class ControlSBML(object):
             staircase=staircase, is_steady_state=self.is_steady_state,
             )
         self._transfer_function_builder.plotStaircaseResponse(response_ts, **kwargs)
-        return response_ts, builder
+        return StaircaseResponseResult(timeseries=response_ts, antimony_builder=builder)
     
     def plotTransferFunctionFit(self,
             num_zero:int=cn.DEFAULT_NUM_ZERO,
@@ -517,7 +527,7 @@ class ControlSBML(object):
             num_step:Optional[int]=cn.DEFAULT_NUM_STEP,
             fitter_method:Optional[str]=cn.DEFAULT_FITTER_METHOD,
             times:Optional[np.ndarray]=None,
-            **kwargs):
+            **kwargs)->TransferFunctionFitResult:
         """
         Simulates the staircase response and plots it. Sets the fitter result.
 
@@ -535,8 +545,9 @@ class ControlSBML(object):
             kwargs: (plot options)
 
         Returns:
-            Timeseries (predicted, staircase)
-            AntimonyBuilder
+            TransferFunctionFitResult
+                timeseries: Timeseries (predicted, staircase input, simulated output)
+                antimony_builder: AntimonyBuilder
         """
         # Check the options
         self._checkKwargs(valids=PLOT_KEYS, **kwargs)
@@ -563,7 +574,10 @@ class ControlSBML(object):
                             num_pole=num_pole, staircase=staircase,
                             fit_start_time=fit_start_time, fit_end_time=fit_end_time,
                             **new_kwargs)
-        return self._fitter_result.time_series, self._fitter_result.antimony_builder
+        return TransferFunctionFitResult(
+                timeseries=self._fitter_result.time_series, 
+                antimony_builder=self._fitter_result.antimony_builder,
+        )
     
     def _plotClosedLoop(self, 
                         kP:Optional[float]=None, 
@@ -621,7 +635,7 @@ class ControlSBML(object):
                        num_process:Optional[int]=-1,
                        num_restart:Optional[int]=3,
                        selections:Optional[List[str]]=None,
-                       **kwargs):
+                       **kwargs)->GridDesignResult:
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
         Persists the closed loop design (kP, kI, kF) if a design is found.
@@ -635,8 +649,9 @@ class ControlSBML(object):
             selections: list-str (selections for the simulation)
             kwargs: dict (plot options)
         Returns:
-            Timeseries
-            AntimonyBuilder
+            GridDesignResult
+                timeseries: Timeseries
+                antimony_builder: AntimonyBuilder
         """
         save_path = None   # Disable "save_path" feature
         #
@@ -669,7 +684,7 @@ class ControlSBML(object):
                                  num_restart=num_restart)    # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")
-            return None, None
+            return GridDesignResult(timeseries=None, antimony_builder=None)
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
@@ -686,7 +701,7 @@ class ControlSBML(object):
                 kF=designer.kF,
                 selections=selections,
                 **options)
-        return response_ts, antimony_builder
+        return GridDesignResult(timeseries=response_ts, antimony_builder=antimony_builder)
 
     def plotDesign(self, 
                    kP_spec:bool=False, 
@@ -702,7 +717,7 @@ class ControlSBML(object):
                    num_process:int=-1,
                    times:Optional[np.ndarray]=None,
                    selections:Optional[List[str]]=None,
-                   **kwargs)->Tuple[Timeseries, AntimonyBuilder]:
+                   **kwargs)->DesignResult:
         """
         Plots the results of a closed loop design. The design is specified by the parameters kP_spec, kI_spec, and kF_spec.
            None or False: do not include the parameter
@@ -725,9 +740,11 @@ class ControlSBML(object):
             selections: list-str (selections for the simulation)
             kwargs: dict (plot options)
         Returns:
-            Timeseries
-            AntimonyBuilder
+            DesignResult
+                timeseries: Timeseries of the response
+                antimony_builder: AntimonyBuilder simulated with the design parameters
         """
+        #
         def setValue(val):
             if util.isNumber(val):
                 return val
@@ -784,7 +801,7 @@ class ControlSBML(object):
                 kF=designer.kF,
                 selections=selections,
                 **new_kwargs)
-        return response_ts, antimony_builder
+        return DesignResult(timeseries=response_ts, antimony_builder=antimony_builder)
     
     def _plotDesignResult(self, save_path:Optional[str]=None, **kwargs):
         """
