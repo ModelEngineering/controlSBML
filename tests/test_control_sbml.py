@@ -13,9 +13,9 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
+IGNORE_TEST = False
 IS_PLOT = False
-TIMES = np.linspace(0, 1000, 10000)
+TIMES = cn.TIMES
 FIGSIZE = (5, 5)
 SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
 LINEAR_MDL = """
@@ -91,7 +91,9 @@ class TestControlSBML(unittest.TestCase):
     def testPlotModel(self):
         if IGNORE_TEST:
             return
-        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE)
+        self.ctlsb = CTLSB.copy()
+        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S1", "S2", "S3"])
+        ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S2"])
         ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
         ts = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, markers=False)
         self.assertTrue(isinstance(ts, Timeseries))
@@ -99,6 +101,7 @@ class TestControlSBML(unittest.TestCase):
     def testPlotStaircaseResponse(self):
         if IGNORE_TEST:
             return
+        self.ctlsb = CTLSB.copy()
         self.ctlsb.setSystem(input_name="S1", output_name="S3")
         ts, builder = self.ctlsb.plotStaircaseResponse(is_plot=IS_PLOT, figsize=FIGSIZE,
                                                        times=np.linspace(0, 100, 1000))
@@ -118,8 +121,9 @@ class TestControlSBML(unittest.TestCase):
     def testPlotSISOClosedLoop(self):
         if IGNORE_TEST:
             return
-        self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb._plotClosedLoop(setpoint=3, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
+        ctlsb = CTLSB.copy()
+        ctlsb.setSystem(input_name="S1", output_name="S3")
+        ts, builder = ctlsb._plotClosedLoop(setpoint=3, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
@@ -127,13 +131,14 @@ class TestControlSBML(unittest.TestCase):
     def testPlotDesign(self):
         if IGNORE_TEST:
             return
+        ctlsb = CTLSB.copy()
         setpoint = 5
-        self.ctlsb.setSystem(input_name="S1", output_name="S3")
-        ts, builder = self.ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
+        ctlsb.setSystem(input_name="S1", output_name="S3")
+        ts, builder = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
-                                            num_coordinate=5, num_process=1)
+                                            num_coordinate=5, num_process=10)
         # Show that kP, kI are now the defaults
-        _ = self.ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
+        _ = ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(ts, Timeseries))
         self.assertTrue(isinstance(builder, AntimonyBuilder))
@@ -183,11 +188,11 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(self.ctlsb._transfer_function_builder, SISOTransferFunctionBuilder))
         self.assertTrue(isinstance(self.ctlsb.getAntimony(), str))
         self.assertTrue(isinstance(self.ctlsb.getClosedLoopTransferFunction(), control.TransferFunction))
-        self.assertTrue(isinstance(self.ctlsb._getOptions(), dict))
+        self.assertTrue(isinstance(self.ctlsb.getOptions(), dict))
 
     def testFullAPI(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         INPUT_NAME = "pIRS"
@@ -346,9 +351,10 @@ class TestControlSBML(unittest.TestCase):
             end
             """
         try:
-            ctlsb = ControlSBML(model, input_name="S0", output_name="S4") 
+            _ = ControlSBML(model, input_name="S0", output_name="S4") 
             self.assertTrue(True)
-        except:
+        except Exception as e:
+            print(e)
             self.assertTrue(False)
 
     def testBug7(self):

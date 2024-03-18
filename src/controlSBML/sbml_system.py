@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd  # type: ignore
 import numpy as np  # type: ignore
 import tellurium as te  # type: ignore
+from typing import Optional, List
 
 
 class SBMLSystem(object):
@@ -320,7 +321,10 @@ class SBMLSystem(object):
             self.setSteadyState()
         return self._simulate(start_time, end_time, num_point, is_steady_state, is_reload=False)
     
-    def _simulate(self, start_time, end_time, num_point, antimony_builder=None, is_steady_state=False, is_reload=False):
+    def _simulate(self, start_time:float, end_time:float, num_point:int, 
+                  antimony_builder:Optional[AntimonyBuilder]=None,
+                  selections:Optional[list]=None,
+                  is_steady_state:Optional[bool]=False, is_reload:Optional[bool]=False):
         """
         Simulates the system the roadrunner object.
 
@@ -330,17 +334,20 @@ class SBMLSystem(object):
         end_time: float
         num_point: int
         antimoney_builder: AntimonyBuilder
+        selections: list-str (names of species to be selected)
         is_steady_state: bool (start the simulation at steady state)
 
         Returns
         -------
         DataFrame
         """
-        if antimony_builder is None:
-            antimony_builder = self.antimony_builder
-        antimony = str(antimony_builder)
-        if antimony[-1] == "\n":
-            antimony = antimony[:-1]
+        # Set defaults
+        selections = [] if selections is None else selections
+        antimony_builder = self.antimony_builder if antimony_builder is None else antimony_builder
+        # Initializations
+        antimony_str = str(antimony_builder)
+        if antimony_str[-1] == "\n":
+            antimony_str = antimony_str[:-1]
         if is_reload:
             try:
                 self._roadrunner = te.loada(str(antimony_builder))
@@ -350,7 +357,7 @@ class SBMLSystem(object):
             self.roadrunner.reset()
         if is_steady_state:
             self.setSteadyState()
-        selections = list(self.input_names)
+        selections.extend(self.input_names)
         selections.extend(self.output_names)
         selections.insert(0, cn.TIME)
         data = self.roadrunner.simulate(float(start_time), float(end_time), num_point, selections=selections)
@@ -370,6 +377,7 @@ class SBMLSystem(object):
     def simulateSISOClosedLoop(self, input_name=None, output_name=None, kP=None, kI=None, kF=None, setpoint=1,
                                start_time=cn.START_TIME, end_time=cn.END_TIME, times=None, num_point=None,
                                is_steady_state=False, inplace=False, initial_input_value=None,
+                               selections:Optional[list[str]]=None,
                                sign=-1):
         """
         Simulates a closed loop system.
@@ -387,6 +395,7 @@ class SBMLSystem(object):
             num_point: int (overridden by times)
             inplace: bool (update the existing model with the closed loop statements)
             initial_input_value: float (initial value of the input)
+            selections: list-str (names of species to be selected)
             sign: float (sign of the feedback)
         Returns:
             Timeseries
@@ -418,11 +427,13 @@ class SBMLSystem(object):
                                          initial_output_value=initial_input_value, sign=sign)
         # Run the simulation
         result = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
-                            antimony_builder=builder, is_reload=True), builder
+                            antimony_builder=builder, is_reload=True, selections=selections), builder
         return result
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
-                 num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE, is_steady_state=True, inplace=True):
+                 num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE,
+                 selections:Optional[List[str]]=None,
+                 is_steady_state=True, inplace=True):
         """
         Adds events for the staircase.
         Args:
@@ -432,6 +443,8 @@ class SBMLSystem(object):
             final_value: float (value for final step)
             num_step: int (number of steps in staircase)
             num_point_in_step: int (number of points in each step)
+            selections: list-str (names of species to be selected)
+            is_steady_state: bool (start the simulation at steady state)
             inplace: bool (update the existing model with the Staircase statements)
         Returns:
             Timeseries
@@ -446,7 +459,8 @@ class SBMLSystem(object):
         builder.makeStaircase(input_name, times=times, initial_value=initial_value,
                                             num_step=num_step, final_value=final_value)
         ts = self._simulate(start_time=times[0], antimony_builder=builder, end_time=times[-1], num_point=len(times),
-                            is_steady_state=is_steady_state, is_reload=True)
+                            is_steady_state=is_steady_state, is_reload=True,
+                            selections=selections)
         return ts, builder
     
     @staticmethod 

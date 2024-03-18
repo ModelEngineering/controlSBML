@@ -623,13 +623,14 @@ def roundToDigits(number:float, num_digits:int=2):
     required_decimal = -int(log_number) + num_digits
     return np.round(number, required_decimal)
 
-def subsetDct(dct, keys):
+def subsetDct(dct:dict, keys:List[str], default:Optional[dict]=None)->dict:
     """
     Returns a subset of a dictionary.
 
     Args:
         dct: dict
         keys: list-str
+        default: dict (default values of subsetted keys)
     Returns:
         dict
     """
@@ -637,6 +638,8 @@ def subsetDct(dct, keys):
     for key in keys:
         if key in dct.keys():
             new_dct[key] = dct[key]
+        elif (default is not None) and (key in default.keys()):
+            new_dct[key] = default[key]
     return new_dct
 
 def differenceDct(dct1, dct2):

@@ -212,7 +212,7 @@ class SISOTransferFunctionFitter(object):
         self._setYAxColor(ax, "left", cn.SIMULATED_COLOR)
         self._setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax.set_title(title)
-        ax.set_title(latex, y=0.2, x=0.5, pad=-14, fontsize=14, loc="right")
+        ax.set_title(latex, y=0.3, x=0.8, fontsize=14, loc="right")
         ax.legend([self.output_name, cn.O_PREDICTED], loc="upper left")
         mgr.doPlotOpts()
         mgr.doFigOpts()

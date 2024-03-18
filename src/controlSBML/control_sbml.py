@@ -54,42 +54,77 @@ from controlSBML.make_roadrunner import makeRoadrunner
 from controlSBML import util
 import controlSBML.constants as cn
 import controlSBML.msgs as msgs
-from controlSBML.option_set import OptionSet
-from controlSBML.grid import Grid, Point
+from controlSBML.grid import Grid
 
 import os
 import control  # type: ignore
 import numpy as np
-from typing import List, Dict, Tuple, Optional
+from typing import List, Tuple, Optional
 
-PLOT_KWARGS = list(set(cn.PLOT_KWARGS).union(cn.FIG_KWARGS))
 SETPOINT = 1
-STAIRCASE_OPTIONS = [cn.O_INITIAL_VALUE, cn.O_FINAL_VALUE, cn.O_NUM_STEP]
-TIMES_OPTIONS = [cn.O_TIMES]
-CLOSED_LOOP_PARAMETERS = [cn.CP_KP, cn.CP_KI, cn.CP_KF, cn.O_SETPOINT, cn.O_SIGN]
-SYSTEM_SPECIFICATIONS = [cn.O_INPUT_NAME, cn.O_OUTPUT_NAME, cn.O_IS_FIXED_INPUT_SPECIES, cn.O_IS_STEADY_STATE,
-                        cn.FITTER_METHOD]
-PLOT_OPTIONS = list(cn.PLOT_KWARGS)
-PLOT_OPTIONS.extend(cn.FIG_KWARGS)
-PLOT_OPTIONS.append(cn.O_MARKERS)
-OPTIONS = STAIRCASE_OPTIONS + TIMES_OPTIONS + CLOSED_LOOP_PARAMETERS + PLOT_OPTIONS + SYSTEM_SPECIFICATIONS
-CONTROL_PARAMETERS = [cn.CP_KP, cn.CP_KI, cn.CP_KF]
 FIGSIZE = (5, 5)
-INITIAL_PLOT_OPTION_DCT = {cn.O_TITLE: "", cn.O_SUPTITLE: "", cn.O_WRITEFIG: False,
-                        cn.O_XLABEL: "time", cn.O_YLABEL: "concentration",
-                        cn.O_FIGSIZE: FIGSIZE,
-                        cn.O_IS_PLOT: True,
-                        cn.O_LEGEND_SPEC: None,
-                        cn.O_LEGEND_CRD: None,
-                        cn.O_YLIM: None,
-                        cn.O_XLIM: None,
-                        cn.O_XTICKLABELS: None,
-                        cn.O_YTICKLABELS: None,
-                        cn.O_AX: None,
-                        cn.O_AX2: None,
-                        cn.O_FIGURE: None,
-                        cn.O_MARKERS: False,
-                        }
+# Optional dictionaries
+TIMES_DCT = {
+    cn.O_TIMES: cn.TIMES,
+}
+STAIRCASE_DCT = {
+    cn.O_INITIAL_VALUE: 0,
+    cn.O_FINAL_VALUE: 10,
+    cn.O_NUM_STEP: 5,
+}
+SIMULATION_DCT = {
+    cn.O_END_TIME: cn.TIMES[-1],
+    cn.O_START_TIME: cn.TIMES[0],
+    cn.O_NUM_POINT: len(cn.TIMES),
+    cn.O_SELECTIONS: None,
+}
+CLOSED_LOOP_DCT = {
+    cn.CP_KP: 0, 
+    cn.CP_KI: 0, 
+    cn.CP_KF: 0, 
+    cn.O_SETPOINT: 1, 
+    cn.O_SIGN: -1,
+    cn.O_NUM_PROCESS: -1,
+    cn.O_NUM_RESTART: 3,
+    cn.O_KP_SPEC: False,
+    cn.O_KI_SPEC: False,
+    cn.O_KF_SPEC: False,
+    }
+SYSTEM_OPTION_DCT = {
+    cn.O_FITTER_METHOD: cn.DEFAULT_FITTER_METHOD,
+    cn.O_IS_FIXED_INPUT_SPECIES: True,
+    cn.O_IS_STEADY_STATE: False,
+    cn.O_IS_GREEDY: False,
+    cn.O_INPUT_NAME: None, 
+    cn.O_OUTPUT_NAME: None,
+    }
+PLOT_OPTION_DCT = { 
+    cn.O_AX: None,
+    cn.O_AX2: None,
+    cn.O_FIGURE: None,
+    cn.O_FIGSIZE: FIGSIZE,
+    cn.O_IS_PLOT: True,
+    cn.O_LEGEND_CRD: None,
+    cn.O_LEGEND_SPEC: None,
+    cn.O_MARKERS: False,
+    cn.O_SUPTITLE: "",
+    cn.O_TITLE: "",
+    cn.O_XLABEL: "time", cn.O_YLABEL: "concentration",
+    cn.O_XTICKLABELS: None,
+    cn.O_XLIM: None,
+    cn.O_YLIM: None,
+    cn.O_YTICKLABELS: None,
+    cn.O_WRITEFIG: False,
+    }
+OPTION_DCT = {**STAIRCASE_DCT, **TIMES_DCT, **CLOSED_LOOP_DCT, **SYSTEM_OPTION_DCT, **PLOT_OPTION_DCT,
+               **SIMULATION_DCT}
+# Option keywords
+PLOT_KEYS = list(PLOT_OPTION_DCT.keys())
+STAIRCASE_KEYS = list(STAIRCASE_DCT.keys())
+TIMES_KEYS = list(TIMES_DCT.keys())
+OPTION_KEYS = list(OPTION_DCT.keys())
+SIMULATION_KEYS = list(SIMULATION_DCT.keys())
+#
 SAVE_PATH = os.path.join(cn.DATA_DIR, "control_sbml.csv")
 
 
@@ -99,13 +134,13 @@ class ControlSBML(object):
                  roadrunner=None,
                  input_name:Optional[str]=None,
                  output_name:Optional[str]=None,
-                 is_fixed_input_species:Optional[bool]=False,
-                 is_steady_state:Optional[bool]=False,
-                 fitter_method:Optional[str]=cn.DEFAULT_FITTER_METHOD,
-                 setpoint:Optional[float]=SETPOINT,
-                 sign:Optional[int]=-1,
-                 times:Optional[np.ndarray[float]]=None,
-                 save_path:Optional[str]=None,
+                 is_fixed_input_species:Optional[bool]=OPTION_DCT[cn.O_IS_FIXED_INPUT_SPECIES],
+                 is_steady_state:Optional[bool]=OPTION_DCT[cn.O_IS_STEADY_STATE],
+                 fitter_method:Optional[str]=OPTION_DCT[cn.O_FITTER_METHOD],
+                 setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
+                 sign:Optional[int]=OPTION_DCT[cn.O_SIGN],
+                 times:Optional[np.ndarray[float]]=OPTION_DCT[cn.O_TIMES],
+                 save_path:Optional[str]=SAVE_PATH,
                  **kwargs):
         """
         model_reference: str
@@ -116,89 +151,86 @@ class ControlSBML(object):
         is_fixed_input_species: bool
         is_steady_state: bool
         save_path: str (path to file where results are saved after a design)
-        Plot options:
-            ax: axis for plot
-            figure: figure object
-            figsize: figure size (width, height)
-            is_plot: bool (plot if True)
-            markers: list-str (markers for plot lines; False, no markers)                                                                                       
-            suptitle: str (subtitle)
-            title: str (title)
-            xlabel: str (x label)
-            xlim: tupe-float (x lower limit, x upper limit)
-            xticklabels: list-float (labels for x ticks)
-            ylabel: str (y label)
-            ylim: tupe-float (y lower limit, y upper limit)
-            yticklabels: list-float (labels for y ticks)
-        System options:
-            input_name: str
-            is_steady_state: bool (start system in steady state; default: False)
-            is_fixed_input_species: bool (concentration of input species are controlled externally; default: False)
-            output_name: str
-        Closed loop options:
-            kF: float (filter constant)
-            kI: float (integral control)
-            kP: float (proportional control)
-            setpoint: float (regulation point)
-            sign: -1/+1 (direction of feedback: default: -1) 
-        Staircase options:
-            final_value: float (last value of input in staircase; default: maximum input value in SBML model)
-            initial_value: float (first value of input in staircase; default: minimum input value in SBML model)
-            num_step: int (number of steps in staircase; default: 5)
-        Miscellaneous options
-            times: list-float (times of simulation; default: np.linspace(0, 5, 50))
+        kwargs: dict with options listed below. These are the default options used unless overridden.
+            Plot options:
+                ax: axis for plot
+                figure: figure object
+                figsize: figure size (width, height)
+                is_plot: bool (plot if True)
+                markers: list-str (markers for plot lines; False, no markers)                                                                                       
+                suptitle: str (subtitle)
+                title: str (title)
+                xlabel: str (x label)
+                xlim: tupe-float (x lower limit, x upper limit)
+                xticklabels: list-float (labels for x ticks)
+                ylabel: str (y label)
+                ylim: tupe-float (y lower limit, y upper limit)
+                yticklabels: list-float (labels for y ticks)
+            System options:
+                input_name: str
+                is_steady_state: bool (start system in steady state; default: False)
+                is_fixed_input_species: bool (concentration of input species are controlled externally; default: False)
+                output_name: str
+            Closed loop options:
+                kF: float (filter constant)
+                kI: float (integral control)
+                kP: float (proportional control)
+                setpoint: float (regulation point)
+                sign: -1/+1 (direction of feedback: default: -1) 
+            Staircase options:
+                final_value: float (last value of input in staircase; default: maximum input value in SBML model)
+                initial_value: float (first value of input in staircase; default: minimum input value in SBML model)
+                num_step: int (number of steps in staircase; default: 5)
+            Miscellaneous options
+                times: list-float (times of simulation; default: np.linspace(0, 5, 50))
 
         """
-        self._checkKwargs(PLOT_OPTIONS, **kwargs)
+        self._checkKwargs(OPTION_KEYS, **kwargs)
+        # Set initial values of all options
+        for key, value in OPTION_DCT.items():  # type: ignore
+            new_value = kwargs.get(key, value)
+            setattr(self, key, new_value)
         # Initializations
         self.model_reference = model_reference
         if roadrunner is None:
             roadrunner = makeRoadrunner(model_reference)
         self._roadrunner = roadrunner
-        self.setpoint = setpoint
-        self.times = cn.TIMES if times is None else times
-        self.sign = sign
-        self.fitter_method = fitter_method
-        # Input and output names
+        # Other assignments
         self.input_name = input_name
         self.output_name = output_name
         self.is_fixed_input_species = is_fixed_input_species
         self.is_steady_state = is_steady_state
         self.save_path = save_path
+        self.fitter_method = OPTION_DCT[cn.O_FITTER_METHOD] if fitter_method is None else fitter_method
+        self.setpoint = OPTION_DCT[cn.O_SETPOINT] if setpoint is None else setpoint
+        self.sign = OPTION_DCT[cn.O_SIGN] if sign is None else sign
+        self.times = OPTION_DCT[cn.O_TIMES] if times is None else times
         # Internal state
         self._sbml_system, self._transfer_function_builder =  self.setSystem(input_name=input_name, output_name=output_name,
                        is_fixed_input_species=is_fixed_input_species, is_steady_state=is_steady_state)  # type: ignore
         self._fitter_result = cn.FitterResult()
-        # Options
-        for key, value in INITIAL_PLOT_OPTION_DCT.items():
-            setattr(self, key, value)
-        # Set initial values of options
-        self.ax = None
-        self.initial_value, self.final_value, self.num_step = self._initializeStaircaseOptions()
-        self.figure = kwargs.get(cn.O_FIGURE, None)
-        self.figsize = kwargs.get(cn.O_FIGSIZE, FIGSIZE)
-        self.is_greedy = kwargs.get(cn.O_IS_GREEDY, False)
-        self.is_plot = kwargs.get(cn.O_IS_PLOT, True)
-        self.is_fixed_input_species = kwargs.get(cn.O_IS_FIXED_INPUT_SPECIES, True)    
-        self.is_steady_state = kwargs.get(cn.O_IS_STEADY_STATE, False)
-        self.markers = kwargs.get(cn.O_MARKERS, False)
-        self.sign = kwargs.get(cn.O_SIGN, -1)
-        self.setpoint = kwargs.get(cn.O_SETPOINT, SETPOINT)
-        self.suptitle = kwargs.get(cn.O_SUPTITLE, "")
-        self.title = kwargs.get(cn.O_TITLE, "")
-        self.writefig = kwargs.get(cn.O_WRITEFIG, False)
-        # Outputs
-        self.kP = None
-        self.kI = None
-        self.kF = None
+        if False:
+            self.ax = None
+            self.figure = kwargs.get(cn.O_FIGURE, None)
+            self.figsize = kwargs.get(cn.O_FIGSIZE, FIGSIZE)
+            self.initial_value, self.final_value, self.num_step = self._initializeStaircaseOptions()
+            self.is_greedy = kwargs.get(cn.O_IS_GREEDY, False)
+            self.is_plot = kwargs.get(cn.O_IS_PLOT, True)
+            self.is_fixed_input_species = kwargs.get(cn.O_IS_FIXED_INPUT_SPECIES, True)    
+            self.is_steady_state = kwargs.get(cn.O_IS_STEADY_STATE, False)
+            self.markers = kwargs.get(cn.O_MARKERS, False)
+            self.setpoint = kwargs.get(cn.O_SETPOINT, SETPOINT)
+            self.sign = kwargs.get(cn.O_SIGN, -1)
+            self.suptitle = kwargs.get(cn.O_SUPTITLE, "")
+            self.title = kwargs.get(cn.O_TITLE, "")
+            self.writefig = kwargs.get(cn.O_WRITEFIG, False)
+            # Outputs
+            self.kP = None
+            self.kI = None
+            self.kF = None
         
     def copy(self):
-        options = list(PLOT_OPTIONS)
-        options.extend(["kP", "kI", "kF"])
-        kwargs = {}
-        for key in options:
-            kwargs[key] = getattr(self, key)
-        return ControlSBML(self.model_reference,
+        ctlsb = ControlSBML(self.model_reference,
                 roadrunner=self._roadrunner,
                 input_name=self.input_name,
                 output_name=self.output_name,
@@ -208,10 +240,12 @@ class ControlSBML(object):
                 setpoint=self.setpoint,
                 sign=self.sign,
                 times=self.times,
-                save_path=self.save_path,
-                    **kwargs)
+                save_path=self.save_path)
+        for key in cn.CONTROL_PARAMETERS:
+            setattr(ctlsb, key, getattr(self, key))
+        return ctlsb
     
-    def _checkKwargs(self, valids:Optional[List[str]]=OPTIONS, invalids:Optional[List[str]]=None,
+    def _checkKwargs(self, valids:Optional[List[str]]=OPTION_KEYS, invalids:Optional[List[str]]=None,
                      **kwargs):
         """
         Checks that the kwargs are valid.
@@ -233,7 +267,7 @@ class ControlSBML(object):
             return False
         if not self.model_reference == other.model_reference:
             return False
-        if not self._getOptions() == other._getOptions():
+        if not self.getOptions() == other.getOptions():
             return False
         if not self._fitter_result.equals(other._fitter_result):
             return False
@@ -276,21 +310,6 @@ class ControlSBML(object):
     def getPossibleOutputs(self):
         return self._sbml_system.getValidOutputs()
     
-    def _getOptions(self, options:Optional[dict]=None):
-        """
-        Gets current values of the options
-
-        Returns: dict. Keys are listed below by category.
-            STAIRCASE_OPTIONS: initial_value, final_value, num_step
-            TIMES_OPTIONS: times
-            CLOSED_LOOP_PARAMETERS: kP, kI, kF, setpoint, sign
-            PLOT_OPTIONS: ax ax2 end_time figure figsize is_plot
-                            suptitle title writefig xlabel xlim xticklabels ylabel ylim yticklabels 
-        """
-        if options is None:
-            option_lst = OPTIONS
-        return {k: getattr(self, k) for k in option_lst}
-    
     def _getTimes(self, **kwargs)->np.ndarray:
         times = kwargs.get(cn.O_TIMES, self.times)
         if times is None:
@@ -302,9 +321,11 @@ class ControlSBML(object):
 
     def _getStaircase(self, initial_value:Optional[float]=None,
                       final_value:Optional[float]=None, num_step:Optional[int]=None):
-        initial_value = self.initial_value if initial_value is None else initial_value
-        final_value = self.final_value if final_value is None else final_value
-        num_step = self.num_step if num_step is None else num_step
+        dct = self.getOptions(keys=STAIRCASE_KEYS, 
+                              initial_value=initial_value, final_value=final_value, num_step=num_step)
+        initial_value = dct[cn.O_INITIAL_VALUE]
+        final_value = dct[cn.O_FINAL_VALUE]
+        num_step = dct[cn.O_NUM_STEP]
         return Staircase(initial_value=initial_value, final_value=final_value,
                          num_step=num_step, num_point=len(self.times))
     
@@ -324,7 +345,7 @@ class ControlSBML(object):
         kP = 0
         kI = 0
         kF = 0
-        for parameter_name in CONTROL_PARAMETERS:
+        for parameter_name in cn.CONTROL_PARAMETERS:
             parameter = getattr(self, parameter_name)
             if parameter is not None:
                 if not util.isNumber(parameter):
@@ -349,14 +370,6 @@ class ControlSBML(object):
         return stg
 
     ############ SETTERS ##############
-    def _setOptions(self, **kwargs):
-        """
-        Sets values of options.
-
-        Args:
-            kwargs: dict of options
-        """
-        self.setOptionSet(**kwargs)
 
     def setSystem(self, input_name:Optional[str]=None, output_name:Optional[str]=None,
                   is_fixed_input_species:bool=True,
@@ -386,6 +399,16 @@ class ControlSBML(object):
         self._sbml_system = sbml_system
         self._transfer_function_builder = builder
         return sbml_system, builder
+    
+    def setOption(self, key:str, value:object):
+        """
+        Sets an option.
+
+        Args:
+            key: str
+            value: object
+        """
+        setattr(self, key, value)
 
     def _initializeStaircaseOptions(self, initial_value=None, final_value=None, num_step=cn.DEFAULT_NUM_STEP):
         """
@@ -405,7 +428,7 @@ class ControlSBML(object):
         # Calculate defaults if required
         if initial_value is None:
             if is_assign_from_simulation:
-                ts = self.plotModel(is_plot=False)
+                ts = self.plotModel(is_plot=False, selections=[input_name])
                 initial_value = ts[input_name].min()
             else:
                 initial_value = cn.DEFAULT_INITIAL_VALUE
@@ -417,39 +440,38 @@ class ControlSBML(object):
         if num_step is None:
             num_step = cn.DEFAULT_NUM_STEP
         return initial_value, final_value, num_step
+  
 
     ############ PLOTTERS ##############
     def plotModel(self, 
                   times:Optional[np.ndarray[float]]=None,
+                  selections:Optional[List[str]]=None,
                   **kwargs)->Timeseries:
         """
         Plots the SBML model without modification.
 
         Args:
             times: numpy array (times of simulation)
+            selections: list-str (selections for simulation)
             kwargs: dict (plot options)
         
         Returns:
             Timeseries
         """
-        options = list(PLOT_OPTIONS)
-        options.append(cn.O_IS_PLOT)
-        options.extend(TIMES_OPTIONS)
+        options = list(PLOT_KEYS)
+        options.extend(TIMES_KEYS)
         self._checkKwargs(options, **kwargs)
-        is_plot = kwargs.get(cn.O_IS_PLOT, True)
+        plot_dct = self.getOptions(keys=PLOT_KEYS, **kwargs)
         times = kwargs.get(cn.O_TIMES, self.times)
+        #
         self._roadrunner.reset()
-        if (self.input_name is None) and (not "input_name" in kwargs.keys()):
-            selections = None
-        else:
-            selections = [cn.TIME, self.input_name, self.output_name]
+        self._roadrunner.resetSelectionLists()
+        if selections is not None:
+            selections.extend([cn.TIME])    # type: ignore
+            selections = list(set(selections))
         data = self._roadrunner.simulate(times[0], times[-1], len(times), selections=selections)  # type: ignore
         ts = Timeseries(data)
-        new_kwargs = dict(kwargs)
-        if cn.O_TIMES in new_kwargs:
-            new_kwargs.pop(cn.O_TIMES)
-        if is_plot:
-            util.plotOneTS(ts, markers=self.markers, **kwargs)
+        util.plotOneTS(ts, **plot_dct)
         return ts
     
     def plotStaircaseResponse(self,
@@ -474,7 +496,7 @@ class ControlSBML(object):
                 columns: <output_name>, staircase
             AntimonyBuilder
         """
-        self._checkKwargs(**kwargs, valids=PLOT_OPTIONS)
+        self._checkKwargs(**kwargs, valids=PLOT_KEYS)
         times = self._getTimes(times=times)
         initial_value, final_value, num_step = self._initializeStaircaseOptions(initial_value=initial_value,
             final_value=final_value, num_step=num_step)
@@ -517,7 +539,7 @@ class ControlSBML(object):
             AntimonyBuilder
         """
         # Check the options
-        self._checkKwargs(valids=PLOT_OPTIONS, **kwargs)
+        self._checkKwargs(valids=PLOT_KEYS, **kwargs)
         # Setup values
         times = self.times if times is None else times
         fitter_method = self.fitter_method if fitter_method is None else fitter_method
@@ -549,6 +571,7 @@ class ControlSBML(object):
                         kF:Optional[float]=None, 
                         sign:Optional[int]=None,
                         setpoint:Optional[float]=None,
+                        selections:Optional[List[str]]=None,
                         times:Optional[np.ndarray]=None,
                         **kwargs):
         """
@@ -561,22 +584,27 @@ class ControlSBML(object):
             sign: int (direction of feedback: -1 or 1)
             setpoint: float (regulation point)
             times: numpy array (times of simulation)
+            selections: list-str (selections for simulation)
             kwargs: plot options
         Returns:
             Timeseries
             AntimonyBuilder
         """
-        self._checkKwargs(PLOT_OPTIONS, **kwargs)
+        self._checkKwargs(PLOT_KEYS, **kwargs)
         #
         # Construct the SBML system
-        sign = self.sign if sign is None else sign
-        kP = self.kP if kP is None else kP
-        kI = self.kI if kI is None else kI
-        kF = self.kF if kF is None else kF
-        setpoint = self.setpoint if setpoint is None else setpoint
+        dct = self.getOptions(sign=sign, setpoint=setpoint, kP=kP, kI=kI, kF=kF,
+                              times=times, selections=selections)
+        sign = dct[cn.O_SIGN]
+        setpoint = dct[cn.O_SETPOINT]
+        kP = dct[cn.CP_KP]
+        kI = dct[cn.CP_KI]
+        kF = dct[cn.CP_KF]
+        times = dct[cn.O_TIMES]
+        # Plot the response
         response_ts, builder = self._sbml_system.simulateSISOClosedLoop(input_name=self.input_name,
                 output_name=self.output_name, sign=sign,
-                kP=kP, kI=kI, kF=kF, setpoint=setpoint,
+                kP=kP, kI=kI, kF=kF, setpoint=setpoint, selections=selections,
                 times=times,
                 )
         if (not cn.O_TITLE in kwargs) or (len(kwargs[cn.O_TITLE]) == 0):
@@ -592,6 +620,7 @@ class ControlSBML(object):
                        times:Optional[np.ndarray]=None,
                        num_process:Optional[int]=-1,
                        num_restart:Optional[int]=3,
+                       selections:Optional[List[str]]=None,
                        **kwargs):
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
@@ -603,6 +632,7 @@ class ControlSBML(object):
             sign: float (direction of feedback: -1 or 1)
             times: numpy array (times of simulation)
             num_process: int (number of processes to use; -1 means use all available)
+            selections: list-str (selections for the simulation)
             kwargs: dict (plot options)
         Returns:
             Timeseries
@@ -610,11 +640,16 @@ class ControlSBML(object):
         """
         save_path = None   # Disable "save_path" feature
         #
-        self._checkKwargs(PLOT_OPTIONS, **kwargs)
+        self._checkKwargs(PLOT_KEYS, **kwargs)
+        option_dct = self.getOptions(sign=sign, setpoint=setpoint, times=times, selections=selections,
+                                     num_process=num_process, num_restart=num_restart)
         # Initialize parameters
-        setpoint = self.setpoint if setpoint is None else setpoint
-        sign = self.sign if sign is None else sign
-        times = self._getTimes(**kwargs)
+        setpoint = option_dct[cn.O_SETPOINT]
+        sign = option_dct[cn.O_SIGN]
+        times = option_dct[cn.O_TIMES]
+        selections = option_dct[cn.O_SELECTIONS]
+        num_process = option_dct[cn.O_NUM_PROCESS]
+        num_restart = option_dct[cn.O_NUM_RESTART]
         if save_path is not None:
             if len(save_path) == 0:
                 save_path = self.save_path
@@ -636,18 +671,20 @@ class ControlSBML(object):
             msgs.warn("No design found!")
             return None, None
         # Persist the design parameters
-        self.kP = designer.kP
-        self.kI = designer.kI
-        self.kF = designer.kF
-        options = dict(kwargs)
+        self.setOption(cn.CP_KP, designer.kP)
+        self.setOption(cn.CP_KI, designer.kI)
+        self.setOption(cn.CP_KF, designer.kF)
+        # Plot the results 
+        options = self.getOptions(keys=PLOT_KEYS, **kwargs)
         options[cn.O_YLABEL] = self.output_name if not cn.O_YLABEL in kwargs else kwargs[cn.O_YLABEL]
         response_ts, antimony_builder = self._plotClosedLoop(
                 times=times,
                 setpoint=setpoint,
                 sign=self.sign,
-                kP=self.kP,
-                kI=self.kI,
-                kF=self.kF,
+                kP=designer.kP,
+                kI=designer.kI,
+                kF=designer.kF,
+                selections=selections,
                 **options)
         return response_ts, antimony_builder
 
@@ -663,7 +700,8 @@ class ControlSBML(object):
                    num_coordinate:int=3,
                    is_report:bool=False, 
                    num_process:int=-1,
-                   times:Optional[np.ndarray]=None, 
+                   times:Optional[np.ndarray]=None,
+                   selections:Optional[List[str]]=None,
                    **kwargs)->Tuple[Timeseries, AntimonyBuilder]:
         """
         Plots the results of a closed loop design. The design is specified by the parameters kP_spec, kI_spec, and kF_spec.
@@ -683,6 +721,8 @@ class ControlSBML(object):
             num_coordinate: int (number of coordinate descent iterations)
             is_report: bool (report progress on the design search)
             times: numpy array (times of simulation)
+            num_process: int (number of processes to use; -1 means use all available)
+            selections: list-str (selections for the simulation)
             kwargs: dict (plot options)
         Returns:
             Timeseries
@@ -693,10 +733,23 @@ class ControlSBML(object):
                 return val
             return 0.0
         #
-        times = self.times if times is None else times
-        setpoint = self.setpoint if setpoint is None else setpoint
-        sign = self.sign if sign is None else sign
-        self._checkKwargs(PLOT_OPTIONS, **kwargs)
+        self._checkKwargs(PLOT_KEYS, **kwargs)
+        option_dct = self.getOptions(kP_spec=kP_spec, kI_spec=kI_spec, kF_spec=kF_spec,
+                                     setpoint=setpoint, sign=sign,
+                                     is_report=is_report,
+                                     num_process=num_process,
+                                     times=times,
+                                     selections=selections)
+        times = option_dct[cn.O_TIMES]
+        setpoint = option_dct[cn.O_SETPOINT]
+        sign = option_dct[cn.O_SIGN]
+        is_greedy = option_dct[cn.O_IS_GREEDY]
+        sign=option_dct[cn.O_SIGN]
+        kP_spec = option_dct[cn.O_KP_SPEC]
+        kI_spec = option_dct[cn.O_KI_SPEC]
+        kF_spec = option_dct[cn.O_KF_SPEC]
+        num_process = option_dct[cn.O_NUM_PROCESS]
+        selections = option_dct[cn.O_SELECTIONS]
         #
         designer = SISOClosedLoopDesigner(self._sbml_system, self.getOpenLoopTransferFunction(),
                 is_steady_state=self.is_steady_state,
@@ -708,14 +761,14 @@ class ControlSBML(object):
                 save_path=self.save_path)
         designer.design(kP_spec=kP_spec, kI_spec=kI_spec, kF_spec=kF_spec,
                 num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
-            num_coordinate=num_coordinate, is_greedy=self.is_greedy, is_report=is_report, num_process=num_process)
+            num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return None, None  # type: ignore
         # Persist the design parameters
-        self.kP = designer.kP
-        self.kI = designer.kI
-        self.kF = designer.kF
+        self.setOption(cn.CP_KP, designer.kP)
+        self.setOption(cn.CP_KI, designer.kI)
+        self.setOption(cn.CP_KF, designer.kF)
         # Plot the results
         title = "" if not cn.O_TITLE in kwargs else kwargs[cn.O_TITLE]
         if len(title) == 0:
@@ -726,9 +779,10 @@ class ControlSBML(object):
                 times=times,
                 setpoint=setpoint,
                 sign=sign,  # type: ignore
-                kP=self.kP,
-                kI=self.kI,
-                kF=self.kF,
+                kP=designer.kP,
+                kI=designer.kI,
+                kF=designer.kF,
+                selections=selections,
                 **new_kwargs)
         return response_ts, antimony_builder
     
@@ -742,7 +796,7 @@ class ControlSBML(object):
             AntimonyBuilder
         """
         valids = ["save_path"]
-        valids = list(set(valids).union(PLOT_OPTIONS))
+        valids = list(set(valids).union(PLOT_KEYS))
         self._checkKwargs(**kwargs)
         if save_path is None:
             save_path = self.save_path
@@ -751,3 +805,26 @@ class ControlSBML(object):
             msgs.warn("No design found!")
             return None, None
         return designer.plotDesignResult(**kwargs)
+    
+    ############## MISC ################
+    def getOptions(self, keys=None, **kwargs)->dict:
+        """
+        Optons the options in the object.
+            STAIRCASE_OPTIONS: initial_value, final_value, num_step
+            TIMES_OPTIONS: times
+            CLOSED_LOOP_PARAMETERS: kP, kI, kF, setpoint, sign
+            PLOT_OPTIONS: ax ax2 end_time figure figsize is_plot
+                            suptitle title writefig xlabel xlim xticklabels ylabel ylim yticklabels 
+        Args:
+            keys: list-str (keys in the dictionary returned)
+            kwargs: dict (plot options)
+        Returns:
+            dict
+        """
+        keys = OPTION_KEYS if keys is None else keys
+        new_kwargs = {}
+        # FIXME: Doesn't allow user to change option to None
+        for key in keys:
+            new_kwargs[key] = getattr(self, key) if not key in kwargs.keys() else kwargs[key]
+            new_kwargs[key] = getattr(self, key) if new_kwargs[key] is None else new_kwargs[key]
+        return new_kwargs

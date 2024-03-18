@@ -72,6 +72,15 @@ class TestFunctions(unittest.TestCase):
         self.assertTrue(len(subset) == 2)
         self.assertTrue("b" not in subset)
 
+    def testSubsetDct2(self):
+        if IGNORE_TEST:
+          return
+        dct = {"a": 1, "b": 2}
+        subset = util.subsetDct(dct, ["a", "c"], {"c": 3})
+        self.assertTrue(len(subset) == 2)
+        self.assertTrue("b" not in subset)
+        self.assertTrue(subset["c"] == 3)
+
     def testDifferenceDct(self):
         if IGNORE_TEST:
           return
