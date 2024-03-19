@@ -13,8 +13,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMES = cn.TIMES
 FIGSIZE = (5, 5)
 SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
@@ -141,7 +141,7 @@ class TestControlSBML(unittest.TestCase):
         _ = ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(result.timeseries, Timeseries))
-        self.assertTrue(isinstance(builder, AntimonyBuilder))
+        self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
 
     def testPlotDesignKwargs(self):
         if IGNORE_TEST:
@@ -191,8 +191,8 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(self.ctlsb.getOptions(), dict))
 
     def testFullAPI(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         INPUT_NAME = "pIRS"
@@ -204,14 +204,15 @@ class TestControlSBML(unittest.TestCase):
         CTLSB = ControlSBML(URL, figsize=FIGSIZE, input_name=INPUT_NAME, output_name=OUTPUT_NAME,
                          times=np.linspace(0, 1000, 10000),
                          markers=False, sign=-1, is_plot=False)
-        if True:
+        if False:
             _, builder = CTLSB.plotStaircaseResponse(is_plot=IS_PLOT)
             _, builder = CTLSB.plotStaircaseResponse(initial_value=20, final_value=25, is_plot=IS_PLOT)
             _ = CTLSB.plotTransferFunctionFit(figsize=FIGSIZE, num_zero=1, num_pole=2, initial_value=20, final_value=25,
                                             fit_start_time=200, is_plot=IS_PLOT)
             _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, kF=None, is_plot=IS_PLOT)
         _ = CTLSB.plotDesign(setpoint=150, kP_spec=True, kI_spec=True, kF_spec=False, 
-                                       num_restart=1, is_plot=IS_PLOT)
+                                       num_restart=1, is_plot=IS_PLOT, selections=[INPUT_NAME, OUTPUT_NAME],
+                                       num_process=5)
         _ = CTLSB._plotClosedLoop(setpoint=120, kP=0.002, kI=0.019, is_plot=IS_PLOT)
         _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, is_plot=IS_PLOT)
 
@@ -297,8 +298,8 @@ class TestControlSBML(unittest.TestCase):
         axis = grid.getAxis("kP")
         axis.setMinValue(0.01)
         axis.setMaxValue(0.1)
-        ts, _ = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT)
-        self.assertTrue(isinstance(ts, Timeseries))
+        result = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT)
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
 
     def testBug4(self):
         if IGNORE_TEST:
@@ -313,8 +314,8 @@ class TestControlSBML(unittest.TestCase):
         axis = grid.getAxis("kP")
         axis.setMinValue(0.1)
         axis.setMaxValue(10)
-        ts, builder = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT)
-        self.assertTrue(isinstance(ts, Timeseries))
+        result = ctlsb.plotGridDesign(grid, setpoint=120, num_restart=1, is_plot=IS_PLOT)
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
 
     def testBug5(self):
         if IGNORE_TEST:

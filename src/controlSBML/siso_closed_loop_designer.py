@@ -36,8 +36,8 @@ LOWPASS_POLE = 1e4 # Pole for low pass filter
 PARAMETER_DISPLAY_DCT = {CP_kP: r'$k_p$', CP_kI: r'$k_i$', CP_kF: r'$k_f$'}
 
 Workunit = collections.namedtuple("Workunit",
-    "system input_name output_name setpoint times is_greedy num_restart is_report")    
-
+    "system input_name output_name setpoint times is_greedy num_restart is_report") 
+DesignResult = collections.namedtuple("DesignResult", "dataframe")
 
 def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=None, kI=None, kD=None, kF=None, sign=-1):
     # Construct the transfer functions
@@ -233,7 +233,7 @@ class SISOClosedLoopDesigner(object):
 
     def design(self, kP_spec=False, kI_spec=False, kF_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
-               num_coordinate=3, save_path=None, num_process:int=-1, is_report:bool=False):
+               num_coordinate=3, save_path=None, num_process:int=-1, is_report:bool=False)->DesignResult:
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -246,6 +246,8 @@ class SISOClosedLoopDesigner(object):
             save_path: str (path to save the results)
             is_report: bool (provide progress report)
             num_process: int (number of processes to use)
+        Returns:
+            DesignResult
         """
         def addAxis(grid, parameter_name, parameter_spec):
             """
@@ -274,7 +276,7 @@ class SISOClosedLoopDesigner(object):
                                     num_process=num_process)
 
     def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1,
-                        is_report:bool=False, num_process:int=-1):
+                        is_report:bool=False, num_process:int=-1)->DesignResult:
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
 
@@ -284,7 +286,15 @@ class SISOClosedLoopDesigner(object):
             num_restart: int (number of times to start the search) 
             is_report: bool (provide progress report)
             num_proc: int (number of processes to use; -1 means use all available processors)
+        Returns:
+            DesignResult
         """
+        def getValue(val):
+            if isinstance(val, pd.Series):
+                return np.mean(val)
+            else:
+                return float(val)
+        #
         point_evaluator = PointEvaluator(self.system.copy(), self.input_name, self.output_name, 
                                             self.setpoint, self.times, is_greedy=is_greedy)
         parallel_search = ParallelSearch(point_evaluator, grid.points, num_process=num_process, is_report=is_report) # type: ignore
@@ -292,26 +302,25 @@ class SISOClosedLoopDesigner(object):
         for _ in range(num_restart):
             parallel_search.search()
             search_results.append(parallel_search.getSearchResults())
+        if len(search_results) == 0:
+            df = pd.DataFrame([[None, None, None, None]], columns=[CP_kP, CP_kI, CP_kF, cn.SCORE])
+            return DesignResult(dataframe=df)
         # Merge the results and sort by score
         search_result_df = pd.concat(search_results)
-        search_result_df = search_result_df.reset_index()
-        if len(search_result_df) == 0:
-            self.kP, self.kI, self.kF = None, None, None
-            return
-        # Have search results
-        search_result_df = search_result_df.sort_values(cn.SCORE)
-        search_result_df = search_result_df.reset_index()
+        search_result_df = search_result_df.sort_values(cn.SCORE, ascending=True)  # type: ignore
+        search_result_df = search_result_df.reset_index(drop=True)
         # Record the result
         self.residual_mse = search_result_df.loc[0, cn.SCORE]
         if CP_kP in search_result_df.columns:
-            self.kP = search_result_df.loc[0, CP_kP]
+            self.kP = getValue(search_result_df.loc[0, CP_kP])
         if CP_kI in search_result_df.columns:
-            self.kI = search_result_df.loc[0, CP_kI]
+            self.kI = getValue(search_result_df.loc[0, CP_kI])
         if CP_kF in search_result_df.columns:
-            self.kF = search_result_df.loc[0, CP_kF]
+            self.kF = getValue(search_result_df.loc[0, CP_kF])
         # Save the results
         if self.save_path is not None:
             search_result_df.to_csv(self.save_path, index=False)
+        return DesignResult(dataframe=search_result_df)
 
     @property
     def design_result_df(self):

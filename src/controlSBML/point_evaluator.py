@@ -78,13 +78,15 @@ class PointEvaluator(Evaluator):
                         input_name=self.input_name, output_name=self.output_name,
                         times=self.times,
                         is_steady_state=self.sbml_system.is_steady_state, inplace=False,
-                        **parameter_dct)
+                        **parameter_dct)  # type: ignore
         except Exception as error:
             if "CVODE" in str(error):
                 return False, None
             else:
                 raise ValueError(str(error))
         # Check for large outputs
+        if response_ts is None:
+            return False, None
         outputs = response_ts[self.output_name].values
         max_value = np.max([np.max(outputs), np.abs(np.min(outputs))])
         min_value = np.min([np.max(outputs), np.abs(np.min(outputs))])

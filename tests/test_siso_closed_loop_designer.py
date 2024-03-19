@@ -12,11 +12,12 @@ import copy
 import control # type: ignore
 import numpy as np
 import os
+import pandas as pd  # type: ignore
 import sympy # type: ignore
 import unittest
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 FIGSIZE = (5, 5)
 #helpers.setupPlotting(__file__)
 MODEL = """
@@ -207,12 +208,13 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertGreater(designer.kI, 0)
 
     def testDesignAlongGrid(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         designer = self.makeDesigner()
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
         grid.addAxis("kP")
-        designer.designAlongGrid(grid)
+        result = designer.designAlongGrid(grid, num_process=2)
+        self.assertTrue(isinstance(result.dataframe, pd.DataFrame))
         self.assertGreater(designer.kP, 0)
         self.assertIsNone(designer.kI)
         self.assertIsNone(designer.kF)

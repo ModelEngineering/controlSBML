@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd  # type: ignore
 import numpy as np  # type: ignore
 import tellurium as te  # type: ignore
-from typing import Optional, List
+from typing import Optional, List, Tuple
 
 
 class SBMLSystem(object):
@@ -339,7 +339,7 @@ class SBMLSystem(object):
 
         Returns
         -------
-        DataFrame
+        Timeseries
         """
         # Set defaults
         selections = [] if selections is None else selections
@@ -359,9 +359,13 @@ class SBMLSystem(object):
             self.setSteadyState()
         selections.extend(self.input_names)
         selections.extend(self.output_names)
+        selections = list(set(selections))
         selections.insert(0, cn.TIME)
-        data = self.roadrunner.simulate(float(start_time), float(end_time), num_point, selections=selections)
-        ts = Timeseries(data)
+        try:
+            data = self.roadrunner.simulate(float(start_time), float(end_time), num_point, selections=selections)
+            ts = Timeseries(data)
+        except Exception as exp:
+            ts = None
         return ts
     
     def isInitialized(self)->bool:
@@ -378,7 +382,7 @@ class SBMLSystem(object):
                                start_time=cn.START_TIME, end_time=cn.END_TIME, times=None, num_point=None,
                                is_steady_state=False, inplace=False, initial_input_value=None,
                                selections:Optional[list[str]]=None,
-                               sign=-1):
+                               sign=-1)->Tuple[Timeseries, AntimonyBuilder]:
         """
         Simulates a closed loop system.
 
@@ -426,9 +430,9 @@ class SBMLSystem(object):
         builder.makeSISOClosedLoopSystem(new_input_name, output_name, kP=kP, kI=kI, kF=kF, setpoint=setpoint,
                                          initial_output_value=initial_input_value, sign=sign)
         # Run the simulation
-        result = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
-                            antimony_builder=builder, is_reload=True, selections=selections), builder
-        return result
+        ts = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
+                            antimony_builder=builder, is_reload=True, selections=selections)
+        return ts, builder
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
                  num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE,
