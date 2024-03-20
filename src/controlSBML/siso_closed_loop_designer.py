@@ -264,7 +264,7 @@ class SISOClosedLoopDesigner(object):
                 if parameter_spec:
                     grid.addAxis(parameter_name, min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
                 return
-            if isinstance(parameter_spec, float):
+            if util.isNumber(parameter_spec):
                 grid.addAxis(parameter_name, min_value=parameter_spec, max_value=parameter_spec, num_coordinate=1)
         # Initializations
         grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)

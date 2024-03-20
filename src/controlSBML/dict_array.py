@@ -8,7 +8,7 @@
     len(dl)        # Returns the length of the lists
 """
 
-import pandas as pd
+import pandas as pd # type: ignore
 import numpy as np
 from typing import List
 
@@ -87,7 +87,7 @@ class DictArray(dict):
         Args:
             kwargs: dict of key, value pairs
         """
-        fill_list = list(np.repeat(None, len(self)))
+        fill_list = list(np.repeat(None, len(self)))   # type: ignore
         for key, value in kwargs.items():
             if not key in self.keys():
                 self[key] = list(fill_list)
@@ -149,8 +149,8 @@ class DictArray(dict):
         keys = list(set(keys))
         # Process the lists
         for dl in dict_lists:
-            merged_fills = list(np.repeat(None, len(merged_dl)))
-            dl_fills = list(np.repeat(None, len(dl)))
+            merged_fills = list(np.repeat(None, len(merged_dl)))   # type: ignore
+            dl_fills = list(np.repeat(None, len(dl)))             # type: ignore
             for key in keys:
                 if not key in merged_dl.keys():
                     merged_dl[key] = list(merged_fills)

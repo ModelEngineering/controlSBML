@@ -248,7 +248,6 @@ class Grid(object):
             self._points = list(self._iteratePoints())
         return self._points
 
-    # FIXME: Not correctly handling case of 1 coordinate
     def _iteratePoints(self):
         """
         Creates an iterator that returns a point.
@@ -256,11 +255,9 @@ class Grid(object):
         Returns:
             Point
         """
-        index_lists = [list(range(self.axis_dct[p].num_coordinate)) for p in self.axis_dct.keys()]
-        for indices in itertools.product(*index_lists):
-            dct = {}
-            for idx, name in enumerate(self.axis_dct.keys()):
-                dct[name] = indices[idx]
+        lsts = [a.coordinates for a in self.axis_dct.values()]
+        for point_values in itertools.product(*lsts):
+            dct = {n: v for n, v in zip(self.axis_dct.keys(), point_values)}
             yield Point(**dct)
 
     def getAxis(self, parameter_name:str)->Axis:

@@ -143,13 +143,14 @@ class TestSBMLSystem(unittest.TestCase):
         self.assertFalse(system == self.system)
 
     def testPlotSISOClosedLoop(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=False)
         setpoint = 5
         ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kP=2, kI=0.8, kF=0.5,
                                            setpoint=setpoint, end_time=100, num_point=1000)
-        self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), title="Closed Loop", is_plot=IS_PLOT)
+        self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), markers=["+", "o"],
+                                       title="Closed Loop", is_plot=IS_PLOT)
 
     def testGetValidSymbolsInput(self):
         if IGNORE_TEST:

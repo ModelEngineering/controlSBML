@@ -113,6 +113,7 @@ O_IS_PLOT = "is_plot"
 O_LEGEND_CRD = "legend_crd"  # Legend coordinate
 O_LEGEND_SPEC = "legend_spec"
 O_MARKERS = "markers"
+O_MARKERSIZE = "markersize"
 O_NUM_POINT = "num_point"
 O_NUM_PROCESS = "num_process"
 O_NUM_RESTART = "num_restart"
@@ -206,9 +207,11 @@ SIM_DCT = dict(
       final_value=DEFAULT_FINAL_VALUE,
       )
 # Options for a single plot
-PLOT_DCT = dict(
+PLOT_DCT:dict = dict(
       legend_spec=None,
       legend_crd=None,
+      markers=None,
+      markersize=8,
       ylim=None,
       xlim=None,
       xlabel="",
@@ -236,6 +239,8 @@ KWARGS = [
     Kwarg(O_AX, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting axis"),
     Kwarg(O_AX2, default=None, dtype=matplotlib.pyplot.axes, doc="Plotting 2nd axis"),
     Kwarg(O_END_TIME, default=10, dtype=float, doc="end time of simulation"),
+    Kwarg(O_MARKERS, default=None, dtype=list, doc="list of markers for plots"),
+    Kwarg(O_MARKERSIZE, default=8, dtype=float, doc="size of markers"),
     Kwarg(O_POINTS_PER_TIME, default=10, dtype=float,
           doc="number of simulation points per time period"),
     Kwarg(O_INITIAL_VALUE, default=DEFAULT_INITIAL_VALUE, dtype=float, doc="initial value of step input"),

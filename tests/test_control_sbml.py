@@ -13,8 +13,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMES = cn.TIMES
 FIGSIZE = (5, 5)
 SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
@@ -191,8 +191,8 @@ class TestControlSBML(unittest.TestCase):
         self.assertTrue(isinstance(self.ctlsb.getOptions(), dict))
 
     def testFullAPI(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         INPUT_NAME = "pIRS"
@@ -365,7 +365,37 @@ class TestControlSBML(unittest.TestCase):
         # Global variables
         INPUT_NAME = "na"
         OUTPUT_NAME = "s5"
-        CTLSB = ControlSBML(cn.WOLF_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME, times=TIMES)
+        _ = ControlSBML(cn.WOLF_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME, times=TIMES)
+
+    def testBug8(self):
+        if IGNORE_TEST:
+            return
+        url = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL2108260003/3/Alharbi2019%20TNVM.xml"
+        ctlsb = ControlSBML(url, times=np.linspace(0, 30, 300), input_name="Vitamins",
+                          output_name="Normal_cells", is_fixed_input_species=True)
+        result = ctlsb.plotDesign(setpoint=2, kP_spec=0.2, kI_spec=0.1, figsize=FIGSIZE, times=np.linspace(0, 100, 1000), min_parameter_value=1,
+                max_parameter_value=100,is_plot=IS_PLOT) 
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
+        
+    def testBug9(self):
+        if IGNORE_TEST:
+            return
+        url = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL2108260003/3/Alharbi2019%20TNVM.xml"
+        ctlsb = ControlSBML(url, input_name="Vitamins",
+                          output_name="Normal_cells", is_fixed_input_species=True, 
+                         times=np.linspace(0, 100, 1000), figsize=FIGSIZE)
+        def test(kP_spec, kI_spec, datatype=Timeseries):
+            result = ctlsb.plotDesign(setpoint=2, kP_spec=kP_spec, kI_spec=kI_spec, min_parameter_value=1,
+                    max_parameter_value=100, num_restart=1, is_plot=IS_PLOT)
+            self.assertTrue("kP" in result.designs.dataframe.columns)
+            self.assertTrue("kI" in result.designs.dataframe.columns)
+            if datatype is None:
+                self.assertTrue(result.timeseries is None)
+            else:
+                self.assertTrue(isinstance(result.timeseries, datatype))
+        #
+        test(0.2, 0.1, datatype=Timeseries)
+        test(0, 0, datatype=None)
 
 
 

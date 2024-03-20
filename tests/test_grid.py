@@ -1,5 +1,4 @@
-from controlSBML.grid import Grid, Axis
-from controlSBML.timeseries import Timeseries
+from controlSBML.grid import Grid, Axis  # type: ignore
 
 import numpy as np
 import unittest
@@ -87,6 +86,12 @@ class TestGrid(unittest.TestCase):
         self.grid.addAxis("test2", min_value=100, max_value=200, num_coordinate=NUM_COORDINATE)
         points = list(self.grid._iteratePoints())
         self.assertEqual(len(points), self.grid.num_point)
+        #
+        grid = Grid()
+        grid.addAxis("test1", min_value=5, max_value=5, num_coordinate=1)
+        grid.addAxis("test2", min_value=15, max_value=15, num_coordinate=1)
+        points = list(grid._iteratePoints())
+        self.assertEqual(len(points), 1)
 
     def testPlot(self):
         if IGNORE_TEST:

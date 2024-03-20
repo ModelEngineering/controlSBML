@@ -485,7 +485,7 @@ class SBMLSystem(object):
             raise ValueError("No %s name is specified." % name_type)
         return names[0]
     
-    def plotSISOClosedLoop(self, timeseries, setpoint, mgr=None, markers=None, **kwargs):
+    def plotSISOClosedLoop(self, timeseries, setpoint, mgr=None, **kwargs):
         """
         Plots the results of a closed lop simulation. Input and output are defined in the SBMLSystem constructor.
 
@@ -502,7 +502,7 @@ class SBMLSystem(object):
         new_kwargs["is_plot"] = False
         df = pd.DataFrame(timeseries[output_name], columns=[output_name])
         new_kwargs.setdefault(cn.O_AX2, 0)
-        plot_result = util.plotOneTS(df, colors=[cn.SIMULATED_COLOR], markers=markers, **new_kwargs)
+        plot_result = util.plotOneTS(df, colors=[cn.SIMULATED_COLOR], **new_kwargs)
         ax = plot_result.ax
         ax.set_ylabel(output_name)
         # Plot the setpoint
@@ -522,10 +522,10 @@ class SBMLSystem(object):
         self.setYAxColor(ax, "left", cn.SIMULATED_COLOR)
         self.setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax2.set_ylabel(input_name)
-        #mgr.doPlotOpts()
         ax.legend([])
-        #mgr.doFigOpts()
         if is_plot:
+            mgr.doPlotOpts()
+            mgr.doFigOpts()
             plt.show()
 
     def printModel(self, is_updated_model=True):

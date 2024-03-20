@@ -217,25 +217,6 @@ class ControlSBML(object):
         self._sbml_system, self._transfer_function_builder =  self.setSystem(input_name=input_name, output_name=output_name,
                        is_fixed_input_species=is_fixed_input_species, is_steady_state=is_steady_state)  # type: ignore
         self._fitter_result = cn.FitterResult()
-        if False:
-            self.ax = None
-            self.figure = kwargs.get(cn.O_FIGURE, None)
-            self.figsize = kwargs.get(cn.O_FIGSIZE, FIGSIZE)
-            self.initial_value, self.final_value, self.num_step = self._initializeStaircaseOptions()
-            self.is_greedy = kwargs.get(cn.O_IS_GREEDY, False)
-            self.is_plot = kwargs.get(cn.O_IS_PLOT, True)
-            self.is_fixed_input_species = kwargs.get(cn.O_IS_FIXED_INPUT_SPECIES, True)    
-            self.is_steady_state = kwargs.get(cn.O_IS_STEADY_STATE, False)
-            self.markers = kwargs.get(cn.O_MARKERS, False)
-            self.setpoint = kwargs.get(cn.O_SETPOINT, SETPOINT)
-            self.sign = kwargs.get(cn.O_SIGN, -1)
-            self.suptitle = kwargs.get(cn.O_SUPTITLE, "")
-            self.title = kwargs.get(cn.O_TITLE, "")
-            self.writefig = kwargs.get(cn.O_WRITEFIG, False)
-            # Outputs
-            self.kP = None
-            self.kI = None
-            self.kF = None
         
     def copy(self):
         ctlsb = ControlSBML(self.model_reference,
@@ -507,14 +488,18 @@ class ControlSBML(object):
                 antimony_builder: AntimonyBuilder
         """
         self._checkKwargs(**kwargs, valids=PLOT_KEYS)
-        times = self._getTimes(times=times)
-        initial_value, final_value, num_step = self._initializeStaircaseOptions(initial_value=initial_value,
-            final_value=final_value, num_step=num_step)
+        dct = self.getOptions(initial_value=initial_value, final_value=final_value,
+                              num_step=num_step, times=times, **kwargs)
+        times = dct[cn.O_TIMES]
+        initial_value = dct[cn.O_INITIAL_VALUE]
+        final_value = dct[cn.O_FINAL_VALUE]
+        num_step = dct[cn.O_NUM_STEP]
+        plot_dct = util.subsetDct(dct, PLOT_KEYS)
         staircase = self._getStaircase(initial_value=initial_value, final_value=final_value, num_step=num_step)
         response_ts, builder = self._transfer_function_builder.makeStaircaseResponse(times=times,
             staircase=staircase, is_steady_state=self.is_steady_state,
             )
-        self._transfer_function_builder.plotStaircaseResponse(response_ts, **kwargs)
+        self._transfer_function_builder.plotStaircaseResponse(response_ts, **plot_dct)
         return StaircaseResponseResult(timeseries=response_ts, antimony_builder=builder)
     
     def plotTransferFunctionFit(self,
@@ -622,9 +607,6 @@ class ControlSBML(object):
                 kP=kP, kI=kI, kF=kF, setpoint=setpoint, selections=selections,
                 times=times,
                 )
-        if (not cn.O_TITLE in kwargs) or (len(kwargs[cn.O_TITLE]) == 0):
-            kwargs["title"] = self._getParameterStr([cn.CP_KP, cn.CP_KI, cn.CP_KF], kP=kP, kI=kI, kF=kF)
-        _ = kwargs.setdefault(cn.O_MARKERS, False)
         self._sbml_system.plotSISOClosedLoop(response_ts, setpoint, times=times, **plot_dct)
         return response_ts, builder
 
@@ -634,7 +616,7 @@ class ControlSBML(object):
                        sign:Optional[float]=None,
                        times:Optional[np.ndarray]=None,
                        num_process:Optional[int]=-1,
-                       num_restart:Optional[int]=3,
+                       num_restart:Optional[int]=1,
                        selections:Optional[List[str]]=None,
                        **kwargs)->GridDesignResult:
         """
@@ -693,6 +675,12 @@ class ControlSBML(object):
         self.setOption(cn.CP_KF, designer.kF)
         # Plot the results 
         plot_dct[cn.O_YLABEL] = self.output_name if not cn.O_YLABEL in kwargs else kwargs[cn.O_YLABEL]
+        if (not cn.O_TITLE in kwargs) or (len(kwargs[cn.O_TITLE]) == 0):
+            kwargs["title"] = self._getParameterStr([cn.CP_KP, cn.CP_KI, cn.CP_KF],
+                                                     kP=option_dct[cn.CP_KP],
+                                                     kI=option_dct[cn.CP_KI],
+                                                     kF=option_dct[cn.CP_KF],
+                                                     )
         response_ts, antimony_builder = self._plotClosedLoop(
                 times=times,
                 setpoint=setpoint,
@@ -786,7 +774,7 @@ class ControlSBML(object):
             num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)
         if designer.residual_mse is None:
             msgs.warn("No design found!")
-            return None, None  # type: ignore
+            return DesignResult(timeseries=None, antimony_builder=None, designs=designs)
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
