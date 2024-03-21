@@ -116,6 +116,7 @@ PLOT_OPTION_DCT = {
     cn.O_YLIM: None,
     cn.O_YTICKLABELS: None,
     cn.O_WRITEFIG: False,
+    cn.O_LEGEND: None,
     }
 OPTION_DCT = {**STAIRCASE_DCT, **TIMES_DCT, **CLOSED_LOOP_DCT, **SYSTEM_OPTION_DCT, **PLOT_OPTION_DCT,
                **SIMULATION_DCT}
@@ -263,6 +264,9 @@ class ControlSBML(object):
         return True
 
     ############ GETTERS ##############
+    def getRoadrunner(self):
+        return self._roadrunner
+
     def getAntimony(self):
         return self._roadrunner.getAntimony()
     
@@ -448,11 +452,10 @@ class ControlSBML(object):
             ModelResult
                 timeseries: Timeseries
         """
-        options = list(PLOT_KEYS)
-        options.extend(TIMES_KEYS)
-        self._checkKwargs(options, **kwargs)
-        plot_dct = self.getOptions(keys=PLOT_KEYS, **kwargs)
-        times = kwargs.get(cn.O_TIMES, self.times)
+        self._checkKwargs(**kwargs)
+        dct = self.getOptions(times=times, selections=selections, **kwargs)
+        plot_dct = util.subsetDct(dct, PLOT_KEYS)
+        times = dct[cn.O_TIMES]
         #
         self._roadrunner.reset()
         self._roadrunner.resetSelectionLists()
@@ -461,7 +464,7 @@ class ControlSBML(object):
             selections = list(set(selections))
         data = self._roadrunner.simulate(times[0], times[-1], len(times), selections=selections)  # type: ignore
         ts = Timeseries(data)
-        is_plot = kwargs.get(cn.O_IS_PLOT, True)
+        is_plot = plot_dct[cn.O_IS_PLOT]
         if is_plot:
             util.plotOneTS(ts, **plot_dct)
         return ModelResult(timeseries=ts)

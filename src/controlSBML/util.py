@@ -86,7 +86,7 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **k
     mgr: OptionsManager
     colors: list-str
     markers: list-str
-    legend: bool (whether to show legend)
+    legend: True (show legend), False (no legend), List (legend names)
     #@expand
 
     Returns
@@ -121,8 +121,12 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **k
     sel_markers = list(markers)
     for column in time_series.columns:
         ax.plot(times, time_series[column], color=sel_colors.pop(0), marker=sel_markers.pop(0))
-    if legend:
-        legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
+    if isinstance(legend, bool):
+        if legend:
+            legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
+            mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
+    elif isinstance(legend, list):
+        legend_spec = cn.LegendSpec(legend, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
         mgr.plot_opts.set(cn.O_LEGEND_SPEC, default=legend_spec)
     mgr.doPlotOpts()
     if is_fig:

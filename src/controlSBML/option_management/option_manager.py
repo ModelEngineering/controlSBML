@@ -132,6 +132,8 @@ class OptionManager(object):
             ax.legend(legend_spec.names,
                   bbox_to_anchor=legend_spec.crd,
                   loc=legend_spec.loc)
+        if new_kwargs[cn.O_LEGEND] is not None:
+            ax.legend(new_kwargs[cn.O_LEGEND])
         if new_kwargs[cn.O_TITLE] != cn.PLOT_DCT[cn.O_TITLE]:
             ax.set_title(new_kwargs[cn.O_TITLE])
         if new_kwargs[cn.O_XLABEL] != cn.PLOT_DCT[cn.O_XLABEL]:

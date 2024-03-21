@@ -92,8 +92,9 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.ctlsb = CTLSB.copy()
+        result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S2"],
+                                      legend=["This is S2"], xlabel="TIME")
         result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S1", "S2", "S3"])
-        result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, selections=["S2"])
         result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, times=np.linspace(0, 100, 1000))
         result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, markers=False)
         self.assertTrue(isinstance(result.timeseries, Timeseries))

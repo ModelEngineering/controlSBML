@@ -110,6 +110,7 @@ O_IS_GREEDY = "is_greedy"
 O_IS_FIXED_INPUT_SPECIES = "is_fixed_input_species"
 O_IS_STEADY_STATE = "is_steady_state"
 O_IS_PLOT = "is_plot"
+O_LEGEND = "legend"
 O_LEGEND_CRD = "legend_crd"  # Legend coordinate
 O_LEGEND_SPEC = "legend_spec"
 O_MARKERS = "markers"
@@ -208,6 +209,7 @@ SIM_DCT = dict(
       )
 # Options for a single plot
 PLOT_DCT:dict = dict(
+      legend=None,
       legend_spec=None,
       legend_crd=None,
       markers=None,
@@ -248,6 +250,8 @@ KWARGS = [
     Kwarg(O_TIMES, default=np.linspace(0, 10, 100), dtype=np.array, doc="times of simulations"),
     Kwarg(O_START_TIME, default=0, dtype=float, doc="when simulation begins"),
     #PLOT OPTIONS
+    Kwarg(O_LEGEND, default=None, dtype=list,
+          doc="List of names for plots"),
     Kwarg(O_LEGEND_SPEC, default=None, dtype=LegendSpec,
           doc="Position of the legend"),
     Kwarg(O_LEGEND_CRD, default=None, dtype=tuple,

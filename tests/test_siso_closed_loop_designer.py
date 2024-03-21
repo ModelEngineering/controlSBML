@@ -16,8 +16,8 @@ import pandas as pd  # type: ignore
 import sympy # type: ignore
 import unittest
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 FIGSIZE = (5, 5)
 #helpers.setupPlotting(__file__)
 MODEL = """
