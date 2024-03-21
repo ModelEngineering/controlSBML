@@ -157,8 +157,9 @@ class TestControlSBML(unittest.TestCase):
             return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, setpoint=setpoint, final_value=10, input_name="S1", output_name="S3")
-        grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
+        grid = Grid(min_value=0.1, max_value=10, num_coordinate=10)
         grid.addAxis("kP")
+        grid.addAxis("kI")
         _ = ctlsb.plotGridDesign(grid, is_plot=IS_PLOT)
 
     def testPlotDesign1(self):

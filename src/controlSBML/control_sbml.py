@@ -675,11 +675,11 @@ class ControlSBML(object):
         self.setOption(cn.CP_KF, designer.kF)
         # Plot the results 
         plot_dct[cn.O_YLABEL] = self.output_name if not cn.O_YLABEL in kwargs else kwargs[cn.O_YLABEL]
-        if (not cn.O_TITLE in kwargs) or (len(kwargs[cn.O_TITLE]) == 0):
-            kwargs["title"] = self._getParameterStr([cn.CP_KP, cn.CP_KI, cn.CP_KF],
-                                                     kP=option_dct[cn.CP_KP],
-                                                     kI=option_dct[cn.CP_KI],
-                                                     kF=option_dct[cn.CP_KF],
+        if (not cn.O_TITLE in plot_dct) or (len(plot_dct[cn.O_TITLE]) == 0):
+            plot_dct[cn.O_TITLE] = self._getParameterStr([cn.CP_KP, cn.CP_KI, cn.CP_KF],
+                                                     kP=getattr(self, cn.CP_KP),
+                                                     kI=getattr(self, cn.CP_KI),
+                                                     kF=getattr(self, cn.CP_KF),
                                                      )
         response_ts, antimony_builder = self._plotClosedLoop(
                 times=times,
