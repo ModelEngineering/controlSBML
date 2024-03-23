@@ -452,12 +452,12 @@ class ControlSBML(object):
             ModelResult
                 timeseries: Timeseries
         """
-        self._checkKwargs(**kwargs)
+        self._checkKwargs(valids=PLOT_KEYS, **kwargs)
         dct = self.getOptions(times=times, selections=selections, **kwargs)
         plot_dct = util.subsetDct(dct, PLOT_KEYS)
         times = dct[cn.O_TIMES]
         #
-        self._roadrunner.reset()
+        self._roadrunner.resetAll()
         self._roadrunner.resetSelectionLists()
         if selections is not None:
             selections.extend([cn.TIME])    # type: ignore
@@ -490,7 +490,7 @@ class ControlSBML(object):
                 timeseries: Timeseries
                 antimony_builder: AntimonyBuilder
         """
-        self._checkKwargs(**kwargs, valids=PLOT_KEYS)
+        self._checkKwargs(valids=PLOT_KEYS, **kwargs)
         dct = self.getOptions(initial_value=initial_value, final_value=final_value,
                               num_step=num_step, times=times, **kwargs)
         times = dct[cn.O_TIMES]
@@ -540,28 +540,39 @@ class ControlSBML(object):
         # Check the options
         self._checkKwargs(valids=PLOT_KEYS, **kwargs)
         # Setup values
-        times = self.times if times is None else times
-        fitter_method = self.fitter_method if fitter_method is None else fitter_method
+        dct = self.getOptions(
+            num_zero=num_zero,
+            num_pole=num_pole,
+            fit_start_time=fit_start_time,
+            fit_end_time=fit_end_time,
+            initial_value=initial_value,
+            final_value=final_value,
+            num_step=num_step,
+            fitter_method=fitter_method,
+            times=times,
+            **kwargs)
+        plot_dct = util.subsetDct(dct, PLOT_KEYS)
+        times = dct[cn.O_TIMES]
+        fitter_method = dct[cn.O_FITTER_METHOD]
         #
         if (self.input_name is None) or (self.output_name is None):
             raise ValueError("Must specify the input and output species to use this method.")
         if fit_start_time is None:
-            fit_start_time = times[0]
+            fit_start_time = times[0]  # type: ignore
         if fit_end_time is None:
-            fit_end_time = times[-1]
+            fit_end_time = times[-1]   # type: ignore
         # Construct the staircase
-        initial_value, final_value, num_step = self._initializeStaircaseOptions(initial_value=initial_value,
-                                                                                final_value=final_value,
-                                                                                num_step=num_step)
         staircase = self._getStaircase(initial_value=initial_value, final_value=final_value, num_step=num_step)
-        new_kwargs = dict(kwargs)
         # Do the fit
-        new_kwargs.update({cn.FITTER_METHOD: fitter_method,
-                           cn.O_TIMES: times,})
-        self._fitter_result = self._transfer_function_builder.plotTransferFunctionFit(num_zero=num_zero,
-                            num_pole=num_pole, staircase=staircase,
-                            fit_start_time=fit_start_time, fit_end_time=fit_end_time,
-                            **new_kwargs)
+        self._fitter_result = self._transfer_function_builder.plotTransferFunctionFit(
+            num_zero=num_zero,
+            num_pole=num_pole,
+            staircase=staircase,
+            fit_start_time=fit_start_time,
+            fit_end_time=fit_end_time,
+            fitter_method=fitter_method,
+            times=times,
+            **plot_dct)
         return TransferFunctionFitResult(
                 timeseries=self._fitter_result.time_series, 
                 antimony_builder=self._fitter_result.antimony_builder,
@@ -745,23 +756,26 @@ class ControlSBML(object):
             return 0.0
         #
         self._checkKwargs(PLOT_KEYS, **kwargs)
-        option_dct = self.getOptions(kP_spec=kP_spec, kI_spec=kI_spec, kF_spec=kF_spec,
-                                     setpoint=setpoint, sign=sign,
+        option_dct = self.getOptions(kP_spec=kP_spec,
+                                     kI_spec=kI_spec,
+                                     kF_spec=kF_spec,
+                                     setpoint=setpoint,
+                                     sign=sign,
                                      is_report=is_report,
                                      num_process=num_process,
-                                     times=times,
                                      selections=selections,
+                                     times=times,
                                      **kwargs)
-        times = option_dct[cn.O_TIMES]
-        setpoint = option_dct[cn.O_SETPOINT]
-        sign = option_dct[cn.O_SIGN]
-        is_greedy = option_dct[cn.O_IS_GREEDY]
-        sign=option_dct[cn.O_SIGN]
         kP_spec = option_dct[cn.O_KP_SPEC]
         kI_spec = option_dct[cn.O_KI_SPEC]
         kF_spec = option_dct[cn.O_KF_SPEC]
+        setpoint = option_dct[cn.O_SETPOINT]
+        sign = option_dct[cn.O_SIGN]
         num_process = option_dct[cn.O_NUM_PROCESS]
         selections = option_dct[cn.O_SELECTIONS]
+        times = option_dct[cn.O_TIMES]
+        #
+        is_greedy = option_dct[cn.O_IS_GREEDY]
         plot_dct = util.subsetDct(option_dct, PLOT_KEYS)
         #
         designer = SISOClosedLoopDesigner(self._sbml_system, self.getOpenLoopTransferFunction(),
@@ -773,7 +787,7 @@ class ControlSBML(object):
                 output_name=self.output_name,
                 save_path=self.save_path)
         designs = designer.design(kP_spec=kP_spec, kI_spec=kI_spec, kF_spec=kF_spec,
-                num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
+            num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
             num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)
         if designer.residual_mse is None:
             msgs.warn("No design found!")

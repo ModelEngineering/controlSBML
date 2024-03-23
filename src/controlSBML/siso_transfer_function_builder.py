@@ -102,6 +102,8 @@ class SISOTransferFunctionBuilder(object):
                                                 initial_value=staircase.initial_value, num_step=staircase.num_step,
                                                 final_value=staircase.final_value, is_steady_state=is_steady_state,
                                                 inplace=False)
+        if result_ts is None:
+            raise ValueError("Unable to simulate staircase response")
         staircase.setNumPoint(len(result_ts))
         staircase_name = "%s_%s" % (self.input_name, STAIRCASE)
         staircase_arr= staircase.staircase_arr

@@ -365,6 +365,7 @@ class SBMLSystem(object):
             data = self.roadrunner.simulate(float(start_time), float(end_time), num_point, selections=selections)
             ts = Timeseries(data)
         except Exception as exp:
+            print(exp)
             ts = None
         return ts
     
