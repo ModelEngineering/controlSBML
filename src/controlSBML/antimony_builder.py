@@ -337,10 +337,11 @@ class AntimonyBuilder(object):
         """
         name_ot = prefix + suffix + OT
         if sign == 1:
-            operator = "+"
+            statement = "%s := %s - %s" % (name_ot, forward_output_name, str(setpoint))
+        elif sign == -1:
+            statement = "%s := %s - %s" % (name_ot, str(setpoint), forward_output_name)
         else:
-            operator = "-"
-        statement = "%s := %s %s %s" % (name_ot, str(setpoint), operator, forward_output_name)
+            raise ValueError("Invalid sign: %s" % sign)
         self.addStatement(statement)
         return name_ot
     

@@ -49,6 +49,8 @@ class SBMLSystem(object):
         self._output_names = None
         self._original_antimony = None
         self._symbol_dct = None
+        self._min_value_dct = None # Minimum values for the speciesj
+        self._max_value_dct = None # Maximum values for the species
         
 
     #################### PROPERTIES ####################
@@ -68,6 +70,10 @@ class SBMLSystem(object):
     def roadrunner(self):
         if self._roadrunner is None:
             self._roadrunner = makeRoadrunner(self.model_reference)
+            data = self._roadrunner.simulate()
+            keys = [k[1:-1] if k[0] == "[" and k[-1] == "]" else k for k in data.colnames]
+            self._min_value_dct = {keys[n]: data[:, n].min() for n in range(len(keys))}
+            self._max_value_dct = {keys[n]: data[:, n].max() for n in range(len(keys))}
         return self._roadrunner
 
     # FIXME: Does not copy updates to the antimony?

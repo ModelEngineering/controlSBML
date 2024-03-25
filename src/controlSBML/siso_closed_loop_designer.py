@@ -39,6 +39,7 @@ Workunit = collections.namedtuple("Workunit",
     "system input_name output_name setpoint times is_greedy num_restart is_report") 
 DesignResult = collections.namedtuple("DesignResult", "dataframe")
 
+
 def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=None, kI=None, kD=None, kF=None, sign=-1):
     # Construct the transfer functions
     if open_loop_transfer_function is None:
@@ -303,7 +304,10 @@ class SISOClosedLoopDesigner(object):
             parallel_search.search()
             search_results.append(parallel_search.getSearchResults())
         if len(search_results) == 0:
-            df = pd.DataFrame([[None, None, None, None]], columns=[CP_kP, CP_kI, CP_kF, cn.SCORE])
+            # Why no results?
+            import pdb; pdb.set_trace()
+            df = pd.DataFrame([[None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
+                              columns=[CP_kP, CP_kI, CP_kF, cn.SCORE, cn.REASON])
             return DesignResult(dataframe=df)
         # Merge the results and sort by score
         search_result_df = pd.concat(search_results)

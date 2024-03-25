@@ -137,9 +137,9 @@ class TestAntimonyBuilder(unittest.TestCase):
         def test(sign):
             signal_ot = self.builder.makeControlErrorSignal(-7, "S3", sign, suffix="_S1_S3")
             if sign == -1:
-                result = re.search("%s.*:=.*7.*-.*S3" % signal_ot, self.getStatement())
+                result = re.search("-7.*S3", self.getStatement())
             else:
-                result = re.search("%s.*:=.*7.*\+.*S3" % signal_ot, self.getStatement())
+                result = re.search("S3.*-7", self.getStatement())
             self.assertTrue(result)
             self.check()
         #

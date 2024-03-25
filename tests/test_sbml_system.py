@@ -68,6 +68,23 @@ class TestSBMLSystem(unittest.TestCase):
                 return
         self.system = SBMLSystem(LINEAR_MDL, ["aa"], ["bb"], is_fixed_input_species=True)
 
+    def testRoadrunner(self):
+        if IGNORE_TEST:
+            return
+        def test(dct):
+            self.assertIsNotNone(dct)
+            self.assertGreater(len(dct), 0)
+        #
+        _ = self.system.roadrunner
+        self.assertTrue("RoadRunner" in str(type(self.system._roadrunner)))
+        test(self.system._max_value_dct)
+        test(self.system._min_value_dct)
+        trues = [l < u for l, u in zip(self.system._min_value_dct.values(), self.system._max_value_dct.values())]
+        self.assertTrue(all(trues))
+        
+
+
+
     def testGet(self):
         if IGNORE_TEST:
             return

@@ -56,23 +56,26 @@ class PointEvaluator(Evaluator):
 #            new_dct = dict(candidate_dct)
         new_dct = dict(candidate_dct)
         result_dct = dict(new_dct)
-        _, residual_mse = self._calculateMse(**new_dct)   # type: ignore
+        reason, residual_mse = self._calculateMse(**new_dct)   # type: ignore
         result_dct[cn.SCORE] = residual_mse # type: ignore
+        result_dct[cn.REASON] = reason  # type: ignore
         return result_dct
 
-    def _calculateMse(self, max_output:float=1e6, min_output:float=0, **parameter_dct:dict)->Tuple[bool, object]:
+    def _calculateMse(self, **parameter_dct:dict)->Tuple[str, object]:
         """
         Attempts to calculate the mean squared error of the closed loop system. Reports if system is unstable.
 
         Args:
-            max_output: float (maximum output)
-            min_output: float (minimum output)
             parameter_dct: dict: {name: value for each of kP, kI, kF}
 
         Returns:
-            bool (successful simulation)
+            str (description of design result)
             float (mean squared error)
         """
+        SIZE_MARGIN = 1e6
+        _ = self.sbml_system.roadrunner  # Initialize roadrunner
+        max_output = SIZE_MARGIN*self.sbml_system._max_value_dct[self.output_name]
+        min_output = self.sbml_system._min_value_dct[self.output_name]/SIZE_MARGIN
         try:
             response_ts, _ = self.sbml_system.simulateSISOClosedLoop(setpoint=self.setpoint,
                         input_name=self.input_name, output_name=self.output_name,
@@ -81,25 +84,23 @@ class PointEvaluator(Evaluator):
                         **parameter_dct)  # type: ignore
         except Exception as error:
             if "CVODE" in str(error):
-                return False, None
+                return cn.DESIGN_RESULT_CANNOT_SIMULATE, None
             else:
                 raise ValueError(str(error))
         # Check for large outputs
         if response_ts is None:
-            return False, None
+            return cn.DESIGN_RESULT_CANNOT_SIMULATE, None
         outputs = response_ts[self.output_name].values
         max_value = np.max([np.max(outputs), np.abs(np.min(outputs))])
+        if max_value > max_output:
+            return cn.DESIGN_RESULT_OUTPUT_TOO_LARGE, None
         min_value = np.min([np.max(outputs), np.abs(np.min(outputs))])
-        if (max_value > max_output) or (min_value < min_output):
-            return False, None
-        # Check for negative values
-        for column in response_ts.columns:
-            if np.any(response_ts[column].values < 0):
-                return False, None
+        if min_value < min_output:
+            return cn.DESIGN_RESULT_OUTPUT_TOO_SMALL, None
         #
         residuals = self.setpoint - response_ts[self.output_name].values
         mse = np.mean(residuals**2)
-        return True, mse
+        return cn.DESIGN_RESULT_SUCCESS, mse
     
     def _searchForFeasibleClosedLoopSystem(self, max_iteration:int=10, **parameter_dct)->Union[dict, None]:
         """

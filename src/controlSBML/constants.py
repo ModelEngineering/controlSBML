@@ -84,6 +84,7 @@ OUTPUT = "output"
 OUT_STATE = "out_state"
 PARAMS = "params"
 POINTS_PER_TIME = 10
+REASON = "reason"
 SCORE = "score"
 START_TIME = 0.0  # Default start time
 STATE = "state"
@@ -277,3 +278,9 @@ FIG_KWARGS = list(FIG_DCT.keys())
 ALL_KWARGS = []
 for kwargs in [SIM_KWARGS, PLOT_KWARGS, FIG_KWARGS]:
     ALL_KWARGS.extend(kwargs)
+
+# Design results
+DESIGN_RESULT_SUCCESS = "Design successful."
+DESIGN_RESULT_CANNOT_SIMULATE = "No design. Cannot simulate the closed loop system." 
+DESIGN_RESULT_OUTPUT_TOO_SMALL = "No design. Output is too small."
+DESIGN_RESULT_OUTPUT_TOO_LARGE = "No design. Output is too large."

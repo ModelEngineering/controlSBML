@@ -22,11 +22,9 @@ import controlSBML.constants as cn
 from controlSBML.dict_array import DictArray
 
 import multiprocessing as mp
-import numpy as np
-import pandas as pd
-import random
+import random  # type: ignore
+from tqdm import tqdm # type: ignore
 from typing import List
-from tqdm import tqdm
 
 
 class Evaluator(object):

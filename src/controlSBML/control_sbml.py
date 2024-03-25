@@ -86,7 +86,7 @@ CLOSED_LOOP_DCT = {
     cn.O_SETPOINT: 1, 
     cn.O_SIGN: -1,
     cn.O_NUM_PROCESS: -1,
-    cn.O_NUM_RESTART: 3,
+    cn.O_NUM_RESTART: 1,
     cn.O_KP_SPEC: False,
     cn.O_KI_SPEC: False,
     cn.O_KF_SPEC: False,
@@ -437,8 +437,8 @@ class ControlSBML(object):
 
     ############ PLOTTERS ##############
     def plotModel(self, 
-                  times:Optional[np.ndarray[float]]=None,
-                  selections:Optional[List[str]]=None,
+                  times:Optional[np.ndarray[float]]=OPTION_DCT[cn.O_TIMES],
+                  selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
                   **kwargs)->ModelResult:
         """
         Plots the SBML model without modification.
@@ -470,10 +470,10 @@ class ControlSBML(object):
         return ModelResult(timeseries=ts)
     
     def plotStaircaseResponse(self,
-                              initial_value:Optional[float]=None,
-                              final_value:Optional[float]=None,
-                              num_step:Optional[int]=cn.DEFAULT_NUM_STEP,
-                              times:Optional[np.ndarray]=None,
+                              initial_value:Optional[float]=OPTION_DCT[cn.O_INITIAL_VALUE],
+                              final_value:Optional[float]=OPTION_DCT[cn.O_FINAL_VALUE],
+                              num_step:Optional[int]=OPTION_DCT[cn.O_NUM_STEP],
+                              times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
                               **kwargs)->StaircaseResponseResult:
         """
         Simulates the staircase response and plots it.
@@ -512,9 +512,9 @@ class ControlSBML(object):
             fit_end_time:Optional[float]=None,
             initial_value:Optional[float]=None,
             final_value:Optional[float]=None,
-            num_step:Optional[int]=cn.DEFAULT_NUM_STEP,
-            fitter_method:Optional[str]=cn.DEFAULT_FITTER_METHOD,
-            times:Optional[np.ndarray]=None,
+            num_step:Optional[int]=OPTION_DCT[cn.O_NUM_STEP],
+            fitter_method:Optional[str]=OPTION_DCT[cn.O_FITTER_METHOD],
+            times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
             **kwargs)->TransferFunctionFitResult:
         """
         Simulates the staircase response and plots it. Sets the fitter result.
@@ -579,13 +579,13 @@ class ControlSBML(object):
         )
     
     def _plotClosedLoop(self, 
-                        kP:Optional[float]=None, 
-                        kI:Optional[float]=None, 
-                        kF:Optional[float]=None, 
-                        sign:Optional[int]=None,
-                        setpoint:Optional[float]=None,
-                        selections:Optional[List[str]]=None,
-                        times:Optional[np.ndarray]=None,
+                        kP:Optional[float]=OPTION_DCT[cn.CP_KP],
+                        kI:Optional[float]=OPTION_DCT[cn.CP_KI],
+                        kF:Optional[float]=OPTION_DCT[cn.CP_KF],
+                        setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
+                        sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
+                        selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
+                        times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
                         **kwargs):
         """
         Plots the closed loop response. Control parameters not explicity specified are None.
@@ -626,12 +626,12 @@ class ControlSBML(object):
 
     def plotGridDesign(self, 
                        grid:Grid,
-                       setpoint:Optional[float]=None,
-                       sign:Optional[float]=None,
-                       times:Optional[np.ndarray]=None,
-                       num_process:Optional[int]=-1,
-                       num_restart:Optional[int]=1,
-                       selections:Optional[List[str]]=None,
+                       setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
+                       sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
+                       times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
+                       num_process:Optional[int]=OPTION_DCT[cn.O_NUM_PROCESS],
+                       num_restart:Optional[int]=OPTION_DCT[cn.O_NUM_RESTART],
+                       selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
                        **kwargs)->GridDesignResult:
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
@@ -708,20 +708,20 @@ class ControlSBML(object):
                                 designs=designs)
 
     def plotDesign(self, 
-                   kP_spec:bool=False, 
-                   kI_spec:bool=False,
-                   kF_spec:bool=False,
-                   setpoint:Optional[float]=None,
-                   sign:Optional[float]=None,
-                   min_parameter_value:float=0,
-                   max_parameter_value:float=10,
-                   num_restart:int=3, 
-                   num_coordinate:int=3,
-                   is_report:bool=False, 
-                   num_process:int=-1,
-                   times:Optional[np.ndarray]=None,
-                   selections:Optional[List[str]]=None,
-                   **kwargs)->DesignResult:
+                kP_spec:bool=OPTION_DCT[cn.O_KP_SPEC],
+                kI_spec:bool=OPTION_DCT[cn.O_KI_SPEC],
+                kF_spec:bool=OPTION_DCT[cn.O_KF_SPEC],
+                setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
+                sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
+                times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
+                num_process:Optional[int]=OPTION_DCT[cn.O_NUM_PROCESS],
+                num_restart:Optional[int]=OPTION_DCT[cn.O_NUM_RESTART],
+                selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
+                min_parameter_value:float=0,
+                max_parameter_value:float=10,
+                num_coordinate:int=3,
+                is_report:bool=False, 
+                **kwargs)->DesignResult:
         """
         Plots the results of a closed loop design. The design is specified by the parameters kP_spec, kI_spec, and kF_spec.
            None or False: do not include the parameter
@@ -788,7 +788,7 @@ class ControlSBML(object):
                 save_path=self.save_path)
         designs = designer.design(kP_spec=kP_spec, kI_spec=kI_spec, kF_spec=kF_spec,
             num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
-            num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)
+            num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)   # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return DesignResult(timeseries=None, antimony_builder=None, designs=designs)
