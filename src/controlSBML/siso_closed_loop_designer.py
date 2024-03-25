@@ -296,16 +296,14 @@ class SISOClosedLoopDesigner(object):
             else:
                 return float(val)
         #
-        point_evaluator = PointEvaluator(self.system.copy(), self.input_name, self.output_name, 
-                                            self.setpoint, self.times, is_greedy=is_greedy)
+        point_evaluator = PointEvaluator(self.system.copy(), self.input_name, self.output_name,
+                                            self.setpoint, self.sign, self.times, is_greedy=is_greedy)
         parallel_search = ParallelSearch(point_evaluator, grid.points, num_process=num_process, is_report=is_report) # type: ignore
         search_results = []
         for _ in range(num_restart):
             parallel_search.search()
             search_results.append(parallel_search.getSearchResults())
         if len(search_results) == 0:
-            # Why no results?
-            import pdb; pdb.set_trace()
             df = pd.DataFrame([[None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
                               columns=[CP_kP, CP_kI, CP_kF, cn.SCORE, cn.REASON])
             return DesignResult(dataframe=df)

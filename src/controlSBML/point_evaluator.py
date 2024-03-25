@@ -9,10 +9,11 @@ from typing import Tuple, Union
 
 
 ##################################################################
+# FIXME: Need to specify the sign 
 class PointEvaluator(Evaluator):
     # Evaluates a point in the design space
-    def __init__(self, sbml_system:SBMLSystem, input_name:str, output_name:str, setpoint:float, times:np.array,
-                 is_greedy:bool=False):
+    def __init__(self, sbml_system:SBMLSystem, input_name:str, output_name:str, setpoint:float, 
+                 sign:float, times:np.array, is_greedy:bool=False):
         """
         Args:
             sbml_system (SBMLSystem): Should be a copy of the original system so it is light weight
@@ -28,6 +29,7 @@ class PointEvaluator(Evaluator):
         self.input_name = input_name
         self.output_name = output_name
         self.setpoint = setpoint
+        self.sign = sign
         self.times = times
         self.siso_evaluator = None
         self.is_greedy = is_greedy
@@ -77,9 +79,9 @@ class PointEvaluator(Evaluator):
         max_output = SIZE_MARGIN*self.sbml_system._max_value_dct[self.output_name]
         min_output = self.sbml_system._min_value_dct[self.output_name]/SIZE_MARGIN
         try:
-            response_ts, _ = self.sbml_system.simulateSISOClosedLoop(setpoint=self.setpoint,
+            response_ts, builder = self.sbml_system.simulateSISOClosedLoop(setpoint=self.setpoint,
                         input_name=self.input_name, output_name=self.output_name,
-                        times=self.times,
+                        times=self.times, sign=self.sign,
                         is_steady_state=self.sbml_system.is_steady_state, inplace=False,
                         **parameter_dct)  # type: ignore
         except Exception as error:

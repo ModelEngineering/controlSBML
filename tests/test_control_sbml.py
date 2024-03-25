@@ -404,6 +404,9 @@ class TestControlSBML(unittest.TestCase):
         INPUT_NAME = "Mlc"
         OUTPUT_NAME = "EI_P"
         CTLSB.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=1, kI_spec=1, times=TIMES, num_restart=1, sign=1,
+                                  is_plot=IS_PLOT)
+        self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_CANNOT_SIMULATE)
         result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=0.1, times=TIMES, num_restart=1, sign=1,
                                   is_plot=IS_PLOT)
         self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_CANNOT_SIMULATE)

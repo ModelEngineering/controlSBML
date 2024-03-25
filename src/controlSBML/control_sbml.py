@@ -786,9 +786,17 @@ class ControlSBML(object):
                 input_name=self.input_name,
                 output_name=self.output_name,
                 save_path=self.save_path)
-        designs = designer.design(kP_spec=kP_spec, kI_spec=kI_spec, kF_spec=kF_spec,
-            num_restart=num_restart, min_value=min_parameter_value, max_value=max_parameter_value,
-            num_coordinate=num_coordinate, is_greedy=is_greedy, is_report=is_report, num_process=num_process)   # type: ignore
+        designs = designer.design(
+            kP_spec=kP_spec,
+            kI_spec=kI_spec,
+            kF_spec=kF_spec,
+            num_restart=num_restart,
+            min_value=min_parameter_value,
+            max_value=max_parameter_value,
+            num_coordinate=num_coordinate,
+            is_greedy=is_greedy,
+            is_report=is_report,
+            num_process=num_process)   # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return DesignResult(timeseries=None, antimony_builder=None, designs=designs)
