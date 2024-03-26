@@ -148,7 +148,7 @@ class ControlSBML(object):
                  fitter_method:Optional[str]=OPTION_DCT[cn.O_FITTER_METHOD],
                  setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                  sign:Optional[int]=OPTION_DCT[cn.O_SIGN],
-                 times:Optional[np.ndarray[float]]=OPTION_DCT[cn.O_TIMES],
+                 times:Optional[np.ndarray[float]]=None,
                  save_path:Optional[str]=SAVE_PATH,
                  **kwargs):
         """
@@ -437,7 +437,7 @@ class ControlSBML(object):
 
     ############ PLOTTERS ##############
     def plotModel(self, 
-                  times:Optional[np.ndarray[float]]=OPTION_DCT[cn.O_TIMES],
+                  times:Optional[np.ndarray[float]]=None,
                   selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
                   **kwargs)->ModelResult:
         """
@@ -473,7 +473,7 @@ class ControlSBML(object):
                               initial_value:Optional[float]=OPTION_DCT[cn.O_INITIAL_VALUE],
                               final_value:Optional[float]=OPTION_DCT[cn.O_FINAL_VALUE],
                               num_step:Optional[int]=OPTION_DCT[cn.O_NUM_STEP],
-                              times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
+                              times:Optional[np.ndarray]=None,
                               **kwargs)->StaircaseResponseResult:
         """
         Simulates the staircase response and plots it.
@@ -514,7 +514,7 @@ class ControlSBML(object):
             final_value:Optional[float]=None,
             num_step:Optional[int]=OPTION_DCT[cn.O_NUM_STEP],
             fitter_method:Optional[str]=OPTION_DCT[cn.O_FITTER_METHOD],
-            times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
+            times:Optional[np.ndarray]=None,
             **kwargs)->TransferFunctionFitResult:
         """
         Simulates the staircase response and plots it. Sets the fitter result.
@@ -585,7 +585,7 @@ class ControlSBML(object):
                         setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                         sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
                         selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
-                        times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
+                        times:Optional[np.ndarray]=None,
                         **kwargs):
         """
         Plots the closed loop response. Control parameters not explicity specified are None.
@@ -628,7 +628,7 @@ class ControlSBML(object):
                        grid:Grid,
                        setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                        sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
-                       times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
+                       times:Optional[np.ndarray]=None,
                        num_process:Optional[int]=OPTION_DCT[cn.O_NUM_PROCESS],
                        num_restart:Optional[int]=OPTION_DCT[cn.O_NUM_RESTART],
                        selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
@@ -713,7 +713,7 @@ class ControlSBML(object):
                 kF_spec:bool=OPTION_DCT[cn.O_KF_SPEC],
                 setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                 sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
-                times:Optional[np.ndarray]=OPTION_DCT[cn.O_TIMES],
+                times:Optional[np.ndarray]=None,
                 num_process:Optional[int]=OPTION_DCT[cn.O_NUM_PROCESS],
                 num_restart:Optional[int]=OPTION_DCT[cn.O_NUM_RESTART],
                 selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],

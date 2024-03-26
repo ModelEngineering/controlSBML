@@ -56,7 +56,8 @@ class SISOTransferFunctionFitter(object):
         self.out_std = np.std(self.out_arr)
         self.max_out_value = np.max(self.out_arr)
         self.dt = np.round(np.mean(np.diff(timeseries.index)))/cn.MS_IN_SEC
-        self.times = np.array([self.dt*n for n in range(len(timeseries.index))])  # Must be evenly spaced
+        start_time = timeseries.index[0]/cn.MS_IN_SEC
+        self.times = start_time + np.array([self.dt*n for n in range(len(timeseries.index))])  # Must be evenly spaced
         self.times = np.reshape(self.times, (len(self.times),))
         self.length = len(self.times)
         self.num_zero:int = num_zero  # type: ignore
