@@ -274,8 +274,9 @@ class SISOTransferFunctionBuilder(object):
         #
         _, y_arr = fitter.simulateTransferFunction(fitter.transfer_function)
         df = new_data_ts.copy()
+        times = new_data_ts.index/cn.MS_IN_SEC
         df[cn.O_PREDICTED] = y_arr
-        output_ts = ctl.Timeseries(df)
+        output_ts = ctl.Timeseries(df, times=times)
         residuals = output_ts[self.output_name] - output_ts[cn.O_PREDICTED].values
         rms_residuals = np.sqrt(np.mean(residuals**2))
         fitter_result = cn.FitterResult(

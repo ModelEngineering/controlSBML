@@ -9,7 +9,6 @@ from typing import Tuple, Union
 
 
 ##################################################################
-# FIXME: Need to specify the sign 
 class PointEvaluator(Evaluator):
     # Evaluates a point in the design space
     def __init__(self, sbml_system:SBMLSystem, input_name:str, output_name:str, setpoint:float, 

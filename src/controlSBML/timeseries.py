@@ -17,7 +17,7 @@ from controlSBML import util
 import controlSBML.constants as cn
 
 import numpy as np
-import pandas as pd
+import pandas as pd # type: ignore
 
 ############# FUNCTIONS ###############
 def findCommonIndices(index1, index2):

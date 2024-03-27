@@ -13,8 +13,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMES = cn.TIMES
 FIGSIZE = (5, 5)
 SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
@@ -413,6 +413,17 @@ class TestControlSBML(unittest.TestCase):
         result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=0.001, times=TIMES, num_restart=1, sign=1,
                                   is_plot=IS_PLOT)
         self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
+
+    def testBug11(self):
+        # Bogus initial transient on fit
+        #if IGNORE_TEST:
+        #    return
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1809060006/5/Tsai2014.xml"
+        CTLSB = ControlSBML(URL, times=np.linspace(0, 100, 1000))
+        CTLSB.setSystem(input_name="Plx1_active", output_name="APC_C_active")
+        result = CTLSB.plotTransferFunctionFit(fit_start_time=20, final_value=1.0,
+                                               is_plot=IS_PLOT)
+        import pdb; pdb.set_trace()
 
 
 

@@ -10,8 +10,8 @@ from controlSBML.timeseries import Timeseries
 import control # type: ignore
 import numpy as np
 import pandas as pd  # type: ignore
-import scipy  # type: ignore
-from typing import Optional, Tuple, Union, Iterator
+from typing import Optional, Tuple, Union
+import warnings
 
 
 MIN_PARAMETER_VALUE = -1e6
@@ -48,7 +48,7 @@ class SISOTransferFunctionFitter(object):
         max_zero_value: float
         """
         if num_zero > num_pole:  # type: ignore
-            raise ValueError("num_zero must be less than or equal to num_pole.")
+            raise ValueError("num_zero cannot be larger thatn num_pole.")
         self.timeseries = timeseries
         self.input_name, self.output_name = self._extractNames(timeseries, input_name, output_name)
         self.in_arr = timeseries[self.input_name].values
@@ -124,6 +124,11 @@ class SISOTransferFunctionFitter(object):
         transfer function assumes 0 initial conditions, a fit is first done by adjusting for the mean of
         the input and the output.
 
+        The simulation takes the mean of the input and output as the initial conditions for the state space model.
+        The state representation is the order of derviatives of the output, with the highest order derivative
+        being the 0th value of the initial state vector, and the lowest order derivative being the last value of
+        the initial state vector.
+
         Parameters
         ----------
         transfer_function: control.TransferFunction
@@ -134,12 +139,21 @@ class SISOTransferFunctionFitter(object):
         np.ndarray - times
         np.ndarray - output
         """
+        # FIXME: Do I need to consider initial state? The output starts at 0. Calculate state in terms of input?
         if transfer_function is None:
             transfer_function = self.transfer_function
         in_arr = self.in_arr - np.mean(self.in_arr)
-        result_input = control.forced_response(transfer_function, T=self.times, U=in_arr)
+        out_mean = np.mean(self.out_arr)
+        out_arr = self.out_arr - out_mean
+        # Specify initial state for the transfer function, just the initial output
+        X0 = np.zeros(len(transfer_function.den[0][0])-1)  # type: ignore
+        X0[-1] = out_arr[0]  # state position for undifferentiated output
+        # Do the simulation
+        warnings.filterwarnings("ignore")
+        result_input = control.forced_response(transfer_function, T=self.times, U=in_arr, X0=X0)
+        warnings.filterwarnings("default")
         y_arr_output = np.reshape(result_input.y, (self.length,)) 
-        y_arr_output = y_arr_output + np.mean(self.out_arr)
+        y_arr_output = y_arr_output + out_mean
         return self.times, y_arr_output
 
     def _calculateNormalizedMSE(self, transfer_function:control.TransferFunction)->float:
@@ -153,7 +167,7 @@ class SISOTransferFunctionFitter(object):
 
         Returns
         -------
-        float (root of the mean square of residuals)
+        float (root of the mean square of residuals divided by the standard deviation of the output)
         """
         _, y_arr = self.simulateTransferFunction(transfer_function)
         residuals = self.out_arr - y_arr
