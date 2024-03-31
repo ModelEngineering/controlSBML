@@ -138,7 +138,8 @@ class TestGPZFitter(unittest.TestCase):
     def testFitPoles(self):
         if IGNORE_TEST:
             return
-        ts, _ = BUILDER.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, 5, 50))
+        builder = BUILDER.copy()
+        ts, _ = builder.makeStaircaseResponse(staircase=STAIRCASE, times=np.linspace(0, 5, 50))
         fitter = GPZFitter(ts, num_zero=0, num_pole=2)
         fitter._fitDCGain()
         fitter._fitPoles()
@@ -184,8 +185,8 @@ class TestGPZFitter(unittest.TestCase):
         plt.show()
 
     def testFitTransferFunctionBug(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1304160000/2/BIOMD0000000449_url.xml"
         ctlsb = ControlSBML(URL,
               input_name="IR", output_name="GLUT4", is_fixed_input_species=True, is_plot=False)

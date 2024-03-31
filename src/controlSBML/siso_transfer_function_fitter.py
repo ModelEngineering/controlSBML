@@ -147,7 +147,8 @@ class SISOTransferFunctionFitter(object):
         out_arr = self.out_arr - out_mean
         # Specify initial state for the transfer function, just the initial output
         X0 = np.zeros(len(transfer_function.den[0][0])-1)  # type: ignore
-        X0[-1] = out_arr[0]  # state position for undifferentiated output
+        if len(X0) > 0:
+            X0[-1] = out_arr[0]  # state position for undifferentiated output
         # Do the simulation
         warnings.filterwarnings("ignore")
         result_input = control.forced_response(transfer_function, T=self.times, U=in_arr, X0=X0)
