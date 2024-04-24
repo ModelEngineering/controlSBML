@@ -133,11 +133,19 @@ class OptionManager(object):
                   bbox_to_anchor=legend_spec.crd,
                   loc=legend_spec.loc)
         if new_kwargs[cn.O_LEGEND] is not None:
-            ax.legend(new_kwargs[cn.O_LEGEND])
+            o_legend = new_kwargs[cn.O_LEGEND]
+            if isinstance(o_legend, list):
+                ax.legend(new_kwargs[cn.O_LEGEND])
+            elif not o_legend:
+                ax.legend([])
         if new_kwargs[cn.O_TITLE] != cn.PLOT_DCT[cn.O_TITLE]:
             ax.set_title(new_kwargs[cn.O_TITLE])
         if new_kwargs[cn.O_XLABEL] != cn.PLOT_DCT[cn.O_XLABEL]:
             ax.set_xlabel(new_kwargs[cn.O_XLABEL])
+        if new_kwargs[cn.O_XLABEL_ANGLE] is not None:
+            labels = ax.get_xticklabels()
+            ax.set_xticks(range(len(labels)))
+            ax.set_xticklabels(labels, rotation=new_kwargs[cn.O_XLABEL_ANGLE], ha='right')
         if new_kwargs[cn.O_XLIM] is not None:
             ax.set_xlim(new_kwargs[cn.O_XLIM])
         if new_kwargs[cn.O_XTICKLABELS] is not None:

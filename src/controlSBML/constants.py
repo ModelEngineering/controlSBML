@@ -133,6 +133,7 @@ O_TIMES = "times"
 O_TITLE = "title"
 O_WRITEFIG = "writefig"  # Write the figure
 O_XLABEL = "xlabel"
+O_XLABEL_ANGLE = "xlabel_angle"
 O_XLIM = "xlim"
 O_XTICKLABELS = "xticklabels"
 O_YLABEL = "ylabel"
@@ -224,6 +225,7 @@ PLOT_DCT:dict = dict(
       ax2=None,
       xticklabels=None,
       yticklabels=None,
+      xlabel_angle=0,
       )
 # Options for the full figure
 FIG_DCT = dict(
@@ -260,6 +262,7 @@ KWARGS = [
     Kwarg(O_STEP_VAL, default=10, dtype=float, doc="value of step input"),
     Kwarg(O_TITLE, default="", dtype=str, doc="Plot title"),
     Kwarg(O_XLABEL, default="", dtype=str, doc="x-axis label"),
+    Kwarg(O_XLABEL_ANGLE, default=0, dtype=int, doc="x-axis label angle"),
     Kwarg(O_XLIM, default=None, dtype=(float, float), doc="Lower and upper values of x axis"),
     Kwarg(O_XTICKLABELS, default=None, dtype=list, doc="x-axis tic marks"),
     Kwarg(O_YLIM, default=None, dtype=(float, float), doc="Lower and upper values of y axis"),

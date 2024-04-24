@@ -105,18 +105,20 @@ PLOT_OPTION_DCT = {
     cn.O_FIGURE: None,
     cn.O_FIGSIZE: FIGSIZE,
     cn.O_IS_PLOT: True,
+    cn.O_LEGEND: True,
     cn.O_LEGEND_CRD: None,
     cn.O_LEGEND_SPEC: None,
     cn.O_MARKERS: False,
     cn.O_SUPTITLE: "",
     cn.O_TITLE: "",
-    cn.O_XLABEL: "time", cn.O_YLABEL: "concentration",
+    cn.O_XLABEL: "time",
+    cn.O_XLABEL_ANGLE: 0,
     cn.O_XTICKLABELS: None,
     cn.O_XLIM: None,
+    cn.O_YLABEL: "concentration",
     cn.O_YLIM: None,
     cn.O_YTICKLABELS: None,
     cn.O_WRITEFIG: False,
-    cn.O_LEGEND: None,
     }
 OPTION_DCT = {**STAIRCASE_DCT, **TIMES_DCT, **CLOSED_LOOP_DCT, **SYSTEM_OPTION_DCT, **PLOT_OPTION_DCT,
                **SIMULATION_DCT}
@@ -528,7 +530,9 @@ class ControlSBML(object):
             final_value: float (final value of staircase)
             num_step: int (number of steps in staircase)
             times: numpy array (times of simulation)
-            fitter:method: str (method for fitting: 'poly' or 'gpz')
+            fitter:method: str
+                'poly' uses a polynomial fit
+                'gpz' fit gain, then poles, then zeros
             times: numpy array (times of simulation)
             kwargs: (plot options)
 

@@ -8,8 +8,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 DCT = dict(cn.PLOT_DCT)
 DCT.update(cn.SIM_DCT)
 if IS_PLOT:
@@ -33,6 +33,7 @@ class TestOptionManager(unittest.TestCase):
         _, self.ax = plt.subplots(1)
         dct[cn.O_AX] = self.ax
         dct[cn.O_XLABEL] = "xlabel"
+        dct[cn.O_XLABEL_ANGLE] = 45
         dct[cn.O_IS_PLOT] = IS_PLOT
         self.option_mgr = OptionManager(dct)
 
@@ -55,11 +56,13 @@ class TestOptionManager(unittest.TestCase):
         self.assertEqual(len(diff), 0)
 
     def testDoPlotOptsFigOpts(self):
-        if IGNORE_TEST:
-          return
+        #if IGNORE_TEST:
+        #  return
         self.ax.plot(range(5), range(5))
+        import pdb; pdb.set_trace()
         self.option_mgr.doPlotOpts()
         self.option_mgr.doFigOpts()
+        plt.show()
 
     def testWritefig(self):
         if IGNORE_TEST:
