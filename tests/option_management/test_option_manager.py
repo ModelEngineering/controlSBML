@@ -1,9 +1,9 @@
-from controlSBML.option_management.option_manager import OptionManager
-import controlSBML.constants as cn
+from controlSBML.option_management.option_manager import OptionManager # type: ignore
+import controlSBML.constants as cn  # type: ignore
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
+import pandas as pd  # type: ignore
 import os
 import unittest
 

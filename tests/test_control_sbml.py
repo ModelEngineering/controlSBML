@@ -423,8 +423,18 @@ class TestControlSBML(unittest.TestCase):
         CTLSB.setSystem(input_name="Plx1_active", output_name="APC_C_active")
         result = CTLSB.plotTransferFunctionFit(fit_start_time=20, final_value=1.0,
                                                is_plot=IS_PLOT)
-
-
+        
+    def testBug12(self):
+        # Bad x-axis on plot
+        if IGNORE_TEST:
+            return
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
+        INPUT_NAME = "pIRS"
+        OUTPUT_NAME = "pmTORC1"
+        ctlsb= ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False,
+                   input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        _ = ctlsb.plotDesign(setpoint=80, kP_spec=1, kI_spec=0.01, times=np.linspace(0, 2000, 20000),
+                             is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':

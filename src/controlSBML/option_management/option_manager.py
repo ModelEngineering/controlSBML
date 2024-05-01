@@ -144,7 +144,8 @@ class OptionManager(object):
             ax.set_xlabel(new_kwargs[cn.O_XLABEL])
         if new_kwargs[cn.O_XLABEL_ANGLE] is not None:
             labels = ax.get_xticklabels()
-            ax.set_xticks(range(len(labels)))
+            xticks = ax.get_xticks()
+            ax.set_xticks(xticks)
             ax.set_xticklabels(labels, rotation=new_kwargs[cn.O_XLABEL_ANGLE], ha='right')
         if new_kwargs[cn.O_XLIM] is not None:
             ax.set_xlim(new_kwargs[cn.O_XLIM])
