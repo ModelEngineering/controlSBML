@@ -175,6 +175,7 @@ class ControlSBML(object):
                 xlim: tupe-float (x lower limit, x upper limit)
                 xticklabels: list-float (labels for x ticks)
                 ylabel: str (y label)
+                xlabel_angle: int (angle of x label)
                 ylim: tupe-float (y lower limit, y upper limit)
                 yticklabels: list-float (labels for y ticks)
             System options:
@@ -811,7 +812,12 @@ class ControlSBML(object):
         # Plot the results
         title = "" if not cn.O_TITLE in kwargs else kwargs[cn.O_TITLE]
         if len(title) == 0:
-            title = "kP=%f, kI=%f, kF=%f" % (setValue(designer.kP), setValue(designer.kI), setValue(designer.kF))
+            if not kP_spec == False:
+                title += "kP=%f " % setValue(designer.kP)
+            if not kI_spec == False:
+                title += "kI=%f " % setValue(designer.kI)
+            if not kF_spec == False:
+                title += "kF=%f " % setValue(designer.kF)
         plot_dct[cn.O_TITLE] = title
         response_ts, antimony_builder = self._plotClosedLoop(
                 times=times,

@@ -7,3 +7,4 @@ from controlSBML.staircase import Staircase
 from controlSBML.make_roadrunner import makeRoadrunner
 # Lesser used
 from controlSBML.constants import LegendSpec
+import controlSBML.constants as constants
