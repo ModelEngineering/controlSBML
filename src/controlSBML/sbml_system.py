@@ -385,7 +385,8 @@ class SBMLSystem(object):
         """
         return self._antimony_builder is not None
 
-    def simulateSISOClosedLoop(self, input_name=None, output_name=None, kP=None, kI=None, kF=None, setpoint=1,
+    def simulateSISOClosedLoop(self, input_name=None, output_name=None, kP=None, kI=None, kD=None, kF=None,
+                               setpoint=1,
                                start_time=cn.START_TIME, end_time=cn.END_TIME, times=None, num_point=None,
                                is_steady_state=False, inplace=False, initial_input_value=None,
                                selections:Optional[list[str]]=None,
@@ -398,6 +399,7 @@ class SBMLSystem(object):
             output_name: str
             kP: float
             kI float
+            kD: float
             kF: float
             setpoint: float (setpoint)
             times: np.ndarray (times for the simulation)
@@ -434,7 +436,7 @@ class SBMLSystem(object):
             new_input_name = builder.makeParameterNameForBoundaryReaction(input_name)
         else:
             new_input_name = input_name
-        builder.makeSISOClosedLoopSystem(new_input_name, output_name, kP=kP, kI=kI, kF=kF, setpoint=setpoint,
+        builder.makeSISOClosedLoopSystem(new_input_name, output_name, kP=kP, kI=kI, kD=kD, kF=kF, setpoint=setpoint,
                                          initial_output_value=initial_input_value, sign=sign)
         # Run the simulation
         ts = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,

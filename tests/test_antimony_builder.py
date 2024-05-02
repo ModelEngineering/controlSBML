@@ -156,6 +156,16 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check()
 
+    def testMakePIDController(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, kD=5, suffix="_S1_S3")
+        self.builder.makeBoundarySpecies("S1")
+        self.builder.makeAdditionStatement("S1", name_ot)
+        self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
+        self.check()
+
     def testMakePIControllerInputIsAParameter(self):
         if IGNORE_TEST:
             return
@@ -170,7 +180,7 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.builder.makeBoundarySpecies("S1")
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5,
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5, kI=5, kD=2,
                            noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20)
         self.check()
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5,

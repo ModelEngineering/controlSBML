@@ -47,6 +47,7 @@ from controlSBML import util
 import numpy as np
 import re
 import tellurium as te  # type: ignore
+from typing import Optional
 
 IN = "_in"
 OT = "_ot"
@@ -382,8 +383,67 @@ class AntimonyBuilder(object):
             statement = statement + "+ %f*%s" % (kI, integral_error_name)
         self.addStatement(statement)
         return name_in, name_ot
+    
+    def makePIDControllerElement(self,
+                                 output_name:str,
+                                 kP:Optional[float]=None,
+                                 kI:Optional[float]=None,
+                                 kD:Optional[float]=None,
+                                 prefix:Optional[str]="controller",
+                                 suffix:Optional[str]="",
+                                 sign:Optional[int]=-1):
+        """
+        Makes a PID controller. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
+        Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
+        Assumes there is no filter.
 
-    def makeSISOClosedLoopSystem(self, input_name, output_name, kP=None, kI=None, kF=None, setpoint=0,
+        Args:
+            output_name: str (output of the system)
+            kP: float
+            kI: float
+            kD: float
+            prefix: str (beginning of the name)
+            suffix: str (ending of the name)
+            sign: int (1 or -1) (1 means that the setpoint is subtracted from the output)
+        Returns:
+            str: name of the controller input
+            str: name of the controller output
+        """
+        base_name = prefix + "_" +  "%s" + suffix # type: ignore
+        self.addStatement("")
+        name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
+        # Constants for parameters
+        kP_name = base_name % "kP"
+        kI_name = base_name % "kI"
+        kD_name = base_name % "kD"
+        if kP is not None:
+            self.makeAdditionStatement(kP_name, str(kP), is_assignment=False)
+        if kI is not None:
+            self.makeAdditionStatement(kI_name, str(kI), is_assignment=False)
+        if kD is not None:
+            self.makeAdditionStatement(kD_name, str(kD), is_assignment=False)
+        # Make the derivative of the control error
+        derivative_error_name = base_name % "derivative_error"
+        statement = "%s := %d*rateOf(%s)" % (derivative_error_name, sign, output_name)  # type: ignore
+        self.addStatement(statement)
+        # Make the integral of the control error
+        integral_error_name = base_name % "integral_error"
+        statement = "%s' = %s" % (integral_error_name, name_in)
+        self.addStatement(statement)
+        self.makeAdditionStatement(integral_error_name, 0, is_assignment=False)   #  integral_error_name = 0
+        # Construct the control law
+        if kP is not None:
+            statement = "%s := %s*%s" % (name_ot, kP_name, name_in)
+        else:
+            statement = "%s = 0" % name_ot
+        if kI is not None:
+            statement = statement + " + %s*%s" % (kI_name, integral_error_name)
+        if kD is not None:
+            statement = statement + " + %s*%s" % (kD_name, derivative_error_name)
+        self.addStatement(statement)
+        return name_in, name_ot
+
+    def makeSISOClosedLoopSystem(self, input_name, output_name, kP=None, kI=None, kD=None, kF=None, setpoint=0,
                            noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20,
                            initial_output_value=None, sign=-1):
         """
@@ -392,7 +452,7 @@ class AntimonyBuilder(object):
             output_name: str (output from system)
             kP: float
             kI: float
-            kd: float
+            kD: float
             kF: float
             setpoint: float (setpoint)
             noise_amplitude: float (Amplitude of the additions to the output)
@@ -401,7 +461,12 @@ class AntimonyBuilder(object):
             disturbance_frequency: float (Frequency of the disturbance)
             initial_input_value: float (initial value of the input)
         """
+        if (kD is not None) and (kF is not None):
+            raise ValueError("Cannot have both a filter and a derivative controller")
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
+        # Symbol for setpoint
+        setpoint_name = "setpoint" + suffix
+        self.makeAdditionStatement(setpoint_name, setpoint, is_assignment=False)
         # Handle the initial value of the input
         if initial_output_value is not None:
             self.makeAdditionStatement(output_name, initial_output_value, is_assignment=False)
@@ -409,8 +474,9 @@ class AntimonyBuilder(object):
         noise_ot = self.makeSinusoidSignal(noise_amplitude, noise_frequency, prefix="noise", suffix=suffix)
         disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)
         filter_in, filter_ot = self.makeFilterElement(kF, prefix="filter", suffix=suffix)
-        controller_in, controller_ot = self.makePIControllerElement(kP, kI, prefix="controller", suffix=suffix)
-        control_error_name = self.makeControlErrorSignal(setpoint, filter_ot, sign, prefix="control_error", 
+        controller_in, controller_ot = self.makePIDControllerElement(output_name,
+              kP=kP, kI=kI, kD=kD, prefix="controller", suffix=suffix, sign=sign)
+        control_error_name = self.makeControlErrorSignal(setpoint_name, filter_ot, sign, prefix="control_error", 
                                                          suffix=suffix)
         # Connect the pieces by specifying assignment statements
         self.addStatement("")
