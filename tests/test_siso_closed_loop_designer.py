@@ -65,7 +65,7 @@ k3 = 3
 end
 """
 # Construct a transfer function for the model. This is a linear model, and so it should be accurate.
-CONTROL_PARAMETERS = ["kP", "kI", "kF"]
+CONTROL_PARAMETERS = ["kP", "kI", "kD", "kF"]
 INPUT_NAME = "S0"
 OUTPUT_NAME = "S2"
 SYSTEM = SBMLSystem(MODEL2, input_names=[INPUT_NAME], output_names=[OUTPUT_NAME], is_fixed_input_species=True)
@@ -75,7 +75,7 @@ PARAMETER_DCT = {p: n+1 for n, p in enumerate(CONTROL_PARAMETERS)}
 SETPOINT = 3
 SAVE_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer.csv")
 REMOVE_FILES = [SAVE_PATH]
-CONTROL_PARAMETER_SPECS = ["kP_spec", "kI_spec", "kF_spec"]
+CONTROL_PARAMETER_SPECS = ["kP_spec", "kI_spec", "kD_spec", "kF_spec"]
 #if False:
 #    # Required to construct the transfer function
 #    builder = SISOTransferFunctionBuilder(SYSTEM, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
@@ -133,6 +133,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         sys_tf = control.tf([1], [1, 2])
         closed_loop_tf_kP = cld._calculateClosedLoopTransferFunction(open_loop_transfer_function=sys_tf, kP=3)
         closed_loop_tf_kI = cld._calculateClosedLoopTransferFunction(open_loop_transfer_function=sys_tf, kI=3)
+        closed_loop_tf_kP = cld._calculateClosedLoopTransferFunction(open_loop_transfer_function=sys_tf, kP=3, kD=2)
         _, ys_kP = control.step_response(closed_loop_tf_kP, TIMES)
         _, ys_kI = control.step_response(closed_loop_tf_kI, TIMES)
         self.assertTrue(ys_kP[-1] < ys_kI[-1])
@@ -149,10 +150,10 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             for name in other_names:
                 self.assertIsNone(getattr(designer, name))
         designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf, times=np.linspace(0, 200, 1000))
-        designer.design(kP_spec=True, kI_spec=True, num_restart=1, max_value=10)
+        designer.design(kP_spec=True, kI_spec=True, kD_spec=0.1, num_restart=1, max_value=10)
         param_dct = designer.get()
         designer.evaluate(is_plot=IS_PLOT)
-        checkParams(["kP", "kI"])
+        checkParams(["kP", "kI", "kD"])
         #
         designer = cld.SISOClosedLoopDesigner(SYSTEM, self.sys_tf, times=np.linspace(0, 200, 1000), setpoint=5)
         designer.set(**param_dct)
@@ -169,22 +170,28 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         designer.set(kP=20)
         _, prediction1s = designer.simulateTransferFunction()
         designer.set(kP=20, kI=50)
+        designer.set(kP=20, kI=50, kD=2)
         _, prediction2s = designer.simulateTransferFunction()
         self.assertLess(calcDiff(prediction2s), calcDiff(prediction1s))
 
     def testPlot(self):
         if IGNORE_TEST:
             return
+        self.init()
         self.designer.set(**PARAMETER_DCT)
         self.designer.plot(is_plot=IS_PLOT, markers=["", ""])
-        self.designer.set(kP=10, kI=5)
+        self.designer.set(kP=10, kI=5, kD=2)
         self.designer.plot(is_plot=IS_PLOT)
 
-    def makeDesigner(self, end_time=200):
+    def makeDesigner(self, end_time=200, is_save_path=True):
         times = np.linspace(0, end_time, 10*end_time)
         system = copy.deepcopy(SYSTEM)
         transfer_function = copy.deepcopy(TRANSFER_FUNCTION)
-        designer = cld.SISOClosedLoopDesigner(system, transfer_function, times=times, save_path=SAVE_PATH)
+        if is_save_path:
+            save_path = SAVE_PATH
+        else:
+            save_path = None
+        designer = cld.SISOClosedLoopDesigner(system, transfer_function, times=times, save_path=save_path)
         return designer
 
     def testPlot2(self):
@@ -208,8 +215,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertGreater(designer.kI, 0)
 
     def testDesignAlongGrid(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         designer = self.makeDesigner()
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
         grid.addAxis("kP")
@@ -217,6 +224,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.assertTrue(isinstance(result.dataframe, pd.DataFrame))
         self.assertGreater(designer.kP, 0)
         self.assertIsNone(designer.kI)
+        self.assertIsNone(designer.kD)
         self.assertIsNone(designer.kF)
     
     def testDesignAlongGridParallel(self):
@@ -226,16 +234,18 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=11)
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5, is_random=False)
         grid.addAxis("kP")
-        grid.addAxis("kI")
+        grid.addAxis("kD")
         designer.designAlongGrid(grid, is_report=IGNORE_TEST)
         self.assertGreater(designer.kP, 0)
-        self.assertGreater(designer.kI, 0)
+        self.assertGreater(designer.kD, 0)
+        self.assertIsNone(designer.kI)
         self.assertIsNone(designer.kF)
 
     def testPlotDesignResult(self):
+        # Plots a previously computed result
         if IGNORE_TEST:
             return
-        designer = self.makeDesigner()
+        designer = self.makeDesigner(is_save_path=False)
         def test(parameter_names):
             dct = {}
             for spec in CONTROL_PARAMETER_SPECS:
@@ -247,7 +257,29 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
                  num_coordinate=4, num_restart=1, is_report=IGNORE_TEST, **dct)
             designer.plotDesignResult(is_plot=IS_PLOT, figsize=(15,15))
         #
-        test(["kP_spec", "kI_spec", "kF_spec"])
+        test(["kP_spec", "kI_spec", "kD_spec"])
+        test(["kP_spec", "kI_spec"])
+        test(["kP_spec"])
+
+    def testPlotDesignResult2(self):
+        # Check for selection of parameters
+        if IGNORE_TEST:
+            return
+        def test(parameter_names):
+            designer = self.makeDesigner(is_save_path=False)
+            dct = {}
+            for spec in CONTROL_PARAMETER_SPECS:
+                if spec in parameter_names:
+                    dct[spec] = True
+                else:
+                    dct[spec] = False
+            designer.design(min_value=0.1, max_value=10, 
+                 num_coordinate=4, num_restart=1, is_report=IGNORE_TEST, **dct)
+            designer.plotDesignResult(is_plot=IS_PLOT, figsize=(15,15))
+        #
+        test(["kP_spec", "kI_spec", "kD_spec"])
+        with self.assertRaises(ValueError):
+            test(["kP_spec", "kI_spec", "kD_spec", "kF_spec"])
         test(["kP_spec", "kI_spec"])
         test(["kP_spec"])
 

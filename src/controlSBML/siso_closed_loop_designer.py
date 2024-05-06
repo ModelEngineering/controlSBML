@@ -24,7 +24,8 @@ import seaborn as sns  # type: ignore
 CP_kP = "kP"
 CP_kI = "kI"
 CP_kF = "kF"
-CONTROL_PARAMETERS = [CP_kP, CP_kI, CP_kF]
+CP_kD = "kD"
+CONTROL_PARAMETERS = [CP_kP, CP_kI, CP_kF, CP_kD]
 MAX_VALUE = 1e3  # Maximum value for a parameter
 MIN_VALUE = 0  # Minimum value for a paramete
 DEFAULT_INITIAL_VALUE = 1   # Default initial value for a parameter
@@ -33,14 +34,15 @@ BELOW_MIN_MULTIPLIER = 1e-3
 ABOVE_MAX_MULTIPLIER = 1e-3
 LOWPASS_POLE = 1e4 # Pole for low pass filter
 # Column names
-PARAMETER_DISPLAY_DCT = {CP_kP: r'$k_p$', CP_kI: r'$k_i$', CP_kF: r'$k_f$'}
+PARAMETER_DISPLAY_DCT = {CP_kP: r'$k_p$', CP_kI: r'$k_i$', CP_kF: r'$k_f$', CP_kD: r'$k_d$'}
 
 Workunit = collections.namedtuple("Workunit",
     "system input_name output_name setpoint times is_greedy num_restart is_report") 
 DesignResult = collections.namedtuple("DesignResult", "dataframe")
 
 
-def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=None, kI=None, kD=None, kF=None, sign=-1):
+def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=None, kI=None, kD=None, kF=None,
+                                         sign=-1):
     # Construct the transfer functions
     if open_loop_transfer_function is None:
         return None
@@ -103,6 +105,7 @@ class SISOClosedLoopDesigner(object):
         # Outputs
         self.kP = None
         self.kI = None
+        self.kD = None
         self.kF = None
         self.closed_loop_system = None
         self.residual_mse = None
@@ -116,14 +119,15 @@ class SISOClosedLoopDesigner(object):
     def closed_loop_transfer_function(self):
         if self.open_loop_transfer_function is None:
             return None
-        return _calculateClosedLoopTransferFunction(open_loop_transfer_function=self.open_loop_transfer_function, kP=self.kP, kI=self.kI,
-                                      kF=self.kF, sign=self.sign)
+        return _calculateClosedLoopTransferFunction(open_loop_transfer_function=self.open_loop_transfer_function,
+                                                    kP=self.kP, kI=self.kI, kD=self.kD,
+                                                    kF=self.kF, sign=self.sign)
     @property
     def closed_loop_timeseries(self):
         _, closed_loop_ts = self.simulateTransferFunction(transfer_function=self.closed_loop_transfer_function)
         return closed_loop_ts
     
-    def set(self, kP=None, kI=None, kF=None):
+    def set(self, kP=None, kI=None, kD=None, kF=None):
         """
         Sets values of the design parameters
 
@@ -133,7 +137,7 @@ class SISOClosedLoopDesigner(object):
             kD (float)
             kF (float)
         """
-        value_dct = {CP_kP: kP, CP_kI: kI, CP_kF: kF}
+        value_dct = {CP_kP: kP, CP_kI: kI, CP_kD: kD, CP_kF: kF}
         for name, value in value_dct.items():
             if value is None:
                 continue
@@ -232,13 +236,13 @@ class SISOClosedLoopDesigner(object):
         mgr.doPlotOpts()
         mgr.doFigOpts()
 
-    def design(self, kP_spec=False, kI_spec=False, kF_spec=False, is_greedy=True,
+    def design(self, kP_spec=False, kI_spec=False, kD_spec=False, kF_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
                num_coordinate=3, save_path=None, num_process:int=-1, is_report:bool=False)->DesignResult:
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
-            kP_spec, kI_spec, kF_spec (bool, float): if True, the parameter is fitted. If float, then keeps at this value.
+            kP_spec, kI_spec, kD_spec, kF_spec: if True, the parameter is fitted. If float, then keeps at this value.
             num_restart: int (number of times to restart the minimizer)
             is_greedy: bool (if True, then a greedy search is done to find a feasible system)
             min_value: float/dict (parameter name: value)
@@ -269,9 +273,14 @@ class SISOClosedLoopDesigner(object):
                 grid.addAxis(parameter_name, min_value=parameter_spec, max_value=parameter_spec, num_coordinate=1)
         # Initializations
         grid = Grid(min_value=min_value, max_value=max_value, num_coordinate=num_coordinate)
-        addAxis(grid, CP_kP, kP_spec)
-        addAxis(grid, CP_kI, kI_spec)
-        addAxis(grid, CP_kF, kF_spec)
+        if type(kP_spec) in [bool, float]:
+            addAxis(grid, CP_kP, kP_spec)
+        if type(kI_spec) in [bool, float]:
+            addAxis(grid, CP_kI, kI_spec)
+        if type(kD_spec) in [bool, float]:
+            addAxis(grid, CP_kD, kD_spec)
+        if type(kF_spec) in [bool, float]:
+            addAxis(grid, CP_kF, kF_spec)
         #
         return self.designAlongGrid(grid, is_greedy=is_greedy, num_restart=num_restart, is_report=is_report,
                                     num_process=num_process)
@@ -305,7 +314,7 @@ class SISOClosedLoopDesigner(object):
             search_results.append(parallel_search.getSearchResults())
         if len(search_results) == 0:
             df = pd.DataFrame([[None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
-                              columns=[CP_kP, CP_kI, CP_kF, cn.SCORE, cn.REASON])
+                              columns=[CP_kP, CP_kI, CP_kD, CP_kF, cn.SCORE, cn.REASON])
             return DesignResult(dataframe=df)
         # Merge the results and sort by score
         search_result_df = pd.concat(search_results)
@@ -317,11 +326,14 @@ class SISOClosedLoopDesigner(object):
             self.kP = getValue(search_result_df.loc[0, CP_kP])
         if CP_kI in search_result_df.columns:
             self.kI = getValue(search_result_df.loc[0, CP_kI])
+        if CP_kD in search_result_df.columns:
+            self.kD = getValue(search_result_df.loc[0, CP_kD])
         if CP_kF in search_result_df.columns:
             self.kF = getValue(search_result_df.loc[0, CP_kF])
         # Save the results
         if self.save_path is not None:
             search_result_df.to_csv(self.save_path, index=False)
+        self._design_result_df = search_result_df.copy()
         return DesignResult(dataframe=search_result_df)
 
     @property
@@ -329,7 +341,7 @@ class SISOClosedLoopDesigner(object):
         """
         Returns:
             pd.DataFrame
-                columns: kP, kI, kF, mse
+                columns: kP, kI, kD, kF, mse
         """
         if self._design_result_df is None:
             if (self.save_path is not None) and (os.path.isfile(self.save_path)):
@@ -387,7 +399,7 @@ class SISOClosedLoopDesigner(object):
             plt.show()
         # Title lists values of the design parameters
 
-    def evaluate(self, is_plot=True, **kwargs):
+    def evaluate(self, **kwargs):
         """
         Creates an SBMLSystem using the design parameters. Records the builder.
 

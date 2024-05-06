@@ -5,15 +5,15 @@ from controlSBML.sbml_system import SBMLSystem
 import controlSBML.constants as cn
 
 import numpy as np
-import pandas as pd
+import pandas as pd # type: ignore
 import os
-from typing import List
+from typing import List, Optional
 
 
 class EvaluatorResult(dict):
     # Container of evaluation results
 
-    def __init__(self, kp_spec=False, ki_spec=False, kf_spec=False):
+    def __init__(self, kp_spec=False, ki_spec=False, kf_spec=False, kd_spec=False):
         self[cn.MSE] = []
         self.attrs = [cn.MSE]
         if kp_spec:
@@ -25,6 +25,9 @@ class EvaluatorResult(dict):
         if kf_spec:
             self[cn.CP_KF] = []
             self.attrs.append(cn.CP_KF)
+        if kd_spec:
+            self[cn.CP_KD] = []
+            self.attrs.append(cn.CP_KD)
 
     def __len__(self):
         keys = list(self.keys())
@@ -50,7 +53,8 @@ class EvaluatorResult(dict):
         kp_spec = cn.CP_KP in dataframe.columns
         ki_spec = cn.CP_KI in dataframe.columns
         kf_spec = cn.CP_KF in dataframe.columns
-        evaluator_result = EvaluatorResult(kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec)
+        kd_spec = cn.CP_KD in dataframe.columns
+        evaluator_result = EvaluatorResult(kp_spec=kp_spec, ki_spec=ki_spec, kf_spec=kf_spec, kd_spec=kd_spec)
         for _, row in dataframe.iterrows():
             kwargs = {cn.MSE: row[cn.MSE]}
             if kp_spec:
@@ -59,6 +63,8 @@ class EvaluatorResult(dict):
                 kwargs[cn.CP_KI] = row[cn.CP_KI]
             if kf_spec:
                 kwargs[cn.CP_KF] = row[cn.CP_KF]
+            if kd_spec:
+                kwargs[cn.CP_KD] = row[cn.CP_KD]
             evaluator_result.add(**kwargs)
         return evaluator_result
     
@@ -78,6 +84,8 @@ class EvaluatorResult(dict):
             evaluator_result[cn.CP_KI] = list(self[cn.CP_KI])
         if cn.CP_KF in self:
             evaluator_result[cn.CP_KF] = list(self[cn.CP_KF])
+        if cn.CP_KD in self:
+            evaluator_result[cn.CP_KD] = list(self[cn.CP_KD])
         return evaluator_result
 
     @classmethod
@@ -102,7 +110,8 @@ class EvaluatorResult(dict):
 class SISODesignEvaluator:
     # Evaluates designs and remembers the best one
 
-    def __init__(self, system:SBMLSystem, input_name, output_name, setpoint:float=1, times:List[float]=cn.TIMES,
+    def __init__(self, system:SBMLSystem, input_name, output_name, setpoint:float=1, 
+                 times:List[float]=cn.TIMES,  # type: ignore
                  save_path=None):
         self.system = system
         self.setpoint = setpoint
@@ -114,6 +123,7 @@ class SISODesignEvaluator:
         self.kp = None
         self.ki = None
         self.kf = None
+        self.kd = None
         self.residual_mse = None
         # All results
         self.evaluator_result = None
@@ -129,6 +139,7 @@ class SISODesignEvaluator:
         def update(evaluator, merged_evaluator):
             merged_evaluator.kp = evaluator.kp
             merged_evaluator.ki = evaluator.ki
+            merged_evaluator.kd = evaluator.kd
             merged_evaluator.kf = evaluator.kf
             merged_evaluator.residual_mse = evaluator.residual_mse
         #
@@ -145,18 +156,10 @@ class SISODesignEvaluator:
             merged_evaluator.kp = df[cn.CP_KP].values[idx]
         if cn.CP_KI in df.columns:
             merged_evaluator.ki = df[cn.CP_KI].values[idx]
+        if cn.CP_KD in df.columns:
+            merged_evaluator.kd = df[cn.CP_KD].values[idx]
         if cn.CP_KF in df.columns:
             merged_evaluator.kf = df[cn.CP_KF].values[idx]
-        if False:
-            for evaluator in evaluators:
-                if evaluator.residual_mse is None:
-                    continue
-                if merged_evaluator.residual_mse is None:
-                    update(evaluator, merged_evaluator)
-                    continue
-                if evaluator.residual_mse < merged_evaluator.residual_mse:
-                    update(evaluator, merged_evaluator)
-                    continue
         return merged_evaluator
         
     def copy(self, is_set_outputs:bool=True):
@@ -173,11 +176,13 @@ class SISODesignEvaluator:
         if is_set_outputs:
             evaluator.kp = self.kp
             evaluator.ki = self.ki
+            evaluator.kd = self.kd
             evaluator.kf = self.kf
             evaluator.residual_mse = self.residual_mse
         return evaluator
 
-    def evaluate(self, kp:float=None, ki:float=None, kf:float=None):
+    def evaluate(self, kp:Optional[float]=None, ki:Optional[float]=None, kf:Optional[float]=None,
+                 kd:Optional[float]=None) -> bool:
         """
         Evaluates the closed loop system. Updates the control parameters if the design is better.
 
@@ -198,17 +203,17 @@ class SISODesignEvaluator:
                 df = pd.read_csv(self.save_path)
                 self.evaluator_result = EvaluatorResult.makeFromDataframe(df)
             else:
-                self.evaluator_result = EvaluatorResult(kp_spec=kp, ki_spec=ki, kf_spec=kf)
+                self.evaluator_result = EvaluatorResult(kp_spec=kp, ki_spec=ki, kf_spec=kf, kd_spec=kd)  # type: ignore
         # Evaluate the design
-        value_dct = {cn.CP_KP: kp, cn.CP_KI: ki, cn.CP_KF: kf}
+        value_dct = {cn.CP_KP: kp, cn.CP_KI: ki, cn.CP_KF: kf, cn.CP_KD: kd}
         original_value_dct = dict(value_dct)
         for key, value in original_value_dct.items():
             if value is None:
                 del value_dct[key]
-        is_feasible, residual_mse = self.calculateMse(**value_dct)
+        is_feasible, residual_mse = self.calculateMse(**value_dct)  # type: ignore
         # Save the results
-        self.evaluator_result.add(**value_dct, mse=residual_mse)
-        self.evaluator_result.writeCsv(self.save_path)
+        self.evaluator_result.add(mse=residual_mse, **value_dct)  # type: ignore
+        self.evaluator_result.writeCsv(self.save_path)            # type: ignore
         if not is_feasible:
             return False
         if self.residual_mse is None:
@@ -224,7 +229,7 @@ class SISODesignEvaluator:
         Args:
             max_output: float (maximum output)
             min_output: float (minimum output)
-            parameter_dct: dict: {name: value for eack of kp, ki, kf}
+            parameter_dct: dict: {name: value for eack of kp, ki, kd, kf}
 
         Returns:
             bool (successful simulation)
@@ -235,7 +240,7 @@ class SISODesignEvaluator:
                         input_name=self.input_name, output_name=self.output_name,
                         times=self.times,
                         is_steady_state=self.system.is_steady_state, inplace=False,
-                        **parameter_dct)
+                        **parameter_dct)  # type: ignore
         except Exception:
             return False, None
         # Check for large outputs
@@ -255,7 +260,7 @@ class SISODesignEvaluator:
     
     @classmethod
     def makeFromDataframe(cls, system:SBMLSystem, input_name:str, output_name:str, dataframe:pd.DataFrame,
-                setpoint:float=1, times:List[float]=cn.TIMES,
+                setpoint:float=1, times:np.ndarray[float]=cn.TIMES,  # type: ignore
                 save_path=None):
         """
         Creates a SISODesignEvaluator object from a dataframe
@@ -267,13 +272,15 @@ class SISODesignEvaluator:
             EvaluatorResult
         """
         evaluator = cls(system, input_name, output_name,
-                setpoint=setpoint, times=times, save_path=save_path)
+                setpoint=setpoint, times=times, save_path=save_path)  # type: ignore
         evaluator_result = EvaluatorResult.makeFromDataframe(dataframe)
         df = dataframe.sort_values(cn.MSE)
         if cn.CP_KP in df.columns:
             evaluator.kp = df[cn.CP_KP].values[0]
         if cn.CP_KI in df.columns:
             evaluator.ki = df[cn.CP_KI].values[0]
+        if cn.CP_KD in df.columns:
+            evaluator.kd = df[cn.CP_KD].values[0]
         if cn.CP_KF in df.columns:
             evaluator.kf = df[cn.CP_KF].values[0]
         evaluator.residual_mse = df[cn.MSE].values[0]

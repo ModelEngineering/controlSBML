@@ -64,14 +64,14 @@ class AntimonyBuilder(object):
                 value: str (symbol type)
         """
         self.antimony = antimony
-        self.antimony_strs = antimony.split("\n")
+        self.antimony_strs = self.antimony.split("\n")
         self.insert_pos = self._findMainModelEndPosition()  ## Add
         ##self.control_module_name = self._calculateControlModuleName(control_module_name)
         self._initialized_output = False
         # Find the main module
-        rr = te.loada(antimony)
+        self.roadrunner = te.loada(antimony)
         if symbol_dct is None:
-            symbol_dct = util.makeRoadrunnerSymbolDct(rr)
+            symbol_dct = util.makeRoadrunnerSymbolDct(self.roadrunner)
         self.symbol_dct = dict(symbol_dct)
 
     def copy(self):
@@ -178,16 +178,20 @@ class AntimonyBuilder(object):
         Args:
             statement: str
         """
-        def insert(stg, increment=1):
-            self.antimony_strs.insert(self.insert_pos, stg)
-            self.insert_pos += increment
-        #
         if not self._initialized_output:
-            self._initialized_output = True
-            insert("")
-            insert("//vvvvvvvvvAdded by ControlSBMLvvvvvvvvvv")
-            insert("//^^^^^^^^^Added by ControlSBML^^^^^^^^^^", increment=0)
-        insert(statement)
+            self.initializeOutput()
+        self._insert(statement)
+
+    def _insert(self, stg, increment=1):
+        self.antimony_strs.insert(self.insert_pos, stg)
+        self.insert_pos += increment
+
+    def initializeOutput(self):
+        self.antimony_strs = self.antimony.split("\n")
+        self.insert_pos = self._findMainModelEndPosition()
+        self._initialized_output = True
+        self._insert("", increment=0)
+        self._insert("//^^^^^^^^^Added by ControlSBML^^^^^^^^^^", increment=0)
 
     def makeBoundarySpecies(self, species_name):
         """
@@ -265,7 +269,7 @@ class AntimonyBuilder(object):
                     statement += argument_str
         self.addStatement(statement) 
 
-    def makeSinusoidSignal(self, amplitude, frequency, prefix="sinusoid", suffix=""):
+    def makeSinusoidSignal(self, amplitude, frequency, is_offset_amplitude=True, prefix="sinusoid", suffix=""):
         """
         Makes a sinusoid. The created variable is prefix + suffix + "_ot"
         Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
@@ -273,6 +277,7 @@ class AntimonyBuilder(object):
         Args:
             amplitude: float
             frequency: float
+            is_offset_amplitude: bool (True means that the signal is offset by its amplitude)
             prefix: str (beginning of the name)
             suffix: str (ending of the name)
         Returns:
@@ -282,6 +287,8 @@ class AntimonyBuilder(object):
         self.makeComment("Make sinusoid: amplitude=%s, frequency=%s" % (str(amplitude), str(frequency)))
         name = prefix +  suffix +  OT
         statement = "%s := %f*sin(2*pi*%f*time)" % (name, amplitude, frequency)
+        if is_offset_amplitude:
+            statement += " + %f" % (amplitude)
         self.addStatement(statement) 
         return name
     
@@ -290,8 +297,8 @@ class AntimonyBuilder(object):
         name_in = base_name + IN
         name_ot = base_name + OT
         return name_in, name_ot
-    
-    def makeFilterElement(self, kF, prefix="filter", suffix=""):
+
+    def makeFilterElement(self, kF:float, prefix:str="filter", suffix:str=""):
         """
         Makes a filter. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
         Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
@@ -303,6 +310,7 @@ class AntimonyBuilder(object):
         Returns:
             str: name of the filter input
             str: name of the filter output
+            str: filter calculation
         Usage:
             suffix = "_S1_S3"
             name_in, name_ot = self.makeFilter(0.5, suffix=suffix)
@@ -310,15 +318,20 @@ class AntimonyBuilder(object):
             self.makeAddition("control_error", setpoint, "-"+name_ot)
         """
         self.addStatement("")
-        self.makeComment("Filter: kF=%s" % (str(kF)))
+        self.makeComment("Make filter: kF=%s" % (str(kF)))
         name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
-        if (kF is not None) and (kF > 0):
-            statement = "%s' =  -%f*%s + %f*%s" % (name_ot, kF, name_ot, kF, name_in)
+        if kF is None:
+            self.makeAdditionStatement(name_ot, name_in)
+            return name_in, name_ot, None
+        calculation = None
+        if (kF is not None):
+            calculation = "-%f*%s + %f*%s" % (kF, name_ot, kF, name_in)
+            # Use a dummy reaction to integrate instead of "'" to avoid antimony limitations with
+            # combining rate rules and assignment rules
+            statement = " -> %s; %s " % (name_ot, calculation) 
             self.addStatement(statement)
             self.makeAdditionStatement(name_ot, 0, is_assignment=False)   # Initialize the filter output
-        else:
-            self.makeAdditionStatement(name_ot, name_in)
-        return name_in, name_ot
+        return name_in, name_ot, calculation
     
     def makeControlErrorSignal(self, setpoint, forward_output_name, sign, prefix="control_error", suffix=""):
         """
@@ -336,6 +349,8 @@ class AntimonyBuilder(object):
             suffix = "_S1_S3"
             control_error_name = self.makeControlError(setpoint, "S3", suffix=suffix)   # S3 is the output of the system
         """
+        self.addStatement("")
+        self.makeComment("Make the control error")
         name_ot = prefix + suffix + OT
         if sign == 1:
             statement = "%s := %s - %s" % (name_ot, forward_output_name, str(setpoint))
@@ -346,44 +361,6 @@ class AntimonyBuilder(object):
         self.addStatement(statement)
         return name_ot
     
-    def makePIControllerElement(self, kP=None, kI=None, prefix="controller", suffix=""):
-        """
-        Makes a PI controller. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
-        Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
-
-        Args:
-            kP: float
-            kI: float
-            prefix: str (beginning of the name)
-            suffix: str (ending of the name)
-        Returns:
-            str: name of the controller input
-            str: name of the controller output
-        Usage:
-            suffix = "_S1_S3"
-            name_in, name_ot = self.makeController(kP=1, suffix=suffix)
-            control_error_name = self.makeControlError(setpoint, "S3", suffix=suffix)   # S3 is the output of the system
-            self.makeAddition(name_in, control_error_name)  # control_error is input to the controller
-            self.makeAddition("S1", name_ot)   # S1 is the input to the system and is set by the controller
-        """
-        self.addStatement("")
-        self.makeComment("PI Controller: kP=%s, kI=%s" % (str(kP), str(kI)))
-        name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
-        # Make the integral of the control error
-        integral_error_name = prefix + "_integral_error" + suffix
-        statement = "%s' = %s" % (integral_error_name, name_in)
-        self.addStatement(statement)
-        self.makeAdditionStatement(integral_error_name, 0, is_assignment=False)   #  integral_error_name = 0
-        # Construct the control law
-        if kP is not None:
-            statement = "%s := %f*%s" % (name_ot, kP, name_in)
-        else:
-            statement = "%s = 0" % name_ot
-        if kI is not None:
-            statement = statement + "+ %f*%s" % (kI, integral_error_name)
-        self.addStatement(statement)
-        return name_in, name_ot
-    
     def makePIDControllerElement(self,
                                  output_name:str,
                                  kP:Optional[float]=None,
@@ -391,6 +368,7 @@ class AntimonyBuilder(object):
                                  kD:Optional[float]=None,
                                  prefix:Optional[str]="controller",
                                  suffix:Optional[str]="",
+                                 filter_calculation:Optional[str]=None,
                                  sign:Optional[int]=-1):
         """
         Makes a PID controller. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
@@ -405,12 +383,14 @@ class AntimonyBuilder(object):
             prefix: str (beginning of the name)
             suffix: str (ending of the name)
             sign: int (1 or -1) (1 means that the setpoint is subtracted from the output)
+            filter_calculation: str (calculation for the derivative of the filter)
         Returns:
             str: name of the controller input
             str: name of the controller output
         """
         base_name = prefix + "_" +  "%s" + suffix # type: ignore
         self.addStatement("")
+        self.makeComment("Make the PID controller")
         name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
         # Constants for parameters
         kP_name = base_name % "kP"
@@ -423,14 +403,19 @@ class AntimonyBuilder(object):
         if kD is not None:
             self.makeAdditionStatement(kD_name, str(kD), is_assignment=False)
         # Make the derivative of the control error
-        derivative_error_name = base_name % "derivative_error"
-        statement = "%s := %d*rateOf(%s)" % (derivative_error_name, sign, output_name)  # type: ignore
-        self.addStatement(statement)
+        if kD is not None:
+            derivative_error_name = base_name % "derivative_error"
+            if filter_calculation is None:
+                filter_calculation = "rateOf(%s)" % (output_name)  # type: ignore
+            sign_filter_calculation = "%d*(%s)" % (sign, filter_calculation)  # type: ignore
+            statement = "%s := %s" % (derivative_error_name, sign_filter_calculation)  # type: ignore
+            self.addStatement(statement)
         # Make the integral of the control error
-        integral_error_name = base_name % "integral_error"
-        statement = "%s' = %s" % (integral_error_name, name_in)
-        self.addStatement(statement)
-        self.makeAdditionStatement(integral_error_name, 0, is_assignment=False)   #  integral_error_name = 0
+        if kI is not None:
+            integral_error_name = base_name % "integral_error"
+            statement = "%s' = %s" % (integral_error_name, name_in)
+            self.addStatement(statement)
+            self.makeAdditionStatement(integral_error_name, 0, is_assignment=False)   #  integral_error_name = 0
         # Construct the control law
         if kP is not None:
             statement = "%s := %s*%s" % (name_ot, kP_name, name_in)
@@ -461,20 +446,22 @@ class AntimonyBuilder(object):
             disturbance_frequency: float (Frequency of the disturbance)
             initial_input_value: float (initial value of the input)
         """
-        if (kD is not None) and (kF is not None):
-            raise ValueError("Cannot have both a filter and a derivative controller")
+        self.addStatement("")
+        self.makeComment("**CREATING CLOSED LOOP SYSTEM**")
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
         # Symbol for setpoint
         setpoint_name = "setpoint" + suffix
         self.makeAdditionStatement(setpoint_name, setpoint, is_assignment=False)
         # Handle the initial value of the input
-        if initial_output_value is not None:
-            self.makeAdditionStatement(output_name, initial_output_value, is_assignment=False)
+        if initial_output_value is None:
+            initial_output_value = self.roadrunner[output_name]
+        self.makeAdditionStatement(output_name, initial_output_value, is_assignment=False)
         # Make the elements of the closed loop
         noise_ot = self.makeSinusoidSignal(noise_amplitude, noise_frequency, prefix="noise", suffix=suffix)
         disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)
-        filter_in, filter_ot = self.makeFilterElement(kF, prefix="filter", suffix=suffix)
+        filter_in, filter_ot, filter_calculation = self.makeFilterElement(kF, prefix="filter", suffix=suffix)
         controller_in, controller_ot = self.makePIDControllerElement(output_name,
+              filter_calculation=filter_calculation,
               kP=kP, kI=kI, kD=kD, prefix="controller", suffix=suffix, sign=sign)
         control_error_name = self.makeControlErrorSignal(setpoint_name, filter_ot, sign, prefix="control_error", 
                                                          suffix=suffix)

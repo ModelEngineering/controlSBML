@@ -29,10 +29,10 @@ Typical Usage:
 
     # Automatically design
     _ = ctlsb.plotSISOClosedLoopDesign(kP_spec=True, kI_spec=True, min_value=0, max_value=10, num_iteration=20, setpoint=4)
-    param_dct = {kP: ctlsb.kP, kI: ctlsb.kI, kF: ctlsb.kF}
+    param_dct = {kP: ctlsb.kP, kI: ctlsb.kI, kD: ctlsb.kD, kF: ctlsb.kF}
 
     # Explore variations on the design
-    new_param_dct = {n: v*1.1 for n, v param_dct.items() for n in ["kP", "kI", "kF"]}
+    new_param_dct = {n: v*1.1 for n, v param_dct.items() for n in ["kP", "kI", "kD", "kF"]}
     _ = ctlsb.plotClosedLoop(setpoint=5, **new_param_dct)  # Do further trail and error
 
 
@@ -82,6 +82,7 @@ SIMULATION_DCT = {
 CLOSED_LOOP_DCT = {
     cn.CP_KP: 0, 
     cn.CP_KI: 0, 
+    cn.CP_KD: 0, 
     cn.CP_KF: 0, 
     cn.O_SETPOINT: 1, 
     cn.O_SIGN: -1,
@@ -89,6 +90,7 @@ CLOSED_LOOP_DCT = {
     cn.O_NUM_RESTART: 1,
     cn.O_KP_SPEC: False,
     cn.O_KI_SPEC: False,
+    cn.O_KD_SPEC: False,
     cn.O_KF_SPEC: False,
     }
 SYSTEM_OPTION_DCT = {
@@ -184,9 +186,10 @@ class ControlSBML(object):
                 is_fixed_input_species: bool (concentration of input species are controlled externally; default: False)
                 output_name: str
             Closed loop options:
-                kF: float (filter constant)
-                kI: float (integral control)
                 kP: float (proportional control)
+                kI: float (integral control)
+                kD: float (differential constant)
+                kF: float (filter constant)
                 setpoint: float (regulation point)
                 sign: -1/+1 (direction of feedback: default: -1) 
             Staircase options:
@@ -274,7 +277,7 @@ class ControlSBML(object):
         return self._roadrunner.getAntimony()
     
     def getGrid(self, min_value:int=0, max_value:int=10, num_coordinate:int=10, kP_spec:bool=False,
-                kI_spec:bool=False, kF_spec:bool=False, is_random=True)->Grid:
+                kI_spec:bool=False, kD_spec:bool=False, kF_spec:bool=False, is_random=True)->Grid:
         """
         Creates a grid of values for the control parameters based on the specified control design.
 
@@ -284,6 +287,7 @@ class ControlSBML(object):
             num_coordinate (int): _description_. Defaults to 10.
             kP_spec (bool): Proportional control. Defaults to False.
             kI_spec (bool): Integral control. Defaults to False.
+            kD_spec (bool): Differential control. Defaults to False.
             kF_spec (bool): Filter. Defaults to False.
             is_random (bool): If True, the grid is randomly generated. Defaults to True.
         Returns:
@@ -297,6 +301,7 @@ class ControlSBML(object):
         #
         makeAxis(cn.CP_KP, kP_spec)
         makeAxis(cn.CP_KI, kI_spec)
+        makeAxis(cn.CP_KD, kD_spec)
         makeAxis(cn.CP_KF, kF_spec)
         return grid
 
@@ -340,14 +345,15 @@ class ControlSBML(object):
                 sign=self.sign)
         kP = 0
         kI = 0
+        kD = 0
         kF = 0
         for parameter_name in cn.CONTROL_PARAMETERS:
             parameter = getattr(self, parameter_name)
             if parameter is not None:
                 if not util.isNumber(parameter):
-                    raise ValueError("Must assign float to kP, kI, and kF before using this method.")
+                    raise ValueError("Must assign float to kP, kI, kD, and kF before using this method.")
                 setattr(self, parameter_name, parameter)
-        designer.set(kP=kP, kI=kI, kF=kF)
+        designer.set(kP=kP, kI=kI, kD=kD, kF=kF)
         return designer.closed_loop_transfer_function
     
     def _getParameterStr(self, parameters:List[str], **kwargs):
@@ -586,18 +592,20 @@ class ControlSBML(object):
     def _plotClosedLoop(self, 
                         kP:Optional[float]=OPTION_DCT[cn.CP_KP],
                         kI:Optional[float]=OPTION_DCT[cn.CP_KI],
+                        kD:Optional[float]=OPTION_DCT[cn.CP_KD],
                         kF:Optional[float]=OPTION_DCT[cn.CP_KF],
                         setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                         sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
                         selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
                         times:Optional[np.ndarray]=None,
-                        **kwargs):
+                        **kwargs)->Tuple[Timeseries, AntimonyBuilder]:
         """
         Plots the closed loop response. Control parameters not explicity specified are None.
 
         Args:
             kP: proportional control parameter
             kI: integral control parameter
+            kD: differential control parameter
             kF: filter parameter
             sign: int (direction of feedback: -1 or 1)
             setpoint: float (regulation point)
@@ -611,19 +619,20 @@ class ControlSBML(object):
         self._checkKwargs(PLOT_KEYS, **kwargs)
         #
         # Construct the SBML system
-        dct = self.getOptions(sign=sign, setpoint=setpoint, kP=kP, kI=kI, kF=kF,
+        dct = self.getOptions(sign=sign, setpoint=setpoint, kP=kP, kI=kI, kD=kD, kF=kF,
                               times=times, selections=selections, **kwargs)
         sign = dct[cn.O_SIGN]
         setpoint = dct[cn.O_SETPOINT]
         kP = dct[cn.CP_KP]
         kI = dct[cn.CP_KI]
+        kD = dct[cn.CP_KD]
         kF = dct[cn.CP_KF]
         times = dct[cn.O_TIMES]
         plot_dct = util.subsetDct(dct, PLOT_KEYS)
         # Plot the response
         response_ts, builder = self._sbml_system.simulateSISOClosedLoop(input_name=self.input_name,
                 output_name=self.output_name, sign=sign,
-                kP=kP, kI=kI, kF=kF, setpoint=setpoint, selections=selections,
+                kP=kP, kI=kI, kD=kD, kF=kF, setpoint=setpoint, selections=selections,
                 times=times,
                 )
         self._sbml_system.plotSISOClosedLoop(response_ts, setpoint, times=times, **plot_dct)
@@ -640,7 +649,7 @@ class ControlSBML(object):
                        **kwargs)->GridDesignResult:
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
-        Persists the closed loop design (kP, kI, kF) if a design is found.
+        Persists the closed loop design (kP, kI, kD, kF) if a design is found.
 
         Args:
             grid: Grid (grid of values for the control parameters)
@@ -691,13 +700,15 @@ class ControlSBML(object):
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
+        self.setOption(cn.CP_KD, designer.kD)
         self.setOption(cn.CP_KF, designer.kF)
         # Plot the results 
         plot_dct[cn.O_YLABEL] = self.output_name if not cn.O_YLABEL in kwargs else kwargs[cn.O_YLABEL]
         if (not cn.O_TITLE in plot_dct) or (len(plot_dct[cn.O_TITLE]) == 0):
-            plot_dct[cn.O_TITLE] = self._getParameterStr([cn.CP_KP, cn.CP_KI, cn.CP_KF],
+            plot_dct[cn.O_TITLE] = self._getParameterStr([cn.CP_KP, cn.CP_KI, cn.CP_KF, cn.CP_KD],
                                                      kP=getattr(self, cn.CP_KP),
                                                      kI=getattr(self, cn.CP_KI),
+                                                     kD=getattr(self, cn.CP_KD),
                                                      kF=getattr(self, cn.CP_KF),
                                                      )
         response_ts, antimony_builder = self._plotClosedLoop(
@@ -706,6 +717,7 @@ class ControlSBML(object):
                 sign=self.sign,
                 kP=designer.kP,
                 kI=designer.kI,
+                kD=designer.kD,
                 kF=designer.kF,
                 selections=selections,
                 **plot_dct)
@@ -715,6 +727,7 @@ class ControlSBML(object):
     def plotDesign(self, 
                 kP_spec:bool=OPTION_DCT[cn.O_KP_SPEC],
                 kI_spec:bool=OPTION_DCT[cn.O_KI_SPEC],
+                kD_spec:bool=OPTION_DCT[cn.O_KD_SPEC],
                 kF_spec:bool=OPTION_DCT[cn.O_KF_SPEC],
                 setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                 sign:Optional[float]=OPTION_DCT[cn.O_SIGN],
@@ -728,20 +741,22 @@ class ControlSBML(object):
                 is_report:bool=False, 
                 **kwargs)->DesignResult:
         """
-        Plots the results of a closed loop design. The design is specified by the parameters kP_spec, kI_spec, and kF_spec.
+        Plots the results of a closed loop design. The design is specified by the parameters
+        kP_spec, kI_spec, kD_spec, and kF_spec.
            None or False: do not include the parameter
            True: include the parameter and find a value
            float: use this value for the parameter.
-        Persists the closed loop design (kP, kI, kF) if a design is found.
+        Persists the closed loop design (kP, kI, kD, kF) if a design is found.
 
         Args:
             kP_spec: float (specification of proportional gain)
             kI_spec: float (specification of integral gain)
+            kD_spec: float (specification of differential gain)
             kF_spec: float (specification of filter gain)
             setpoint: float (setpoint for the control)
             sign: float (direction of feedback: -1 or 1)
-            min_parameter_value: float (minimum value for kP, kI, kF; may be a dictionary)
-            max_parameter_value: float (maximum value for kP, kI, kF; may be a dictionary)
+            min_parameter_value: float (minimum value for kP, kI, kD, kF; may be a dictionary)
+            max_parameter_value: float (maximum value for kP, kI, kD, kF; may be a dictionary)
             num_coordinate: int (number of coordinate descent iterations)
             is_report: bool (report progress on the design search)
             times: numpy array (times of simulation)
@@ -763,6 +778,7 @@ class ControlSBML(object):
         self._checkKwargs(PLOT_KEYS, **kwargs)
         option_dct = self.getOptions(kP_spec=kP_spec,
                                      kI_spec=kI_spec,
+                                     kD_spec=kD_spec,
                                      kF_spec=kF_spec,
                                      setpoint=setpoint,
                                      sign=sign,
@@ -773,6 +789,7 @@ class ControlSBML(object):
                                      **kwargs)
         kP_spec = option_dct[cn.O_KP_SPEC]
         kI_spec = option_dct[cn.O_KI_SPEC]
+        kD_spec = option_dct[cn.O_KD_SPEC]
         kF_spec = option_dct[cn.O_KF_SPEC]
         setpoint = option_dct[cn.O_SETPOINT]
         sign = option_dct[cn.O_SIGN]
@@ -794,6 +811,7 @@ class ControlSBML(object):
         designs = designer.design(
             kP_spec=kP_spec,
             kI_spec=kI_spec,
+            kD_spec=kD_spec,
             kF_spec=kF_spec,
             num_restart=num_restart,
             min_value=min_parameter_value,
@@ -808,6 +826,7 @@ class ControlSBML(object):
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
+        self.setOption(cn.CP_KD, designer.kD)
         self.setOption(cn.CP_KF, designer.kF)
         # Plot the results
         title = "" if not cn.O_TITLE in kwargs else kwargs[cn.O_TITLE]
@@ -816,6 +835,8 @@ class ControlSBML(object):
                 title += "kP=%f " % setValue(designer.kP)
             if not kI_spec == False:
                 title += "kI=%f " % setValue(designer.kI)
+            if not kD_spec == False:
+                title += "kD=%f " % setValue(designer.kD)
             if not kF_spec == False:
                 title += "kF=%f " % setValue(designer.kF)
         plot_dct[cn.O_TITLE] = title
@@ -825,6 +846,7 @@ class ControlSBML(object):
                 sign=sign,  # type: ignore
                 kP=designer.kP,
                 kI=designer.kI,
+                kD=designer.kD,
                 kF=designer.kF,
                 selections=selections,
                 **plot_dct)
@@ -856,7 +878,7 @@ class ControlSBML(object):
         Optons the options in the object.
             STAIRCASE_OPTIONS: initial_value, final_value, num_step
             TIMES_OPTIONS: times
-            CLOSED_LOOP_PARAMETERS: kP, kI, kF, setpoint, sign
+            CLOSED_LOOP_PARAMETERS: kP, kI, kD, kF, setpoint, sign
             PLOT_OPTIONS: ax ax2 end_time figure figsize is_plot
                             suptitle title writefig xlabel xlim xticklabels ylabel ylim yticklabels 
         Args:

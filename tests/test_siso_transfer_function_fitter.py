@@ -106,7 +106,8 @@ class TestSISOTransferFunctionFitter(unittest.TestCase):
         ctlsb = ControlSBML(cn.MTOR_PATH, figsize=(5, 5), times=np.linspace(0, 2000, 20000),
                         input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         _ = ctlsb.plotTransferFunctionFit(num_zero=1, num_pole=2, initial_value=20, final_value=25,
-                                  fit_start_time=2000, times=np.linspace(0, 10000, 100000), fitter_method="poly")
+                                  fit_start_time=2000, times=np.linspace(0, 10000, 100000), fitter_method="poly",
+                                  is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':

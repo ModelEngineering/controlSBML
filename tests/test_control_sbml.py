@@ -161,6 +161,7 @@ class TestControlSBML(unittest.TestCase):
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=10)
         grid.addAxis("kP")
         grid.addAxis("kI")
+        grid.addAxis("kD")
         _ = ctlsb.plotGridDesign(grid, is_plot=IS_PLOT)
 
     def testPlotDesign1(self):
@@ -223,7 +224,7 @@ class TestControlSBML(unittest.TestCase):
             return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_name="S1", output_name="S3", save_path=CSV_FILE2)
-        _ = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, is_plot=False,
+        _ = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, kD_spec=True, is_plot=False,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
                                             num_coordinate=4)
         plt.close('all')
@@ -296,7 +297,7 @@ class TestControlSBML(unittest.TestCase):
         OUTPUT_NAME = "pmTORC1"
         ctlsb = ControlSBML(url, save_path=SAVE1_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         #
-        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=10, is_random=False)
+        grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, kD_spec=True, num_coordinate=10, is_random=False)
         axis = grid.getAxis("kP")
         axis.setMinValue(0.01)
         axis.setMaxValue(0.1)

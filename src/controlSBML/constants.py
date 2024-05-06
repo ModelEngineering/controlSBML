@@ -102,6 +102,7 @@ O_FINAL_VALUE = "final_value"
 O_FITTER_METHOD = "fitter_method"
 O_KP_SPEC = "kP_spec"
 O_KI_SPEC = "kI_spec"
+O_KD_SPEC = "kD_spec"
 O_KF_SPEC = "kF_spec"
 O_STEP_VAL = "step_val"
 O_INITIAL_VALUE = "initial_value"
@@ -144,11 +145,13 @@ O_YTICKLABELS = "yticklabels"
 CP_KP = "kP"
 CP_KI = "kI"
 CP_KF = "kF"
-CONTROL_PARAMETERS = [CP_KP, CP_KI, CP_KF]
+CP_KD = "kD"
+CONTROL_PARAMETERS = [CP_KP, CP_KI, CP_KD, CP_KF]
 KP_SPEC = "kP_spec"
 KI_SPEC = "kI_spec"
+KD_SPEC = "kD_spec"
 KF_SPEC = "kF_spec"
-CONTROL_PARAMETER_SPECS = [KP_SPEC, KI_SPEC, KF_SPEC]
+CONTROL_PARAMETER_SPECS = [KP_SPEC, KI_SPEC, KD_SPEC, KF_SPEC]
 
 # URLs
 WOLF_URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL3352181362/2/BIOMD0000000206_url.xml"

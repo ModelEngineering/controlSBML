@@ -1,5 +1,5 @@
 Do differential control
-  differential := rateOf(control_error)
+  Include kD_spec
 Remove the units from time on plots.
 Update docs on REAMDE
 Create pypi version

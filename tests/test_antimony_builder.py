@@ -43,15 +43,18 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.init()
 
     def init(self):
-        if "builder" in dir(self):
-            return
         self.builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
 
     def check(self, builder=None):
         if builder is None:
             builder = self.builder
         rr = te.loada(str(builder))
-        data = rr.simulate(0,20, 2000, selections=["time", "S1", "S2", "S3"])
+        selections = ["time", "S1", "S2", "S3"]
+        if "setpoint_S1_S3" in rr.keys():
+            selections.append("setpoint_S1_S3")
+        if "noise_S1_S3_ot" in rr.keys():
+            selections.append("noise_S1_S3_ot")
+        data = rr.simulate(0,20, 2000, selections=selections)
         self.assertTrue(len(data) > 0)
         if IS_PLOT:
             rr.plot()
@@ -125,7 +128,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        filter_in, filter_ot = self.builder.makeFilterElement(1.0, suffix="_S1_S3")
+        filter_in, filter_ot, calculation = self.builder.makeFilterElement(1.0, suffix="_S1_S3")
         sin_ot = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
         self.builder.makeAdditionStatement(filter_in, sin_ot)
         self.check()
@@ -145,16 +148,6 @@ class TestAntimonyBuilder(unittest.TestCase):
         #
         test(-1)
         test(1)
-    
-    def testMakePIController(self):
-        if IGNORE_TEST:
-            return
-        self.init()
-        name_in, name_ot = self.builder.makePIControllerElement(kP=7, suffix="_S1_S3")
-        self.builder.makeBoundarySpecies("S1")
-        self.builder.makeAdditionStatement("S1", name_ot)
-        self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
-        self.check()
 
     def testMakePIDController(self):
         if IGNORE_TEST:
@@ -166,11 +159,34 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check()
 
-    def testMakePIControllerInputIsAParameter(self):
+    def testMakePIDController3(self):
+        # Filter without differential control
+        if IGNORE_TEST:
+            return
+        self.init()
+        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, suffix="_S1_S3")
+        self.builder.makeBoundarySpecies("S1")
+        self.builder.makeAdditionStatement("S1", name_ot)
+        self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
+        self.check()
+
+    def testMakePIDController2(self):
+        # Test interaction between filter and differential control
+        if IGNORE_TEST:
+            return
+        self.init()
+        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, kD=5, suffix="_S1_S3",
+                    filter_calculation="-3*4")
+        self.builder.makeBoundarySpecies("S1")
+        self.builder.makeAdditionStatement("S1", name_ot)
+        self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
+        self.check()
+
+    def testMakePIDControllerInputIsAParameter(self):
         if IGNORE_TEST:
             return
         builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
-        name_in, name_ot = builder.makePIControllerElement(kP=7, suffix="_S1_S3")
+        name_in, name_ot = builder.makePIDControllerElement("S1", kP=7, suffix="_S1_S3")
         builder.makeAdditionStatement("k0", name_ot)
         builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check(builder=builder)
@@ -180,9 +196,24 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.builder.makeBoundarySpecies("S1")
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, kI=1, setpoint=5,
+                           noise_amplitude=1, noise_frequency=2, disturbance_ampliude=0, disturbance_frequency=3)
+        self.check()
+        #
+        self.builder.initializeOutput()
+        self.builder.makeBoundarySpecies("S1")
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=1, kI=0.1, kF=0.1, kD=2, setpoint=5,
+                           noise_amplitude=1, noise_frequency=2, disturbance_ampliude=2, disturbance_frequency=3)
+        self.check()
+        #
+        self.builder.initializeOutput()
+        self.builder.makeBoundarySpecies("S1")
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5, kI=5, kD=2,
                            noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20)
         self.check()
+        #
+        self.builder.initializeOutput()
+        self.builder.makeBoundarySpecies("S1")
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5,
                            noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20,
                            initial_output_value=33)
