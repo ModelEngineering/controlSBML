@@ -269,7 +269,7 @@ class AntimonyBuilder(object):
                     statement += argument_str
         self.addStatement(statement) 
 
-    def makeSinusoidSignal(self, amplitude, frequency, is_offset_amplitude=True, prefix="sinusoid", suffix=""):
+    def oldmakeSinusoidSignal(self, amplitude, frequency, is_offset_amplitude=True, prefix="sinusoid", suffix=""):
         """
         Makes a sinusoid. The created variable is prefix + suffix + "_ot"
         Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
@@ -289,6 +289,33 @@ class AntimonyBuilder(object):
         statement = "%s := %f*sin(2*pi*%f*time)" % (name, amplitude, frequency)
         if is_offset_amplitude:
             statement += " + %f" % (amplitude)
+        self.addStatement(statement) 
+        return name
+
+    def makeNoiseElement(self, noise:cn.NoiseSpec, prefix:str="sinusoid", suffix:str="")->str:
+        """
+        Makes a sinusoid with random noise and a ramp. The created variable is prefix + suffix + "_ot"
+        Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
+
+        Args:
+            noise: cn.NoiseSpec (noise specification)
+            prefix: str (beginning of the name)
+            suffix: str (ending of the name)
+        Returns:
+            str: name of the sinusoid
+        """
+        self.addStatement("")
+        self.makeComment("Make sinusoid: %s" % str(noise))
+        name = prefix +  suffix +  OT
+        statement = "%s := 0" % (name)
+        if not np.isclose(noise.sine_amp, 0):
+            statement += " + %f*sin(2*pi*%f*time)" % (noise.sine_amp, noise.sine_freq)
+        if not np.isclose(noise.random_mag, 0):
+            statement += " + %f*lognormal(0, %f)" % (noise.random_mag, noise.random_std)
+        if not np.isclose(noise.offset, 0):
+            statement += " + %f" % noise.offset
+        if not np.isclose(noise.slope, 0):
+            statement += " + %f*time" % noise.slope
         self.addStatement(statement) 
         return name
     
@@ -429,7 +456,7 @@ class AntimonyBuilder(object):
         return name_in, name_ot
 
     def makeSISOClosedLoopSystem(self, input_name, output_name, kP=None, kI=None, kD=None, kF=None, setpoint=0,
-                           noise_amplitude=0, noise_frequency=20, disturbance_ampliude=0, disturbance_frequency=20,
+                           noise_spec=cn.NoiseSpec(), disturbance_spec=cn.DisturbanceSpec(),
                            initial_output_value=None, sign=-1):
         """
         Args:
@@ -440,10 +467,8 @@ class AntimonyBuilder(object):
             kD: float
             kF: float
             setpoint: float (setpoint)
-            noise_amplitude: float (Amplitude of the additions to the output)
-            noise_frequency: float (Frequency of the additions to the output)
-            disturbance_amplitude: float (Amplitude of the disturbance)
-            disturbance_frequency: float (Frequency of the disturbance)
+            noise_spec: cn.NoiseSpec
+            disturbance_spec: cn.DisturbanceSpec
             initial_input_value: float (initial value of the input)
         """
         self.addStatement("")
@@ -457,8 +482,8 @@ class AntimonyBuilder(object):
             initial_output_value = self.roadrunner[output_name]
         self.makeAdditionStatement(output_name, initial_output_value, is_assignment=False)
         # Make the elements of the closed loop
-        noise_ot = self.makeSinusoidSignal(noise_amplitude, noise_frequency, prefix="noise", suffix=suffix)
-        disturbance_ot = self.makeSinusoidSignal(disturbance_ampliude, disturbance_frequency, prefix="disturbance", suffix=suffix)
+        noise_ot = self.makeNoiseElement(noise_spec, prefix="noise", suffix=suffix)
+        disturbance_ot = self.makeNoiseElement(disturbance_spec, prefix="disturbance", suffix=suffix)
         filter_in, filter_ot, filter_calculation = self.makeFilterElement(kF, prefix="filter", suffix=suffix)
         controller_in, controller_ot = self.makePIDControllerElement(output_name,
               filter_calculation=filter_calculation,

@@ -7,9 +7,41 @@ import pandas as pd # type: ignore
 import os
 
 
-DEFAULT_NUM_STEP = 5
-
+##########################
 # Classes
+##########################
+class NoiseSpec(object):
+    # Specifications for a noise model
+    def __init__(self, sine_amp=0, sine_freq=0, random_mag=0, random_std=0, offset=None, slope=0):
+        """_summary_
+
+        Args:
+            sine_amp (int, optional): Amplitude of the sine wave. Defaults to 0.
+            sine_freq (int, optional): Frequency of the sine wave. Defaults to 0.
+            random_mag (int, optional): Magnitude scalinging of the log-normal random variable. Defaults to 0.
+            random_std (int, optional): Standard deviation of the normal for the log-normal random variable added to the function. Defaults to 0.
+            offset (int, optional): Constant offset. Defaults to  sine_amp.
+            slope (int, optional): Slope w.r.t. time. Defaults to 0.
+        """
+        self.sine_amp = sine_amp
+        self.sine_freq = sine_freq
+        self.random_mag = random_mag
+        self.random_std = random_std
+        if offset is None:
+            offset = sine_amp
+        self.offset = offset
+        self.slope = slope
+
+    def __str__(self):
+        result = f"NoiseSpec(sine_amp={self.sine_amp}, sine_freq={self.sine_freq}, random_mag={self.random_mag}"
+        result += f" random_std={self.random_std}, dc_gain={self.offset}, slope={self.slope})"
+        return result
+
+class DisturbanceSpec(NoiseSpec):
+    # Specifications for a disturbance model
+    pass
+
+
 class LegendSpec():
 
     def __init__(self, names, crd=(1.15, 1), loc="upper right"):

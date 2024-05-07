@@ -198,6 +198,10 @@ class ControlSBML(object):
                 num_step: int (number of steps in staircase; default: 5)
             Miscellaneous options
                 times: list-float (times of simulation; default: np.linspace(0, 5, 50))
+                disturbance: NoiseSpec (specification of disturbance added to control input)
+                       sine_amp, sine_freq, rand_mag, rand_std, dc_gain, slope
+                noise: NoiseSpec (specification of noise added to measured output)
+                       sine_amp, sine_freq, rand_mag, rand_std, dc_gain, slope
 
         """
         self._checkKwargs(OPTION_KEYS, **kwargs)

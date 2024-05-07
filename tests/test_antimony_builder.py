@@ -1,7 +1,6 @@
 import controlSBML.constants as cn # type: ignore
 from controlSBML import antimony_builder as ab
 
-import matplotlib.pyplot as plt
 import numpy as np
 import re # type: ignore
 import unittest
@@ -114,11 +113,13 @@ class TestAntimonyBuilder(unittest.TestCase):
         result = re.search("S2.* =.*S3", self.getStatement())
         self.assertTrue(result)
 
-    def testMakeSinusoidSignal(self):
+    def testMakeNoiseElement(self):
         if IGNORE_TEST:
             return
-        ot_name = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
-        result = re.search("%s.*=.*1.*sin.*2" % ot_name, self.getStatement())
+        self.init()
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2, random_mag=3, random_std=4, offset=5, slope=0.0006)
+        ot_name = self.builder.makeNoiseElement(noise_spec, suffix="_S1_S2")
+        result = re.search("%s.*=.*1.*sin.*2.*3*lognormal.*4.*5.*6.*time" % ot_name, self.getStatement())
         self.assertTrue(result)
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", ot_name)
@@ -129,7 +130,8 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         filter_in, filter_ot, calculation = self.builder.makeFilterElement(1.0, suffix="_S1_S3")
-        sin_ot = self.builder.makeSinusoidSignal(1, 2, suffix="_S1_S2")
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2)
+        sin_ot = self.builder.makeNoiseElement(noise_spec, suffix="_S1_S2")
         self.builder.makeAdditionStatement(filter_in, sin_ot)
         self.check()
 
@@ -196,26 +198,27 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.builder.makeBoundarySpecies("S1")
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, kI=1, setpoint=5,
-                           noise_amplitude=1, noise_frequency=2, disturbance_ampliude=0, disturbance_frequency=3)
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2)
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, kI=1, setpoint=5, noise_spec=noise_spec,
+                                              disturbance_spec=cn.NoiseSpec(sine_amp=2, sine_freq=3))
         self.check()
         #
         self.builder.initializeOutput()
         self.builder.makeBoundarySpecies("S1")
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2)
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=1, kI=0.1, kF=0.1, kD=2, setpoint=5,
-                           noise_amplitude=1, noise_frequency=2, disturbance_ampliude=2, disturbance_frequency=3)
+                                              noise_spec=noise_spec)
         self.check()
         #
         self.builder.initializeOutput()
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5, kI=5, kD=2,
-                           noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20)
+                                              noise_spec=noise_spec)
         self.check()
         #
         self.builder.initializeOutput()
         self.builder.makeBoundarySpecies("S1")
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5,
-                           noise_amplitude=1, noise_frequency=20, disturbance_ampliude=2, disturbance_frequency=20,
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, setpoint=5, noise_spec=noise_spec,
                            initial_output_value=33)
         self.check()
 

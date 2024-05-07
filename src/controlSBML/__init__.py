@@ -6,5 +6,5 @@ from controlSBML.timeseries import Timeseries, TimeseriesSer
 from controlSBML.staircase import Staircase
 from controlSBML.make_roadrunner import makeRoadrunner
 # Lesser used
-from controlSBML.constants import LegendSpec
+from controlSBML.constants import LegendSpec, DisturbanceSpec, NoiseSpec
 import controlSBML.constants as constants
