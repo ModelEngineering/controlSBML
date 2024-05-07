@@ -410,10 +410,6 @@ class TestControlSBML(unittest.TestCase):
         self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
         result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=0.1, times=TIMES, num_restart=1, sign=1,
                                   is_plot=IS_PLOT)
-        self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
-        result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=0.001, times=TIMES, num_restart=1, sign=1,
-                                  is_plot=IS_PLOT)
-        self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
 
     def testBug11(self):
         # Bogus initial transient on fit

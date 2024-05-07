@@ -1,5 +1,9 @@
-Do differential control
-  Include kD_spec
+NoiseSpec, DisturbanceSpec
+  a. sine_freq, sine_amp, random_std, random_amp, dc_offset, trend_slope
+  b. default dc_offset = sine_amp
+  c. Classes in constants: DisturbanceSpec inherits from NoiseSpec
+  d. __init__.py: from constants import NoiseSpec, DistrubanceSpec
+  e. makeSineElement takes NoiseSpec, DisturbanceSpec as arguments
 Remove the units from time on plots.
 Update docs on REAMDE
 Create pypi version
