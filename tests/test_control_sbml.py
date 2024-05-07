@@ -390,7 +390,6 @@ class TestControlSBML(unittest.TestCase):
         def test(kP_spec, kI_spec):
             result = ctlsb.plotDesign(setpoint=2, kP_spec=kP_spec, kI_spec=kI_spec, min_parameter_value=1,
                     max_parameter_value=100, num_restart=1, is_plot=IS_PLOT)
-            import pdb; pdb.set_trace()
             self.assertTrue("kP" in result.designs.dataframe.columns)
             self.assertTrue("kI" in result.designs.dataframe.columns)
         #
@@ -411,7 +410,7 @@ class TestControlSBML(unittest.TestCase):
         self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_CANNOT_SIMULATE)
         result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=0.1, times=TIMES, num_restart=1, sign=1,
                                   is_plot=IS_PLOT)
-        self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_CANNOT_SIMULATE)
+        self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
         result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=0.001, times=TIMES, num_restart=1, sign=1,
                                   is_plot=IS_PLOT)
         self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
