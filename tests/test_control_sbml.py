@@ -390,11 +390,12 @@ class TestControlSBML(unittest.TestCase):
         def test(kP_spec, kI_spec):
             result = ctlsb.plotDesign(setpoint=2, kP_spec=kP_spec, kI_spec=kI_spec, min_parameter_value=1,
                     max_parameter_value=100, num_restart=1, is_plot=IS_PLOT)
+            import pdb; pdb.set_trace()
             self.assertTrue("kP" in result.designs.dataframe.columns)
             self.assertTrue("kI" in result.designs.dataframe.columns)
         #
+        test(0.1, 0.1)
         test(0.2, 0.1)
-        test(0, 0)
 
     def testBug10(self):
         if IGNORE_TEST:
