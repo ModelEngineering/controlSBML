@@ -20,6 +20,10 @@ ctl.__version__
 ```
 
 ## Version History
+* 1.1.04
+    * Implemented differential control
+    * Extended noise model to include lognormal distribution, offset, and slope
+    * Implemented several examples, some of which are based on student projects
 * 1.1.03 1/20/2024
     * Better error checking
     * API uses parameter names kI, kP, kF
