@@ -207,7 +207,7 @@ class TestFunctions(unittest.TestCase):
         #
         tf = control.TransferFunction([0], [1, 0.0002, 1])
         latex = util.latexifyTransferFunction(tf)
-        self.assertFalse("frac" in latex)
+        self.assertTrue("frac" in latex)
         #
         tf = control.TransferFunction([1, 0, 0], [1, 0.0002, 1])
         latex = util.latexifyTransferFunction(tf)

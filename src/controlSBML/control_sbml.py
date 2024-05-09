@@ -728,6 +728,13 @@ class ControlSBML(object):
         return GridDesignResult(timeseries=response_ts, antimony_builder=antimony_builder,
                                 designs=designs)
 
+    @staticmethod
+    def setSpec(val):
+        if isinstance(val, int):
+            return float(val)
+        else:
+            return val
+
     def plotDesign(self, 
                 kP_spec:bool=OPTION_DCT[cn.O_KP_SPEC],
                 kI_spec:bool=OPTION_DCT[cn.O_KI_SPEC],
@@ -779,6 +786,11 @@ class ControlSBML(object):
                 return val
             return 0.0
         #
+        import pdb; pdb.set_trace()
+        kP_spec=self.setSpec(kP_spec)
+        kI_spec=self.setSpec(kI_spec)
+        kD_spec=self.setSpec(kD_spec)
+        kF_spec=self.setSpec(kF_spec)
         self._checkKwargs(PLOT_KEYS, **kwargs)
         option_dct = self.getOptions(kP_spec=kP_spec,
                                      kI_spec=kI_spec,

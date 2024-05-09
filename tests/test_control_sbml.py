@@ -432,6 +432,18 @@ class TestControlSBML(unittest.TestCase):
                    input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         _ = ctlsb.plotDesign(setpoint=80, kP_spec=1, kI_spec=0.01, times=np.linspace(0, 2000, 20000),
                              is_plot=IS_PLOT)
+        
+    def testBug13(self):
+        # Bad time axis
+        if IGNORE_TEST:
+            return
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1911110001/4/FatehiChenar2018.xml"
+        INPUT_NAME = "E"
+        OUTPUT_NAME = "R"
+        CTLSB = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 10, 100), markers=False, is_fixed_input_species=True,
+                   save_path="data.csv", input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
+        TIMES = np.linspace(0, 10**5, 10**6)
+        _ = CTLSB.plotDesign(setpoint=0.1, kP_spec=1, kI_spec=0.1, times=TIMES, num_restart=1, is_plot=IS_PLOT)
 
 
 if __name__ == '__main__':

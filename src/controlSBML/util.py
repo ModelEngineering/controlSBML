@@ -117,10 +117,13 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **k
         fig, ax = plt.subplots(1)
         mgr.plot_opts.set(cn.O_AX, ax)
     times = np.array(time_series.index)/cn.MS_IN_SEC
+    if mgr.plot_opts[cn.O_XLIM] is None:
+        mgr.plot_opts.set(cn.O_XLIM, [times[0], times[-1]])
     sel_colors = list(colors)
     sel_markers = list(markers)
     for column in time_series.columns:
         ax.plot(times, time_series[column], color=sel_colors.pop(0), marker=sel_markers.pop(0))
+    ax.set_xlim(mgr.plot_opts[cn.O_XLIM])
     if isinstance(legend, bool):
         if legend:
             legend_spec = cn.LegendSpec(time_series.columns, crd=mgr.plot_opts[cn.O_LEGEND_CRD])
@@ -419,7 +422,56 @@ def simplifyTransferFunction(tf, tol=1e-3):
             break
     return control.TransferFunction(num, den)
 
-def latexifyTransferFunction(tf, num_decimal=2):
+def latexifyTransferFunction(tf):
+    """_summary_
+
+    Args:
+        tf (_type_): _description_
+
+    Raises:
+        RuntimeError: _description_
+
+    Returns:
+        _type_: _description_
+    """
+    LEFT_NUMERATOR = "left_numerator"
+    RIGHT_NUMERATOR = "right_numerator"
+    FRACTION_BAR = "fraction_bar"
+    LEFT_DENOMINATOR = "left_denominator"
+    RIGHT_DENOMINATOR = "right_denominator"
+    NEWLINE = "\n"
+    stg = str(tf)
+    latex = ""
+    stage = LEFT_NUMERATOR
+    for pos in range(len(stg)):
+        if stage == FRACTION_BAR:
+            if stg[pos] == "-":
+                continue
+            stage = LEFT_DENOMINATOR
+        if stg[pos:pos+1] == NEWLINE:
+            if stage == LEFT_NUMERATOR:
+                stage = RIGHT_NUMERATOR
+                latex += r'\frac{'
+            elif stage == RIGHT_NUMERATOR:
+                stage = FRACTION_BAR
+                latex += "}"
+            elif stage == FRACTION_BAR:
+                import pdb; pdb.set_trace()
+                if stg[pos] == "-":
+                    continue
+                stage = LEFT_DENOMINATOR
+            elif stage == LEFT_DENOMINATOR:
+                stage = RIGHT_NUMERATOR
+                latex += "{"
+            elif stage == RIGHT_DENOMINATOR:
+                latex += "}"
+            else:
+                raise RuntimeError("Unknown stage")
+        else:
+            latex += stg[pos]
+    return r'$%s$' % latex
+
+def oldlatexifyTransferFunction(tf, num_decimal=10):
     """
     Generates latex for the transfer function, rounding to the number of decimal digits.
 

@@ -223,12 +223,12 @@ class SISOTransferFunctionFitter(object):
             ax2 = mgr.plot_opts[cn.O_AX2]
         ax2.set_ylabel(self.input_name, color=cn.INPUT_COLOR)
         ax2.plot(self.times, self.in_arr, color=cn.INPUT_COLOR, linestyle="--")
-        latex = util.latexifyTransferFunction(self.transfer_function)
         title = mgr.plot_opts[cn.O_TITLE]
         self._setYAxColor(ax, "left", cn.SIMULATED_COLOR)
         self._setYAxColor(ax2, "right", cn.INPUT_COLOR)
         ax.set_title(title)
-        ax.set_title(latex, y=0.3, x=0.8, fontsize=14, loc="right")
+        #latex = util.latexifyTransferFunction(self.transfer_function)
+        #ax.set_title(latex, y=0.3, x=0.8, fontsize=14, loc="right")
         ax.legend([self.output_name, cn.O_PREDICTED], loc="upper left")
         mgr.doPlotOpts()
         mgr.doFigOpts()
