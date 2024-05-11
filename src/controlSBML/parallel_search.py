@@ -86,8 +86,8 @@ class ParallelSearch(object):
         num_process = min(len(self.candidates), self.num_process)
         if num_process == 1:
             # Run in a single process
-            procnum = 0
             return_dct = {}
+            procnum = 0
             self._evaluateCandidates(procnum, self.evaluator, self.candidates, num_process, return_dct)
             self._search_results_dict_array = return_dct[procnum]
         else:

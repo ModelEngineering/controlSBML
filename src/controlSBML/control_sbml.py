@@ -786,7 +786,6 @@ class ControlSBML(object):
                 return val
             return 0.0
         #
-        import pdb; pdb.set_trace()
         kP_spec=self.setSpec(kP_spec)
         kI_spec=self.setSpec(kI_spec)
         kD_spec=self.setSpec(kD_spec)

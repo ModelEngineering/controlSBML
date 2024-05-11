@@ -199,7 +199,10 @@ class SISOClosedLoopDesigner(object):
             if not name in self.design_result_df.columns:
                 continue
             if not np.isnan(self.design_result_df.loc[idx, name]):
-                parameter_names.append(name)
+                # Make sure that the parameter is actually used (not zero)
+                sum_val = self.design_result_df[name].sum()**2   # Consider negative values
+                if not np.isclose(sum_val, 0):
+                    parameter_names.append(name)
         # Determine the type of plot
         mgr = OptionManager(kwargs)
         if len(parameter_names) == 1:

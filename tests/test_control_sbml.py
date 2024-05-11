@@ -399,17 +399,18 @@ class TestControlSBML(unittest.TestCase):
     def testBug10(self):
         if IGNORE_TEST:
             return
-        TIMES = np.linspace(000, 1500, 5000)
+        TIMES = np.linspace(000, 15000, 50000)
         BIOMODEL_SOURCE_FILE_URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1501300000/3/BIOMD0000000571_url.xml"
         CTLSB = ControlSBML(BIOMODEL_SOURCE_FILE_URL, xlabel="time (min)", times=TIMES)
         INPUT_NAME = "Mlc"
         OUTPUT_NAME = "EI_P"
         CTLSB.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
-        result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=1, kI_spec=1, times=TIMES, num_restart=1, sign=1,
+        grid = CTLSB.getGrid()
+        grid.addAxis("kP", min_value=0.0, max_value=0.005, num_coordinate=11)
+        grid.addAxis("kI", min_value=0.0, max_value=0.002, num_coordinate=11)
+        result = CTLSB.plotGridDesign(grid, setpoint=0.0000003,
                                   is_plot=IS_PLOT)
         self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
-        result = CTLSB.plotDesign(setpoint=0.0000003, kP_spec=0.1, times=TIMES, num_restart=1, sign=1,
-                                  is_plot=IS_PLOT)
 
     def testBug11(self):
         # Bogus initial transient on fit
@@ -444,6 +445,24 @@ class TestControlSBML(unittest.TestCase):
                    save_path="data.csv", input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
         TIMES = np.linspace(0, 10**5, 10**6)
         _ = CTLSB.plotDesign(setpoint=0.1, kP_spec=1, kI_spec=0.1, times=TIMES, num_restart=1, is_plot=IS_PLOT)
+
+    def testBug14(self):
+        # Not using the correct design parameters
+        if IGNORE_TEST:
+            return
+        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1808280007/6/Smith2011_V1.xml"
+        INPUT_NAME = 'Pneumococci___P'
+        OUTPUT_NAME = 'Neutrophils__N'
+        CTLSB = ControlSBML(URL, input_name=INPUT_NAME, output_name=OUTPUT_NAME, is_fixed_input_species=True,
+                       figsize=FIGSIZE)
+        TIMES = np.linspace(0, 200, 2000)
+        SETPOINT = 1000
+        _ = CTLSB.plotDesign(kP_spec=1.5555, kI_spec=0.018, times=TIMES, setpoint=SETPOINT, is_plot=IS_PLOT)
+        grid = CTLSB.getGrid()
+        grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=11)
+        grid.addAxis("kI", min_value=0.002, max_value=0.02, num_coordinate=11)
+        _ = CTLSB.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT, is_plot=IS_PLOT)
+
 
 
 if __name__ == '__main__':

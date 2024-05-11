@@ -109,8 +109,13 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeAdditionStatement("S1", "S2", "S3")
         result = re.search("S1.*:=.*S2.*\+.*S3", self.getStatement())
         self.assertTrue(result)
+        #
         self.builder.makeAdditionStatement("S2", "S3", is_assignment=False)
         result = re.search("S2.* =.*S3", self.getStatement())
+        self.assertTrue(result)
+        #
+        self.builder.makeAdditionStatement("S2", "S3", is_assignment=False, comment="comment")
+        result = re.search("S2.* =.*S3.*# comment", self.getStatement())
         self.assertTrue(result)
 
     def testMakeNoiseElement(self):

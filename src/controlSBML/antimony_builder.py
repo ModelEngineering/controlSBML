@@ -190,7 +190,8 @@ class AntimonyBuilder(object):
         self.antimony_strs = self.antimony.split("\n")
         self.insert_pos = self._findMainModelEndPosition()
         self._initialized_output = True
-        self._insert("", increment=0)
+        self._insert("")
+        self._insert("//vvvvvvvvvAdded by ControlSBMLvvvvvvvvvv")
         self._insert("//^^^^^^^^^Added by ControlSBML^^^^^^^^^^", increment=0)
 
     def makeBoundarySpecies(self, species_name):
@@ -242,13 +243,14 @@ class AntimonyBuilder(object):
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
         return "%s%s" % (generic_name, suffix)
     
-    def makeAdditionStatement(self, *pargs, is_assignment=True):
+    def makeAdditionStatement(self, *pargs, is_assignment=True, comment=""):
         """
         Creates an addition statement that looks for a leanding "-".
 
         Args:
             *pargs: str
             is_assignment: bool (True means that the statement is an assignment statement)
+            comment: str
         """
         statement = pargs[0]
         if is_assignment:
@@ -267,6 +269,8 @@ class AntimonyBuilder(object):
                     statement += " + " + argument_str
                 else:
                     statement += argument_str
+        if len(comment) > 0:
+            statement = statement + "  # " + comment
         self.addStatement(statement) 
 
     def oldmakeSinusoidSignal(self, amplitude, frequency, is_offset_amplitude=True, prefix="sinusoid", suffix=""):
@@ -318,9 +322,13 @@ class AntimonyBuilder(object):
             statement += " + %f*time" % noise.slope
         self.addStatement(statement) 
         return name
-    
-    def _makeInputOutputNames(self, prefix, suffix):
-        base_name = prefix + suffix
+
+    @staticmethod 
+    def _makeScopedName(prefix, suffix):
+        return prefix + suffix
+
+    def _makeInputOutputName(self, prefix, suffix):
+        base_name = self._makeScopedName(prefix, suffix)
         name_in = base_name + IN
         name_ot = base_name + OT
         return name_in, name_ot
@@ -346,18 +354,20 @@ class AntimonyBuilder(object):
         """
         self.addStatement("")
         self.makeComment("Make filter: kF=%s" % (str(kF)))
-        name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
-        if kF is None:
-            self.makeAdditionStatement(name_ot, name_in)
-            return name_in, name_ot, None
-        calculation = None
-        if (kF is not None):
-            calculation = "-%f*%s + %f*%s" % (kF, name_ot, kF, name_in)
-            # Use a dummy reaction to integrate instead of "'" to avoid antimony limitations with
-            # combining rate rules and assignment rules
-            statement = " -> %s; %s " % (name_ot, calculation) 
-            self.addStatement(statement)
-            self.makeAdditionStatement(name_ot, 0, is_assignment=False)   # Initialize the filter output
+        kF_name = self._makeScopedName("kF", suffix)
+        name_in, name_ot = self._makeInputOutputName(prefix, suffix)
+        if (kF is None) or np.isclose(kF, 0):
+            kF = 10e6 # Use a large value to approximate a filter with no effect
+            comment = "Filter with no effect"
+        else:
+            comment = ""
+        self.makeAdditionStatement(kF_name, kF, is_assignment=False, comment=comment)
+        calculation = "-%s*%s + %s*%s" % (kF_name, name_ot, kF_name, name_in)
+        # Use a dummy reaction to integrate instead of "'" to avoid antimony limitations with
+        # combining rate rules and assignment rules
+        statement = " -> %s; %s " % (name_ot, calculation) 
+        self.addStatement(statement)
+        self.makeAdditionStatement(name_ot, 0, is_assignment=False)   # Initialize the filter output
         return name_in, name_ot, calculation
     
     def makeControlErrorSignal(self, setpoint, forward_output_name, sign, prefix="control_error", suffix=""):
@@ -418,7 +428,7 @@ class AntimonyBuilder(object):
         base_name = prefix + "_" +  "%s" + suffix # type: ignore
         self.addStatement("")
         self.makeComment("Make the PID controller")
-        name_in, name_ot = self._makeInputOutputNames(prefix, suffix)
+        name_in, name_ot = self._makeInputOutputName(prefix, suffix)
         # Constants for parameters
         kP_name = base_name % "kP"
         kI_name = base_name % "kI"
