@@ -28,7 +28,10 @@ class NoiseSpec(object):
         self.random_mag = random_mag
         self.random_std = random_std
         if offset is None:
-            offset = sine_amp
+            if (np.isclose(sine_amp, 0) and np.isclose(slope, 0)):
+                offset = sine_amp
+            else:
+                offset = 0
         self.offset = offset
         self.slope = slope
 
@@ -36,6 +39,9 @@ class NoiseSpec(object):
         result = f"NoiseSpec(sine_amp={self.sine_amp}, sine_freq={self.sine_freq}, random_mag={self.random_mag}"
         result += f" random_std={self.random_std}, dc_gain={self.offset}, slope={self.slope})"
         return result
+    
+    def __eq__(self, other):
+        return self.__dict__ == other.__dict__
 
 class DisturbanceSpec(NoiseSpec):
     # Specifications for a disturbance model
@@ -126,7 +132,7 @@ TIME = "time"
 # Keyword options
 O_AX = "ax"
 O_AX2 = "ax2"
-O_SELECTIONS = "selections"   # Selections for the plot
+O_DISTURBANCE_SPEC = "disturbance_spec"
 O_END_TIME = "end_time"
 O_FIGURE = "figure"
 O_FIGSIZE = "figsize"
@@ -136,7 +142,6 @@ O_KP_SPEC = "kP_spec"
 O_KI_SPEC = "kI_spec"
 O_KD_SPEC = "kD_spec"
 O_KF_SPEC = "kF_spec"
-O_STEP_VAL = "step_val"
 O_INITIAL_VALUE = "initial_value"
 O_INPUT_NAME = "input_name"
 O_INPUT_NAMES = "input_names"
@@ -149,6 +154,7 @@ O_LEGEND_CRD = "legend_crd"  # Legend coordinate
 O_LEGEND_SPEC = "legend_spec"
 O_MARKERS = "markers"
 O_MARKERSIZE = "markersize"
+O_NOISE_SPEC = "noise_spec"
 O_NUM_POINT = "num_point"
 O_NUM_PROCESS = "num_process"
 O_NUM_RESTART = "num_restart"
@@ -157,10 +163,12 @@ O_OUTPUT_NAME = "output_name"
 O_OUTPUT_NAMES = "output_names"
 O_POINTS_PER_TIME = "points_per_time"
 O_PREDICTED = "predicted"
+O_SELECTIONS = "selections"   # Selections for the plot
 O_SETPOINT = "setpoint"
 O_SIGN = "sign"
 O_STAIRCASE = "staircase"
 O_START_TIME = "start_time"
+O_STEP_VAL = "step_val"
 O_SUPTITLE = "suptitle"
 O_TIMES = "times"
 O_TITLE = "title"

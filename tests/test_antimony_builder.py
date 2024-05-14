@@ -122,7 +122,8 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2, random_mag=3, random_std=4, offset=5, slope=0.0006)
+        noise_spec = cn.NoiseSpec(sine_amp=0.01, sine_freq=0.2, random_mag=0.3,
+                                    random_std=0.004, offset=0.5, slope=0.0006)
         ot_name = self.builder.makeNoiseElement(noise_spec, suffix="_S1_S2")
         result = re.search("%s.*=.*1.*sin.*2.*3*lognormal.*4.*5.*6.*time" % ot_name, self.getStatement())
         self.assertTrue(result)
@@ -198,6 +199,30 @@ class TestAntimonyBuilder(unittest.TestCase):
         builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check(builder=builder)
 
+    def testClosedLoopSymbols(self):
+        if IGNORE_TEST:
+            return
+        def test(name, suffix=None):
+            if suffix is None:
+                symbols = [s for s in self.builder.closed_loop_symbols if name in s]
+            else:
+                symbols = [s for s in self.builder.closed_loop_symbols if (name in s) and ("ot" in s)]
+            self.assertTrue(len(symbols) > 0)
+        #
+        self.init()
+        self.builder.makeBoundarySpecies("S1")
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2)
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, kI=1, kF=10e5, setpoint=5, noise_spec=noise_spec,
+                                              disturbance_spec=cn.NoiseSpec(sine_amp=2, sine_freq=3))
+        self.assertGreater(len(self.builder.closed_loop_symbols), 0)
+        for prefix in ["noise", "disturbance"]:
+            test(prefix, suffix="out")
+        for prefix in ["filter", "control_error", "controller"]:
+            test(prefix, suffix="in")
+            test(prefix, suffix="out")
+        for prefix in ["kP", "kI", "kD", "setpoint"]:
+            test(prefix)
+
     def testMakeSISOClosedLoopSystem(self):
         if IGNORE_TEST:
             return
@@ -263,6 +288,23 @@ class TestAntimonyBuilder(unittest.TestCase):
         #
         builder.makeBoundarySpecies("S1")
         self.assertFalse(builder == self.builder)
+
+    def testGetClosedLoopSymbols(self):
+        if IGNORE_TEST:
+            return
+        input_name = "S1"
+        output_name = "S3"
+        builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
+        builder.makeBoundarySpecies("S1")
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2, random_mag=3, random_std=4, offset=5, slope=0.0006)
+        builder.makeSISOClosedLoopSystem(input_name, output_name, kP=10, kI=1, kF=10e5, setpoint=5, noise_spec=noise_spec,
+                                              disturbance_spec=cn.NoiseSpec(sine_amp=2, sine_freq=3))
+        def test(name):
+            symbols = builder._getClosedLoopSymbols(input_name, output_name)
+            self.assertGreaterEqual(len([s for s in symbols if name in s]), 1)
+        #
+        for name in ["kP", "kI", "kF", "noise", "disturbance", "setpoint"]:
+            test(name)
        
 
 if __name__ == '__main__':

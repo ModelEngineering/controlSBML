@@ -73,6 +73,7 @@ class AntimonyBuilder(object):
         if symbol_dct is None:
             symbol_dct = util.makeRoadrunnerSymbolDct(self.roadrunner)
         self.symbol_dct = dict(symbol_dct)
+        self.closed_loop_symbols = []
 
     def copy(self):
         """
@@ -310,9 +311,10 @@ class AntimonyBuilder(object):
         """
         self.addStatement("")
         self.makeComment("Make sinusoid: %s" % str(noise))
-        name = prefix +  suffix +  OT
+        new_suffix = suffix + OT
+        name = self._makeScopedName(prefix, new_suffix)
         statement = "%s := 0" % (name)
-        if not np.isclose(noise.sine_amp, 0):
+        if (not np.isclose(noise.sine_amp, 0)) and (not np.isclose(noise.sine_freq, 0)):
             statement += " + %f*sin(2*pi*%f*time)" % (noise.sine_amp, noise.sine_freq)
         if not np.isclose(noise.random_mag, 0):
             statement += " + %f*lognormal(0, %f)" % (noise.random_mag, noise.random_std)
@@ -323,14 +325,18 @@ class AntimonyBuilder(object):
         self.addStatement(statement) 
         return name
 
-    @staticmethod 
-    def _makeScopedName(prefix, suffix):
-        return prefix + suffix
+    def _makeScopedName(self, prefix, suffix, is_symbol=True):
+        name = prefix + suffix
+        if is_symbol:
+            self.closed_loop_symbols.append(name)
+        return name
 
     def _makeInputOutputName(self, prefix, suffix):
-        base_name = self._makeScopedName(prefix, suffix)
+        base_name = self._makeScopedName(prefix, suffix, is_symbol=False)
         name_in = base_name + IN
+        self.closed_loop_symbols.append(name_in)
         name_ot = base_name + OT
+        self.closed_loop_symbols.append(name_ot)
         return name_in, name_ot
 
     def makeFilterElement(self, kF:float, prefix:str="filter", suffix:str=""):
@@ -388,7 +394,8 @@ class AntimonyBuilder(object):
         """
         self.addStatement("")
         self.makeComment("Make the control error")
-        name_ot = prefix + suffix + OT
+        new_suffix = suffix + OT
+        name_ot = self._makeScopedName(prefix, new_suffix)
         if sign == 1:
             statement = "%s := %s - %s" % (name_ot, forward_output_name, str(setpoint))
         elif sign == -1:
@@ -435,13 +442,17 @@ class AntimonyBuilder(object):
         kD_name = base_name % "kD"
         if kP is not None:
             self.makeAdditionStatement(kP_name, str(kP), is_assignment=False)
+            self.closed_loop_symbols.append(kP_name)
         if kI is not None:
             self.makeAdditionStatement(kI_name, str(kI), is_assignment=False)
+            self.closed_loop_symbols.append(kI_name)
         if kD is not None:
             self.makeAdditionStatement(kD_name, str(kD), is_assignment=False)
+            self.closed_loop_symbols.append(kD_name)
         # Make the derivative of the control error
         if kD is not None:
             derivative_error_name = base_name % "derivative_error"
+            self.closed_loop_symbols.append(derivative_error_name)
             if filter_calculation is None:
                 filter_calculation = "rateOf(%s)" % (output_name)  # type: ignore
             sign_filter_calculation = "%d*(%s)" % (sign, filter_calculation)  # type: ignore
@@ -450,6 +461,7 @@ class AntimonyBuilder(object):
         # Make the integral of the control error
         if kI is not None:
             integral_error_name = base_name % "integral_error"
+            self.closed_loop_symbols.append(integral_error_name)
             statement = "%s' = %s" % (integral_error_name, name_in)
             self.addStatement(statement)
             self.makeAdditionStatement(integral_error_name, 0, is_assignment=False)   #  integral_error_name = 0
@@ -469,6 +481,8 @@ class AntimonyBuilder(object):
                            noise_spec=cn.NoiseSpec(), disturbance_spec=cn.DisturbanceSpec(),
                            initial_output_value=None, sign=-1):
         """
+        Creates a closed loop system with a single input and a single output.
+
         Args:
             input_name: str (input to system)
             output_name: str (output from system)
@@ -485,7 +499,7 @@ class AntimonyBuilder(object):
         self.makeComment("**CREATING CLOSED LOOP SYSTEM**")
         suffix = self.makeClosedLoopSuffix(input_name, output_name)
         # Symbol for setpoint
-        setpoint_name = "setpoint" + suffix
+        setpoint_name = self._makeScopedName("setpoint", suffix)
         self.makeAdditionStatement(setpoint_name, setpoint, is_assignment=False)
         # Handle the initial value of the input
         if initial_output_value is None:
@@ -521,6 +535,21 @@ class AntimonyBuilder(object):
         else:
             name = input_name
         return name
+
+    def _getClosedLoopSymbols(self, input_name, output_name)->list[str]:
+        """
+        Finds the names of closed loop symbols used for the system defined with the current input and output.
+        This method is used for validation purposes only.
+
+        Returns:
+            input_name: str
+            output_name: str
+            list[str]: list of symbols
+        """
+        search_string = self.makeClosedLoopSuffix(input_name, output_name)
+        rr = te.loada(str(self))
+        symbols = [n for n in rr.keys() if (search_string in n) and (not "(" in n) and (not "[" in n)]
+        return symbols
 
     def makeStaircase(self, input_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
                  num_step=cn.DEFAULT_NUM_STEP, final_value=cn.DEFAULT_FINAL_VALUE):

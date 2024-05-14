@@ -392,6 +392,8 @@ class TestControlSBML(unittest.TestCase):
                     max_parameter_value=100, num_restart=1, is_plot=IS_PLOT)
             self.assertTrue("kP" in result.designs.dataframe.columns)
             self.assertTrue("kI" in result.designs.dataframe.columns)
+            if result.timeseries is not None:
+                self.assertGreater(len(result.timeseries.columns), 10)
         #
         test(0.1, 0.1)
         test(0.2, 0.1)

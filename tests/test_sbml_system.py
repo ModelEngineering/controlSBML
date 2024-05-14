@@ -81,9 +81,6 @@ class TestSBMLSystem(unittest.TestCase):
         test(self.system._min_value_dct)
         trues = [l < u for l, u in zip(self.system._min_value_dct.values(), self.system._max_value_dct.values())]
         self.assertTrue(all(trues))
-        
-
-
 
     def testGet(self):
         if IGNORE_TEST:
@@ -132,12 +129,59 @@ class TestSBMLSystem(unittest.TestCase):
         test(True)
         test(False)
 
+    def testSimulateSISOClosedLoopWithNoiseDisturbance(self):
+        if IGNORE_TEST:
+            return
+        def test(sine_amp, random_mag):
+            noise_spec = cn.NoiseSpec(sine_amp=sine_amp, random_mag=random_mag)
+            system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], noise_spec=noise_spec,
+                                is_fixed_input_species=True)
+            setpoint = 5
+            ts, _ = system.simulateSISOClosedLoop("S1", "S3", kP=2, kI=0.8, kF=0.5,
+                                                        setpoint=setpoint, end_time=200, num_point=1000)
+            TOLERANCE = 0.5
+            abs_control_error = np.abs(ts["S3"].values[-1] - setpoint)
+            self.assertGreater(len(ts), 0)
+            self.assertLess(abs_control_error, TOLERANCE)
+            if IS_PLOT:
+                for column in ts.columns:
+                    if column not in ["time", "S1", "S3"]:
+                        del ts[column]
+                util.plotOneTS(ts, ax2=0, figsize=(8,8), title=f"Sine amp: {sine_amp}, Noise mag: {random_mag}")
+                plt.show()
+        #
+        test(sine_amp=0.1, random_mag=0.1)
+
+    def testSimulateSISOClosedLoopWithNoiseDisturbance2(self):
+        if IGNORE_TEST:
+            return
+        def test(sine_amp, random_mag):
+            if np.isclose(sine_amp, 0):
+                sine_freq = 0
+            else:
+                sine_freq = 0.1
+            if np.isclose(random_mag, 0):
+                random_std = 0
+            else:
+                random_std = 0.01
+            noise_spec = cn.NoiseSpec(sine_amp=sine_amp, sine_freq=sine_freq, random_mag=random_mag,
+                                      random_std=random_std)
+            system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], noise_spec=noise_spec, disturbance_spec=noise_spec,
+                                is_fixed_input_species=True)
+            setpoint = 5
+            ts, _ = system.simulateSISOClosedLoop("S1", "S3", kP=2, kI=0.8, kF=0.5,
+                                                        setpoint=setpoint, end_time=200, num_point=1000)
+            self.assertGreater(ts["noise_S1_S3_ot"].std(), 0)
+            self.assertGreater(ts["disturbance_S1_S3_ot"].std(), 0)
+        #
+        test(sine_amp=0.1, random_mag=0.1)
+
     def testSimulateStaircase(self):
         if IGNORE_TEST:
             return
         times = np.linspace(0, 50, 500)
         def test(is_fixed_input_species):
-            system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True)
+            system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=is_fixed_input_species)
             ts, _ = system.simulateStaircase("S1", "S3", times=times, final_value=10, num_step=5, is_steady_state=False)
             self.assertGreater(len(ts), 0)
             variance = np.var(ts["S3"])
@@ -162,11 +206,21 @@ class TestSBMLSystem(unittest.TestCase):
     def testPlotSISOClosedLoop(self):
         if IGNORE_TEST:
             return
-        system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=False)
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=10, random_mag=0.1, random_std=0.1)
+        disturbance_spec = cn.NoiseSpec(sine_amp=1, sine_freq=10, random_mag=0.1, random_std=0.1, offset=3)
+        system = SBMLSystem(LINEAR_MDL, ["S1"], ["S3"], is_fixed_input_species=True,
+                            noise_spec=noise_spec,
+                            disturbance_spec=disturbance_spec
+                            )
         setpoint = 5
+        selections = ["time", "S3",
+                      "noise_S1_S3_ot",
+                      "disturbance_S1_S3_ot"
+                      ]
         ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kP=2, kI=0.8, kF=0.5,
-                                           setpoint=setpoint, end_time=100, num_point=1000)
-        self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), markers=["+", "o"],
+                                              selections=selections,
+                                              setpoint=setpoint, end_time=100, num_point=1000)
+        self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), markers=["+", "o"], selections=selections,
                                        title="Closed Loop", is_plot=IS_PLOT)
 
     def testGetValidSymbolsInput(self):
@@ -195,4 +249,4 @@ class TestSBMLSystem(unittest.TestCase):
 
 
 if __name__ == '__main__':
-  unittest.main()
+    unittest.main()

@@ -241,7 +241,7 @@ class SISOClosedLoopDesigner(object):
 
     def design(self, kP_spec=False, kI_spec=False, kD_spec=False, kF_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
-               num_coordinate=3, save_path=None, num_process:int=-1, is_report:bool=False)->DesignResult:
+               num_coordinate=3, num_process:int=-1, is_report:bool=False)->DesignResult:
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -251,7 +251,6 @@ class SISOClosedLoopDesigner(object):
             min_value: float/dict (parameter name: value)
             max_value: float/dict (parameter name: value)
             num_coordinate: int (number of coordinates for a parameter; minimum is 2)
-            save_path: str (path to save the results)
             is_report: bool (provide progress report)
             num_process: int (number of processes to use)
         Returns:
@@ -296,7 +295,7 @@ class SISOClosedLoopDesigner(object):
         Args:
             grid: Grid
             is_greedy: bool (if True, then a greedy search is done to find a feasible system)
-            num_restart: int (number of times to start the search) 
+            num_restart: int (number of times to start the search)
             is_report: bool (provide progress report)
             num_proc: int (number of processes to use; -1 means use all available processors)
         Returns:

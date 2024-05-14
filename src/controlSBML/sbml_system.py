@@ -18,6 +18,8 @@ from typing import Optional, List, Tuple
 class SBMLSystem(object):
 
     def __init__(self, model_reference, input_names=None, output_names=None, is_fixed_input_species=False,
+                 noise_spec=cn.NoiseSpec(),
+                 disturbance_spec=cn.DisturbanceSpec(),
                  model_id="model", is_steady_state=False, roadrunner=None):
         """
         model_reference: str
@@ -27,6 +29,8 @@ class SBMLSystem(object):
         output_names: list-str
             output species
         is_fixed_input_species: bool (input species are fixed)
+        noise_spec: cn.NoiseSpec
+        disturbance_spec: cn.DisturbanceSpec
         model_id: str (identifier of the model)
         is_steady_state: bool (start the simulation at steady state)
         """
@@ -42,6 +46,8 @@ class SBMLSystem(object):
         self.is_fixed_input_species = is_fixed_input_species
         self.is_steady_state = is_steady_state
         self.is_fixed_input_species = is_fixed_input_species
+        self.noise_spec = noise_spec
+        self.disturbance_spec = disturbance_spec
         # The following are calculated on first reference
         self._antimony_builder = None
         self._roadrunner = roadrunner
@@ -116,6 +122,7 @@ class SBMLSystem(object):
         system = SBMLSystem(self.model_reference, input_names=self._specified_input_names,
                             output_names=self._specified_output_names,
                             is_fixed_input_species=self.is_fixed_input_species, model_id=self.model_id,
+                            noise_spec=self.noise_spec, disturbance_spec=self.disturbance_spec,
                             is_steady_state=self.is_steady_state)
         return system
     
@@ -363,12 +370,14 @@ class SBMLSystem(object):
             self.roadrunner.reset()
         if is_steady_state:
             self.setSteadyState()
-        selections.extend(self.input_names)
-        selections.extend(self.output_names)
-        selections = list(set(selections))
-        selections.insert(0, cn.TIME)
+        new_selections = list(selections)
+        new_selections.extend(self.input_names)
+        new_selections.extend(self.output_names)
+        new_selections = list(set(new_selections))
+        if not cn.TIME in new_selections:
+            new_selections.insert(0, cn.TIME)
         try:
-            data = self.roadrunner.simulate(float(start_time), float(end_time), num_point, selections=selections)
+            data = self.roadrunner.simulate(float(start_time), float(end_time), num_point, selections=new_selections)
             ts = Timeseries(data)
         except Exception as exp:
             print(exp)
@@ -437,10 +446,20 @@ class SBMLSystem(object):
         else:
             new_input_name = input_name
         builder.makeSISOClosedLoopSystem(new_input_name, output_name, kP=kP, kI=kI, kD=kD, kF=kF, setpoint=setpoint,
+                                         noise_spec=self.noise_spec, disturbance_spec=self.disturbance_spec,
                                          initial_output_value=initial_input_value, sign=sign)
         # Run the simulation
+        if selections is None:
+            selections = []
+        new_selections = list(selections)
+        new_selections.extend([cn.TIME, input_name, output_name])
+        new_selections = list(set(new_selections))
+        if new_selections[0] != cn.TIME:
+            new_selections.remove(cn.TIME)
+            new_selections.insert(0, cn.TIME)  # Time should be the first selection
+        new_selections.extend(builder.closed_loop_symbols)
         ts = self._simulate(start_time, end_time, num_point, is_steady_state=is_steady_state,
-                            antimony_builder=builder, is_reload=True, selections=selections)
+                            antimony_builder=builder, is_reload=True, selections=new_selections)
         return ts, builder
     
     def simulateStaircase(self, input_name, output_name, times=cn.TIMES, initial_value=cn.DEFAULT_INITIAL_VALUE,
@@ -467,6 +486,8 @@ class SBMLSystem(object):
             builder = self.antimony_builder
         else:
             builder = self.antimony_builder.copy()
+        if selections is None:
+            selections = [cn.TIME, input_name, output_name]
         builder.addStatement("")
         builder.makeComment("Staircase: %s->%s" % (input_name, output_name))
         builder.makeStaircase(input_name, times=times, initial_value=initial_value,
@@ -494,13 +515,15 @@ class SBMLSystem(object):
             raise ValueError("No %s name is specified." % name_type)
         return names[0]
     
-    def plotSISOClosedLoop(self, timeseries, setpoint, mgr=None, **kwargs):
+    def plotSISOClosedLoop(self, timeseries:Timeseries, setpoint, 
+                           selections=None, mgr:Optional[OptionManager]=None, **kwargs):
         """
         Plots the results of a closed lop simulation. Input and output are defined in the SBMLSystem constructor.
 
         Args:
             timeseries: Timeseries
             setpoint: float
+            selections: list-str (names of species to be selected for plot. output_name is included by default.)
             kwargs: dict (kwargs for plotOneTS)
         """
         input_name = self.getName(is_input=True)
@@ -515,11 +538,11 @@ class SBMLSystem(object):
         ax = plot_result.ax
         ax.set_ylabel(output_name)
         # Plot the setpoint
-        setpoint_arr = np.ones(len(timeseries))*setpoint
+        setpoint_arr = np.repeat(setpoint, len(timeseries.index))
         times = np.array(timeseries.index)/cn.MS_IN_SEC
         ax.plot(times, setpoint_arr, color=cn.SIMULATED_COLOR,
             linestyle="--")
-        # Do the plots
+        # Do second axis plots
         mgr.plot_opts.set(cn.O_AX, ax)
         if mgr.plot_opts[cn.O_AX2] is None:
             ax2 = ax.twinx()
@@ -595,7 +618,6 @@ class SBMLSystem(object):
             str
         """
         return self.getValidSymbols(is_input=True, is_str=True)
-        
 
     def getValidOutputs(self):
         """

@@ -128,7 +128,7 @@ class SISOMaker(object):
             raise ValueError("Error in closed loop for %s: %s" % (self.model_id, error))
         # Make the plot
         is_plot, new_kwargs = util.setNoPlot(kwargs)
-        self.system.plotSISOClosedLoop(ts, setpoint=setpoint, figsize=(5,5), title=self.model_id, **new_kwargs)
+        self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), title=self.model_id, **new_kwargs)
         plot_filename = self.model_id + CLOSED_LOOP_SFX + PNG_EXT
         plt.savefig(plot_filename)
         if is_plot:

@@ -94,11 +94,13 @@ CLOSED_LOOP_DCT = {
     cn.O_KF_SPEC: False,
     }
 SYSTEM_OPTION_DCT = {
+    cn.O_DISTURBANCE_SPEC: cn.DisturbanceSpec(),
     cn.O_FITTER_METHOD: cn.DEFAULT_FITTER_METHOD,
     cn.O_IS_FIXED_INPUT_SPECIES: True,
     cn.O_IS_STEADY_STATE: False,
     cn.O_IS_GREEDY: False,
-    cn.O_INPUT_NAME: None, 
+    cn.O_INPUT_NAME: None,
+    cn.O_NOISE_SPEC: cn.NoiseSpec(),
     cn.O_OUTPUT_NAME: None,
     }
 PLOT_OPTION_DCT = { 
@@ -149,6 +151,8 @@ class ControlSBML(object):
                  output_name:Optional[str]=None,
                  is_fixed_input_species:Optional[bool]=OPTION_DCT[cn.O_IS_FIXED_INPUT_SPECIES],
                  is_steady_state:Optional[bool]=OPTION_DCT[cn.O_IS_STEADY_STATE],
+                 noise_spec = OPTION_DCT[cn.O_NOISE_SPEC],
+                 disturbance_spec = OPTION_DCT[cn.O_DISTURBANCE_SPEC],
                  fitter_method:Optional[str]=OPTION_DCT[cn.O_FITTER_METHOD],
                  setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                  sign:Optional[int]=OPTION_DCT[cn.O_SIGN],
@@ -163,6 +167,8 @@ class ControlSBML(object):
         output_name: str
         is_fixed_input_species: bool
         is_steady_state: bool
+        noise_spec: NoiseSpec
+        disturbance_spec: DisturbanceSpec
         save_path: str (path to file where results are saved after a design)
         kwargs: dict with options listed below. These are the default options used unless overridden.
             Plot options:
@@ -185,6 +191,10 @@ class ControlSBML(object):
                 is_steady_state: bool (start system in steady state; default: False)
                 is_fixed_input_species: bool (concentration of input species are controlled externally; default: False)
                 output_name: str
+                noise_spec: NoiseSpec (specification of noise added to measured output)
+                          sine_amp, sine_freq, rand_mag, rand_std, dc_gain, slope
+                disturbance_spec: NoiseSpec (specification of disturbance added to control input)
+                            sine_amp, sine_freq, rand_mag, rand_std, dc_gain, slope
             Closed loop options:
                 kP: float (proportional control)
                 kI: float (integral control)
@@ -219,13 +229,16 @@ class ControlSBML(object):
         self.output_name = output_name
         self.is_fixed_input_species = is_fixed_input_species
         self.is_steady_state = is_steady_state
+        self.noise_spec = noise_spec
+        self.disturbance_spec = disturbance_spec
         self.save_path = save_path
         self.fitter_method = OPTION_DCT[cn.O_FITTER_METHOD] if fitter_method is None else fitter_method
         self.setpoint = OPTION_DCT[cn.O_SETPOINT] if setpoint is None else setpoint
         self.sign = OPTION_DCT[cn.O_SIGN] if sign is None else sign
         self.times = OPTION_DCT[cn.O_TIMES] if times is None else times
         # Internal state
-        self._sbml_system, self._transfer_function_builder =  self.setSystem(input_name=input_name, output_name=output_name,
+        self._sbml_system, self._transfer_function_builder =  self.setSystem(input_name=input_name,
+                       output_name=output_name, 
                        is_fixed_input_species=is_fixed_input_species, is_steady_state=is_steady_state)  # type: ignore
         self._fitter_result = cn.FitterResult()
         
@@ -395,6 +408,7 @@ class ControlSBML(object):
         self.is_steady_state = is_steady_state if is_steady_state is not None else self.is_steady_state
         sbml_system = SBMLSystem(self.model_reference, input_names=[self.input_name], # type: ignore
                             output_names=[self.output_name], # type: ignore
+                            noise_spec=self.noise_spec, disturbance_spec=self.disturbance_spec,
                             is_fixed_input_species= self.is_fixed_input_species,
                             is_steady_state=self.is_steady_state, roadrunner=self._roadrunner)
         builder = SISOTransferFunctionBuilder(
@@ -545,7 +559,7 @@ class ControlSBML(object):
                 'poly' uses a polynomial fit
                 'gpz' fit gain, then poles, then zeros
             times: numpy array (times of simulation)
-            kwargs: (plot options)
+            kwargs: (plot options, noise, disturbance)
 
         Returns:
             TransferFunctionFitResult
@@ -615,7 +629,7 @@ class ControlSBML(object):
             setpoint: float (regulation point)
             times: numpy array (times of simulation)
             selections: list-str (selections for simulation)
-            kwargs: plot options
+            kwargs: (plot options, noise, disturbance)
         Returns:
             Timeseries
             AntimonyBuilder
@@ -670,7 +684,8 @@ class ControlSBML(object):
         """
         save_path = None   # Disable "save_path" feature
         #
-        self._checkKwargs(PLOT_KEYS, **kwargs)
+        new_keys = list(PLOT_KEYS)
+        self._checkKwargs(new_keys, **kwargs)
         option_dct = self.getOptions(sign=sign, setpoint=setpoint, times=times, selections=selections,
                                      num_process=num_process, num_restart=num_restart, **kwargs)
         # Initialize parameters
@@ -785,12 +800,17 @@ class ControlSBML(object):
             if util.isNumber(val):
                 return val
             return 0.0
+        def setSpec(key, val):
+            if val is None:
+                return self.__getattribute__(key)
+            return val
         #
         kP_spec=self.setSpec(kP_spec)
         kI_spec=self.setSpec(kI_spec)
         kD_spec=self.setSpec(kD_spec)
         kF_spec=self.setSpec(kF_spec)
-        self._checkKwargs(PLOT_KEYS, **kwargs)
+        new_keys = list(PLOT_KEYS)
+        self._checkKwargs(new_keys, **kwargs)
         option_dct = self.getOptions(kP_spec=kP_spec,
                                      kI_spec=kI_spec,
                                      kD_spec=kD_spec,
