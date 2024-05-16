@@ -212,7 +212,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.init()
         self.builder.makeBoundarySpecies("S1")
         noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2)
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, kI=1, kF=10e5, setpoint=5, noise_spec=noise_spec,
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, kI=1, kD=2, kF=10e5, setpoint=5, noise_spec=noise_spec,
                                               disturbance_spec=cn.NoiseSpec(sine_amp=2, sine_freq=3))
         self.assertGreater(len(self.builder.closed_loop_symbols), 0)
         for prefix in ["noise", "disturbance"]:

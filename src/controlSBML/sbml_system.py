@@ -532,6 +532,7 @@ class SBMLSystem(object):
         if mgr is None:
             mgr = OptionManager(new_kwargs)
         new_kwargs["is_plot"] = False
+        import pdb; pdb.set_trace()
         df = pd.DataFrame(timeseries[output_name], columns=[output_name])
         new_kwargs.setdefault(cn.O_AX2, 0)
         plot_result = util.plotOneTS(df, colors=[cn.SIMULATED_COLOR], **new_kwargs)

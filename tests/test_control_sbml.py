@@ -5,6 +5,7 @@ from controlSBML.siso_transfer_function_builder import SISOTransferFunctionBuild
 from controlSBML.timeseries import Timeseries # type: ignore
 from controlSBML.antimony_builder import AntimonyBuilder # type: ignore
 from controlSBML.grid import Grid # type: ignore
+import controlSBML.util as util  # type: ignore
 
 import control # type: ignore
 import matplotlib.pyplot as plt
@@ -13,8 +14,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 TIMES = cn.TIMES
 FIGSIZE = (5, 5)
 SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
@@ -143,6 +144,23 @@ class TestControlSBML(unittest.TestCase):
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(result.timeseries, Timeseries))
         self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
+     
+    def testPlotDesignNoiseDisturbance(self):
+        if IGNORE_TEST:
+            return
+        noise_spec = cn.NoiseSpec(sine_amp=0.1, sine_freq=10, random_mag=0.1, random_std=0.1)
+        ctlsb = ControlSBML(LINEAR_MDL, input_name="S1", output_name="S3", noise_spec=noise_spec)
+        ctlsb = CTLSB.copy()
+        setpoint = 5
+        ctlsb.setSystem(input_name="S1", output_name="S3")
+        result = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
+                                            min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
+                                            num_coordinate=5, num_process=10)
+        # Show that kP, kI are now the defaults
+        _ = ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
+                                                          times=np.linspace(0, 100, 1000))
+        self.assertTrue(isinstance(result.timeseries, Timeseries))
+        self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
 
     def testPlotDesignKwargs(self):
         if IGNORE_TEST:
@@ -199,12 +217,12 @@ class TestControlSBML(unittest.TestCase):
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         INPUT_NAME = "pIRS"
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
-        CTLSB = ControlSBML(URL, figsize=FIGSIZE, times=TIMES, markers=False,
+        path = util.getModelPath("Varusai2018")
+        CTLSB = ControlSBML(path, figsize=FIGSIZE, times=TIMES, markers=False,
                             input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
         _ = CTLSB.plotModel(ax2=0, is_plot=IS_PLOT)
         # Define the system and plot response over a controlled range
-        CTLSB = ControlSBML(URL, figsize=FIGSIZE, input_name=INPUT_NAME, output_name=OUTPUT_NAME,
+        CTLSB = ControlSBML(path, figsize=FIGSIZE, input_name=INPUT_NAME, output_name=OUTPUT_NAME,
                          times=np.linspace(0, 1000, 10000),
                          markers=False, sign=-1, is_plot=False)
         if False:
@@ -234,8 +252,8 @@ class TestControlSBML(unittest.TestCase):
     def testPerformance(self):
         if IGNORE_TEST:
             return
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
-        ctlsb = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False)
+        path = util.getModelPath("Varusai2018")
+        ctlsb = ControlSBML(path, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False)
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
@@ -246,8 +264,8 @@ class TestControlSBML(unittest.TestCase):
     def testBug1(self):
         if IGNORE_TEST:
             return
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
-        ctlsb = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False)
+        path = util.getModelPath("Varusai2018")
+        ctlsb = ControlSBML(path, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False)
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
         ctlsb.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
@@ -292,10 +310,10 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         # Setup
-        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
+        path = util.getModelPath("Varusai2018")
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
-        ctlsb = ControlSBML(url, save_path=SAVE1_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        ctlsb = ControlSBML(path, save_path=SAVE1_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         #
         grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, kD_spec=True, num_coordinate=10, is_random=False)
         axis = grid.getAxis("kP")
@@ -308,10 +326,10 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         # Setup
-        url = "https://www.ebi.ac.uk/biomodels/model/download/BIOMD0000000823.2?filename=Varusai2018.xml"
+        path = util.getModelPath("Varusai2018")
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
-        ctlsb = ControlSBML(url, save_path=SAVE1_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        ctlsb = ControlSBML(path, save_path=SAVE1_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         #
         grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=40, is_random=False)
         axis = grid.getAxis("kP")
@@ -373,8 +391,8 @@ class TestControlSBML(unittest.TestCase):
     def testBug8(self):
         if IGNORE_TEST:
             return
-        url = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL2108260003/3/Alharbi2019%20TNVM.xml"
-        ctlsb = ControlSBML(url, times=np.linspace(0, 30, 300), input_name="Vitamins",
+        path = util.getModelPath("Alharbi2019_TNVM")
+        ctlsb = ControlSBML(path, times=np.linspace(0, 30, 300), input_name="Vitamins",
                           output_name="Normal_cells", is_fixed_input_species=True)
         result = ctlsb.plotDesign(setpoint=2, kP_spec=0.2, kI_spec=0.1, figsize=FIGSIZE, times=np.linspace(0, 100, 1000), min_parameter_value=1,
                 max_parameter_value=100,is_plot=IS_PLOT) 
@@ -383,8 +401,8 @@ class TestControlSBML(unittest.TestCase):
     def testBug9(self):
         if IGNORE_TEST:
             return
-        url = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL2108260003/3/Alharbi2019%20TNVM.xml"
-        ctlsb = ControlSBML(url, input_name="Vitamins",
+        path = util.getModelPath("Alharbi2019_TNVM")
+        ctlsb = ControlSBML(path, input_name="Vitamins",
                           output_name="Normal_cells", is_fixed_input_species=True, 
                          times=np.linspace(0, 100, 1000), figsize=FIGSIZE)
         def test(kP_spec, kI_spec):
@@ -402,8 +420,8 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         TIMES = np.linspace(000, 15000, 50000)
-        BIOMODEL_SOURCE_FILE_URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1501300000/3/BIOMD0000000571_url.xml"
-        CTLSB = ControlSBML(BIOMODEL_SOURCE_FILE_URL, xlabel="time (min)", times=TIMES)
+        path = util.getModelPath("BIOMD0000000571")
+        CTLSB = ControlSBML(path, xlabel="time (min)", times=TIMES)
         INPUT_NAME = "Mlc"
         OUTPUT_NAME = "EI_P"
         CTLSB.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
@@ -418,8 +436,8 @@ class TestControlSBML(unittest.TestCase):
         # Bogus initial transient on fit
         if IGNORE_TEST:
             return
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1809060006/5/Tsai2014.xml"
-        CTLSB = ControlSBML(URL, times=np.linspace(0, 100, 1000))
+        path = util.getModelPath("Tsai2014")
+        CTLSB = ControlSBML(path, times=np.linspace(0, 100, 1000))
         CTLSB.setSystem(input_name="Plx1_active", output_name="APC_C_active")
         result = CTLSB.plotTransferFunctionFit(fit_start_time=20, final_value=1.0,
                                                is_plot=IS_PLOT)
@@ -428,10 +446,10 @@ class TestControlSBML(unittest.TestCase):
         # Bad x-axis on plot
         if IGNORE_TEST:
             return
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1909250003/2/Varusai2018.xml"
+        path = util.getModelPath("Varusai2018")
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
-        ctlsb= ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False,
+        ctlsb= ControlSBML(path, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False,
                    input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         _ = ctlsb.plotDesign(setpoint=80, kP_spec=1, kI_spec=0.01, times=np.linspace(0, 2000, 20000),
                              is_plot=IS_PLOT)
@@ -440,10 +458,10 @@ class TestControlSBML(unittest.TestCase):
         # Bad time axis
         if IGNORE_TEST:
             return
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1911110001/4/FatehiChenar2018.xml"
+        path = util.getModelPath("FatehiChenar2018")
         INPUT_NAME = "E"
         OUTPUT_NAME = "R"
-        CTLSB = ControlSBML(URL, figsize=(5, 5), times=np.linspace(0, 10, 100), markers=False, is_fixed_input_species=True,
+        CTLSB = ControlSBML(path, figsize=(5, 5), times=np.linspace(0, 10, 100), markers=False, is_fixed_input_species=True,
                    save_path="data.csv", input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
         TIMES = np.linspace(0, 10**5, 10**6)
         _ = CTLSB.plotDesign(setpoint=0.1, kP_spec=1, kI_spec=0.1, times=TIMES, num_restart=1, is_plot=IS_PLOT)
@@ -452,10 +470,10 @@ class TestControlSBML(unittest.TestCase):
         # Not using the correct design parameters
         if IGNORE_TEST:
             return
-        URL = "https://www.ebi.ac.uk/biomodels/services/download/get-files/MODEL1808280007/6/Smith2011_V1.xml"
+        path = util.getModelPath("Smith2011_V1")
         INPUT_NAME = 'Pneumococci___P'
         OUTPUT_NAME = 'Neutrophils__N'
-        CTLSB = ControlSBML(URL, input_name=INPUT_NAME, output_name=OUTPUT_NAME, is_fixed_input_species=True,
+        CTLSB = ControlSBML(path, input_name=INPUT_NAME, output_name=OUTPUT_NAME, is_fixed_input_species=True,
                        figsize=FIGSIZE)
         TIMES = np.linspace(0, 200, 2000)
         SETPOINT = 1000
@@ -464,6 +482,22 @@ class TestControlSBML(unittest.TestCase):
         grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=11)
         grid.addAxis("kI", min_value=0.002, max_value=0.02, num_coordinate=11)
         _ = CTLSB.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT, is_plot=IS_PLOT)
+
+    def testBug15(self):
+        # Not using the correct design parameters
+        #if IGNORE_TEST:
+        #    return
+        INPUT_NAME = 'Pneumococci___P'
+        OUTPUT_NAME = 'Neutrophils__N'
+        path = util.getModelPath("Smith2011_V1")
+        noise_spec = cn.NoiseSpec(random_mag=0.0001, random_std=0.001, offset=1)
+        ctlsb = ControlSBML(path, times=TIMES, is_fixed_input_species=True, figsize=FIGSIZE,
+                       input_name=INPUT_NAME, output_name=OUTPUT_NAME, noise_spec=noise_spec)
+        grid = ctlsb.getGrid()
+        grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=10)
+        grid.addAxis("kI", min_value=0.002, max_value=0.02, num_coordinate=10)
+        SETPOINT = 1000
+        design_result = ctlsb.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT)
 
 
 

@@ -7,6 +7,7 @@ from controlSBML import msgs
 from docstring_expander.expander import Expander # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
+import os
 import pandas as pd # type: ignore
 import seaborn as sns # type: ignore
 import urllib.request
@@ -55,6 +56,20 @@ def getSharedCodes(module_name="util"):
         code_str = "".join(fd.readlines())
     print(code_str)
     exec(code_str, globals())
+
+def getModelPath(filename:str)->str:
+    """
+    Obtains a local model from the github repository.
+
+    Parameters
+    ----------
+    file_name: str (without extension)
+
+    Returns
+    -------
+    str
+    """
+    return os.path.join(cn.MODEL_DIR, filename + ".ant")
 
 def getModel(file_name=MODEL_823_FILE):
     """
