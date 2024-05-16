@@ -497,7 +497,7 @@ class TestControlSBML(unittest.TestCase):
         grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=10)
         grid.addAxis("kI", min_value=0.002, max_value=0.02, num_coordinate=10)
         SETPOINT = 1000
-        design_result = ctlsb.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT)
+        design_result = ctlsb.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT, num_restart=10)
 
 
 

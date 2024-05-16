@@ -516,14 +516,13 @@ class SBMLSystem(object):
         return names[0]
     
     def plotSISOClosedLoop(self, timeseries:Timeseries, setpoint, 
-                           selections=None, mgr:Optional[OptionManager]=None, **kwargs):
+                           mgr:Optional[OptionManager]=None, **kwargs):
         """
         Plots the results of a closed lop simulation. Input and output are defined in the SBMLSystem constructor.
 
         Args:
             timeseries: Timeseries
             setpoint: float
-            selections: list-str (names of species to be selected for plot. output_name is included by default.)
             kwargs: dict (kwargs for plotOneTS)
         """
         input_name = self.getName(is_input=True)
@@ -532,7 +531,6 @@ class SBMLSystem(object):
         if mgr is None:
             mgr = OptionManager(new_kwargs)
         new_kwargs["is_plot"] = False
-        import pdb; pdb.set_trace()
         df = pd.DataFrame(timeseries[output_name], columns=[output_name])
         new_kwargs.setdefault(cn.O_AX2, 0)
         plot_result = util.plotOneTS(df, colors=[cn.SIMULATED_COLOR], **new_kwargs)

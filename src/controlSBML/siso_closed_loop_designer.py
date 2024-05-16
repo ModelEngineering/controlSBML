@@ -38,7 +38,10 @@ PARAMETER_DISPLAY_DCT = {CP_kP: r'$k_p$', CP_kI: r'$k_i$', CP_kF: r'$k_f$', CP_k
 
 Workunit = collections.namedtuple("Workunit",
     "system input_name output_name setpoint times is_greedy num_restart is_report") 
-DesignResult = collections.namedtuple("DesignResult", "dataframe")
+# DesignResult
+#   dataframe: table of design results
+#   max_count: maximum count of the design parameters that successfully simulate
+DesignResult = collections.namedtuple("DesignResult", "dataframe max_count")
 
 
 def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=None, kI=None, kD=None, kF=None,
@@ -291,6 +294,7 @@ class SISOClosedLoopDesigner(object):
                         is_report:bool=False, num_process:int=-1)->DesignResult:
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
+        For systems with random noise or disturbance, uses the maximum value of the score.
 
         Args:
             grid: Grid
@@ -309,34 +313,50 @@ class SISOClosedLoopDesigner(object):
         #
         point_evaluator = PointEvaluator(self.system.copy(), self.input_name, self.output_name,
                                             self.setpoint, self.sign, self.times, is_greedy=is_greedy)
-        parallel_search = ParallelSearch(point_evaluator, grid.points, num_process=num_process, is_report=is_report) # type: ignore
-        search_results = []
+        # Expand the number of points
+        points = []
         for _ in range(num_restart):
-            parallel_search.search()
-            search_results.append(parallel_search.getSearchResults())
-        if len(search_results) == 0:
+            points.extend(grid.points)
+        # Do the search
+        parallel_search = ParallelSearch(point_evaluator, points, num_process=num_process, is_report=is_report) # type: ignore
+        parallel_search.search()
+        search_result_df = parallel_search.getSearchResults()
+        if len(search_result_df) == 0:
             df = pd.DataFrame([[None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
                               columns=[CP_kP, CP_kI, CP_kD, CP_kF, cn.SCORE, cn.REASON])
-            return DesignResult(dataframe=df)
+            return DesignResult(dataframe=df, max_count=0)
         # Merge the results and sort by score
-        search_result_df = pd.concat(search_results)
         search_result_df = search_result_df.sort_values(cn.SCORE, ascending=True)  # type: ignore
         search_result_df = search_result_df.reset_index(drop=True)
+        # Handle replications of the same design parameters and select successful designs
+        search_result_df = search_result_df[search_result_df[cn.SCORE].notna()]
+        del search_result_df[cn.REASON]
+        sort_columns = list(grid.axis_dct.keys())
+        groupby = search_result_df.groupby(sort_columns)
+        count_df = groupby.count()
+        max_count = np.max(count_df[cn.SCORE])
+        sel = count_df == max_count
+        mean_df = groupby.max()
+        threshold_mean_df = mean_df[sel]
+        threshold_mean_df = threshold_mean_df[threshold_mean_df[cn.SCORE].notna()]
+        sorted_mean_df = threshold_mean_df.reset_index()
+        sorted_mean_df = sorted_mean_df.sort_values(cn.SCORE, ascending=True)
+        sorted_mean_df = sorted_mean_df.reset_index()
         # Record the result
-        self.residual_mse = search_result_df.loc[0, cn.SCORE]
-        if CP_kP in search_result_df.columns:
-            self.kP = getValue(search_result_df.loc[0, CP_kP])
-        if CP_kI in search_result_df.columns:
-            self.kI = getValue(search_result_df.loc[0, CP_kI])
-        if CP_kD in search_result_df.columns:
-            self.kD = getValue(search_result_df.loc[0, CP_kD])
-        if CP_kF in search_result_df.columns:
-            self.kF = getValue(search_result_df.loc[0, CP_kF])
+        self.residual_mse = sorted_mean_df.loc[0, cn.SCORE]
+        if CP_kP in sorted_mean_df.columns:
+            self.kP = getValue(sorted_mean_df.loc[0, CP_kP])
+        if CP_kI in sorted_mean_df.columns:
+            self.kI = getValue(sorted_mean_df.loc[0, CP_kI])
+        if CP_kD in sorted_mean_df.columns:
+            self.kD = getValue(sorted_mean_df.loc[0, CP_kD])
+        if CP_kF in sorted_mean_df.columns:
+            self.kF = getValue(sorted_mean_df.loc[0, CP_kF])
         # Save the results
         if self.save_path is not None:
-            search_result_df.to_csv(self.save_path, index=False)
-        self._design_result_df = search_result_df.copy()
-        return DesignResult(dataframe=search_result_df)
+            sorted_mean_df.to_csv(self.save_path, index=False)
+        self._design_result_df = sorted_mean_df
+        return DesignResult(dataframe=sorted_mean_df, max_count=max_count)
 
     @property
     def design_result_df(self):

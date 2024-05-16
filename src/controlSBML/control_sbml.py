@@ -653,6 +653,10 @@ class ControlSBML(object):
                 kP=kP, kI=kI, kD=kD, kF=kF, setpoint=setpoint, selections=selections,
                 times=times,
                 )
+        if response_ts is None:
+            msg = "System is unstable for kP={}, kI={}, kD={}, kF={}".format(kP, kI, kD, kF)
+            msgs.warn(msg)
+            return response_ts, builder
         self._sbml_system.plotSISOClosedLoop(response_ts, setpoint, times=times, **plot_dct)
         return response_ts, builder
 
