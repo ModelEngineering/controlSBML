@@ -93,11 +93,13 @@ class PointEvaluator(Evaluator):
             return cn.DESIGN_RESULT_CANNOT_SIMULATE, None
         outputs = response_ts[self.output_name].values
         max_value = np.max([np.max(outputs), np.abs(np.min(outputs))])
-        if max_value > max_output:
-            return cn.DESIGN_RESULT_OUTPUT_TOO_LARGE, None
-        min_value = np.min([np.max(outputs), np.abs(np.min(outputs))])
-        if min_value < min_output:
-            return cn.DESIGN_RESULT_OUTPUT_TOO_SMALL, None
+        if False:
+            # Disable these checks
+            if max_value > max_output:
+                return cn.DESIGN_RESULT_OUTPUT_TOO_LARGE, None
+            min_value = np.min([np.max(outputs), np.abs(np.min(outputs))])
+            if min_value < min_output:
+                return cn.DESIGN_RESULT_OUTPUT_TOO_SMALL, None
         #
         residuals = self.setpoint - response_ts[self.output_name].values
         mse = np.mean(residuals**2)

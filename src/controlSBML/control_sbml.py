@@ -749,6 +749,8 @@ class ControlSBML(object):
 
     @staticmethod
     def setSpec(val):
+        if isinstance(val, bool):
+            return val
         if isinstance(val, int):
             return float(val)
         else:

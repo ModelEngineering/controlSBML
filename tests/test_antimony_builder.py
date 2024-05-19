@@ -44,16 +44,18 @@ class TestAntimonyBuilder(unittest.TestCase):
     def init(self):
         self.builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
 
-    def check(self, builder=None):
+    def check(self, builder=None, times=None):
         if builder is None:
             builder = self.builder
+        if times is None:
+            times = np.linspace(0, 20, 2000)
         rr = te.loada(str(builder))
         selections = ["time", "S1", "S2", "S3"]
         if "setpoint_S1_S3" in rr.keys():
             selections.append("setpoint_S1_S3")
         if "noise_S1_S3_ot" in rr.keys():
             selections.append("noise_S1_S3_ot")
-        data = rr.simulate(0,20, 2000, selections=selections)
+        data = rr.simulate(times[0], times[-1], len(times), selections=selections)
         self.assertTrue(len(data) > 0)
         if IS_PLOT:
             rr.plot()
@@ -141,6 +143,16 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.builder.makeAdditionStatement(filter_in, sin_ot)
         self.check()
 
+    def testMakeFilterElementNofilter(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        filter_in, filter_ot, calculation = self.builder.makeFilterElement(0, suffix="_S1_S3")
+        noise_spec = cn.NoiseSpec(sine_amp=1, sine_freq=2)
+        sin_ot = self.builder.makeNoiseElement(noise_spec, suffix="_S1_S2")
+        self.builder.makeAdditionStatement(filter_in, sin_ot)
+        self.check()
+
     def testMakeControlErrorSignal(self):
         if IGNORE_TEST:
             return
@@ -162,6 +174,16 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, kD=5, suffix="_S1_S3")
+        self.builder.makeBoundarySpecies("S1")
+        self.builder.makeAdditionStatement("S1", name_ot)
+        self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
+        self.check()
+    
+    def testMakePIDController4(self):
+        if IGNORE_TEST:
+            return
+        self.init()
+        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, suffix="_S1_S3")
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
@@ -275,8 +297,8 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         self.builder.makeBoundarySpecies("S1")
-        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10000, kI=1, setpoint=4)
-        data = self.check()
+        self.builder.makeSISOClosedLoopSystem("S1", "S3", kP=10, kI=1, setpoint=4)
+        data = self.check(times=np.linspace(0, 100, 1000))
         self.assertTrue(np.isclose(data["S3"][-1], 4, atol=0.01))
 
     def testCopyAndEqual(self):

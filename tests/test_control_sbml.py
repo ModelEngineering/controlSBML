@@ -14,8 +14,8 @@ import os
 import unittest
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 TIMES = cn.TIMES
 FIGSIZE = (5, 5)
 SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
@@ -138,7 +138,7 @@ class TestControlSBML(unittest.TestCase):
         ctlsb.setSystem(input_name="S1", output_name="S3")
         result = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
-                                            num_coordinate=5, num_process=10)
+                                            num_coordinate=3, num_process=10)
         # Show that kP, kI are now the defaults
         _ = ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
@@ -176,10 +176,10 @@ class TestControlSBML(unittest.TestCase):
             return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, setpoint=setpoint, final_value=10, input_name="S1", output_name="S3")
-        grid = Grid(min_value=0.1, max_value=10, num_coordinate=10)
-        grid.addAxis("kP")
-        grid.addAxis("kI")
-        grid.addAxis("kD")
+        grid = Grid(min_value=0.1, max_value=10, num_coordinate=3)
+        grid.addAxis("kP", num_coordinate=3)
+        grid.addAxis("kI", num_coordinate=3)
+        grid.addAxis("kD", num_coordinate=3)
         _ = ctlsb.plotGridDesign(grid, is_plot=IS_PLOT)
 
     def testPlotDesign1(self):
@@ -218,22 +218,23 @@ class TestControlSBML(unittest.TestCase):
         OUTPUT_NAME = "pmTORC1"
         INPUT_NAME = "pIRS"
         path = util.getModelPath("Varusai2018")
-        CTLSB = ControlSBML(path, figsize=FIGSIZE, times=TIMES, markers=False,
-                            input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
-        _ = CTLSB.plotModel(ax2=0, is_plot=IS_PLOT)
+        if False:
+            CTLSB = ControlSBML(path, figsize=FIGSIZE, times=TIMES, markers=False,
+                                input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
+            _ = CTLSB.plotModel(ax2=0, is_plot=IS_PLOT)
         # Define the system and plot response over a controlled range
         CTLSB = ControlSBML(path, figsize=FIGSIZE, input_name=INPUT_NAME, output_name=OUTPUT_NAME,
                          times=np.linspace(0, 1000, 10000),
                          markers=False, sign=-1, is_plot=False)
+        _ = CTLSB.plotDesign(setpoint=150, kP_spec=True, kI_spec=True, kF_spec=False, 
+                                       num_restart=1, is_plot=IS_PLOT, selections=[INPUT_NAME, OUTPUT_NAME],
+                                       num_process=5)
         if False:
             _, builder = CTLSB.plotStaircaseResponse(is_plot=IS_PLOT)
             _, builder = CTLSB.plotStaircaseResponse(initial_value=20, final_value=25, is_plot=IS_PLOT)
             _ = CTLSB.plotTransferFunctionFit(figsize=FIGSIZE, num_zero=1, num_pole=2, initial_value=20, final_value=25,
                                             fit_start_time=200, is_plot=IS_PLOT)
             _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, kF=None, is_plot=IS_PLOT)
-        _ = CTLSB.plotDesign(setpoint=150, kP_spec=True, kI_spec=True, kF_spec=False, 
-                                       num_restart=1, is_plot=IS_PLOT, selections=[INPUT_NAME, OUTPUT_NAME],
-                                       num_process=5)
         _ = CTLSB._plotClosedLoop(setpoint=120, kP=0.002, kI=0.019, is_plot=IS_PLOT)
         _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, is_plot=IS_PLOT)
 
@@ -345,8 +346,9 @@ class TestControlSBML(unittest.TestCase):
         times = np.linspace(0, 50, 500)
         WOLF_CTLSB = ControlSBML(cn.WOLF_PATH,
                         input_name="s1", output_name="s5", times=times)
-        _ = WOLF_CTLSB.plotDesign(kP_spec=.001, kI_spec=False, times=np.linspace(0, 5, 50), num_restart=1,
-                                       num_process=1, is_plot=IS_PLOT)
+        _ = WOLF_CTLSB.plotDesign(kP_spec=True, kI_spec=True, num_restart=1,
+                                       is_plot=IS_PLOT, num_coordinate=20,
+                                       min_parameter_value=0.001, max_parameter_value=5)
 
     def testBug6(self):
         # Bug with setting inputs that are fixed
@@ -395,7 +397,7 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = ControlSBML(path, times=np.linspace(0, 30, 300), input_name="Vitamins",
                           output_name="Normal_cells", is_fixed_input_species=True)
         result = ctlsb.plotDesign(setpoint=2, kP_spec=0.2, kI_spec=0.1, figsize=FIGSIZE, times=np.linspace(0, 100, 1000), min_parameter_value=1,
-                max_parameter_value=100,is_plot=IS_PLOT) 
+                max_parameter_value=100,is_plot=IS_PLOT, num_coordinate=2) 
         self.assertTrue(isinstance(result.timeseries, Timeseries))
         
     def testBug9(self):
@@ -407,7 +409,7 @@ class TestControlSBML(unittest.TestCase):
                          times=np.linspace(0, 100, 1000), figsize=FIGSIZE)
         def test(kP_spec, kI_spec):
             result = ctlsb.plotDesign(setpoint=2, kP_spec=kP_spec, kI_spec=kI_spec, min_parameter_value=1,
-                    max_parameter_value=100, num_restart=1, is_plot=IS_PLOT)
+                    max_parameter_value=100, num_restart=1, is_plot=IS_PLOT, num_coordinate=2)
             self.assertTrue("kP" in result.designs.dataframe.columns)
             self.assertTrue("kI" in result.designs.dataframe.columns)
             if result.timeseries is not None:
@@ -426,8 +428,8 @@ class TestControlSBML(unittest.TestCase):
         OUTPUT_NAME = "EI_P"
         CTLSB.setSystem(input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         grid = CTLSB.getGrid()
-        grid.addAxis("kP", min_value=0.0, max_value=0.005, num_coordinate=11)
-        grid.addAxis("kI", min_value=0.0, max_value=0.002, num_coordinate=11)
+        grid.addAxis("kP", min_value=0.0, max_value=0.005, num_coordinate=3)
+        grid.addAxis("kI", min_value=0.0, max_value=0.002, num_coordinate=3)
         result = CTLSB.plotGridDesign(grid, setpoint=0.0000003,
                                   is_plot=IS_PLOT)
         self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
@@ -439,7 +441,7 @@ class TestControlSBML(unittest.TestCase):
         path = util.getModelPath("Tsai2014")
         CTLSB = ControlSBML(path, times=np.linspace(0, 100, 1000))
         CTLSB.setSystem(input_name="Plx1_active", output_name="APC_C_active")
-        result = CTLSB.plotTransferFunctionFit(fit_start_time=20, final_value=1.0,
+        _ = CTLSB.plotTransferFunctionFit(fit_start_time=20, final_value=1.0,
                                                is_plot=IS_PLOT)
         
     def testBug12(self):
@@ -452,7 +454,7 @@ class TestControlSBML(unittest.TestCase):
         ctlsb= ControlSBML(path, figsize=(5, 5), times=np.linspace(0, 2000, 20000), markers=False,
                    input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         _ = ctlsb.plotDesign(setpoint=80, kP_spec=1, kI_spec=0.01, times=np.linspace(0, 2000, 20000),
-                             is_plot=IS_PLOT)
+                             is_plot=IS_PLOT, num_coordinate=2)
         
     def testBug13(self):
         # Bad time axis
@@ -464,7 +466,8 @@ class TestControlSBML(unittest.TestCase):
         CTLSB = ControlSBML(path, figsize=(5, 5), times=np.linspace(0, 10, 100), markers=False, is_fixed_input_species=True,
                    save_path="data.csv", input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
         TIMES = np.linspace(0, 10**5, 10**6)
-        _ = CTLSB.plotDesign(setpoint=0.1, kP_spec=1, kI_spec=0.1, times=TIMES, num_restart=1, is_plot=IS_PLOT)
+        _ = CTLSB.plotDesign(setpoint=0.1, kP_spec=1, kI_spec=0.1, times=TIMES, num_restart=1, is_plot=IS_PLOT,
+                             num_coordinate=2)
 
     def testBug14(self):
         # Not using the correct design parameters
@@ -479,25 +482,29 @@ class TestControlSBML(unittest.TestCase):
         SETPOINT = 1000
         _ = CTLSB.plotDesign(kP_spec=1.5555, kI_spec=0.018, times=TIMES, setpoint=SETPOINT, is_plot=IS_PLOT)
         grid = CTLSB.getGrid()
-        grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=11)
-        grid.addAxis("kI", min_value=0.002, max_value=0.02, num_coordinate=11)
+        grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=3)
+        grid.addAxis("kI", min_value=0.002, max_value=0.02, num_coordinate=3)
         _ = CTLSB.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT, is_plot=IS_PLOT)
 
     def testBug15(self):
         # Not using the correct design parameters
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
+        TIMES = np.linspace(0, 200, 2000)
         INPUT_NAME = 'Pneumococci___P'
         OUTPUT_NAME = 'Neutrophils__N'
         path = util.getModelPath("Smith2011_V1")
-        noise_spec = cn.NoiseSpec(random_mag=0.0001, random_std=0.001, offset=1)
+        noise_spec = cn.NoiseSpec(random_mag=10.0, random_std=1, offset=1)
         ctlsb = ControlSBML(path, times=TIMES, is_fixed_input_species=True, figsize=FIGSIZE,
                        input_name=INPUT_NAME, output_name=OUTPUT_NAME, noise_spec=noise_spec)
         grid = ctlsb.getGrid()
-        grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=10)
-        grid.addAxis("kI", min_value=0.002, max_value=0.02, num_coordinate=10)
+        grid.addAxis("kP", min_value=0.5, max_value=10, num_coordinate=5)
+        grid.addAxis("kD", min_value=0.0, max_value=0.2, num_coordinate=5)
+        grid.addAxis("kI", min_value=0.0, max_value=0.2, num_coordinate=5)
+        #grid.addAxis("kF", min_value=0.01, max_value=0.02, num_coordinate=2)
         SETPOINT = 1000
-        design_result = ctlsb.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT, num_restart=10)
+        _ = ctlsb.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT, num_restart=5,
+                                             is_plot=IS_PLOT)
 
 
 

@@ -339,7 +339,7 @@ class AntimonyBuilder(object):
         self.closed_loop_symbols.append(name_ot)
         return name_in, name_ot
 
-    def makeFilterElement(self, kF:float, prefix:str="filter", suffix:str=""):
+    def makeFilterElement(self, kF:float, prefix:str="filter", suffix:str="", kF_nofilter=100):
         """
         Makes a filter. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
         Prefix is used to scope within a control loop. Suffix is used to scope between control loops.
@@ -348,6 +348,7 @@ class AntimonyBuilder(object):
             kF: float
             prefix: str (beginning of the name)
             suffix: str (ending of the name)
+            kF_nofilter: float (value of kF when no filter is used)
         Returns:
             str: name of the filter input
             str: name of the filter output
@@ -358,17 +359,18 @@ class AntimonyBuilder(object):
             self.makeAddition(name_in, "S3")   # S3 is the output of the system
             self.makeAddition("control_error", setpoint, "-"+name_ot)
         """
+        #
         self.addStatement("")
         self.makeComment("Make filter: kF=%s" % (str(kF)))
         kF_name = self._makeScopedName("kF", suffix)
         name_in, name_ot = self._makeInputOutputName(prefix, suffix)
         if (kF is None) or np.isclose(kF, 0):
-            kF = 10e6 # Use a large value to approximate a filter with no effect
-            comment = "Filter with no effect"
+            new_kF = kF_nofilter
         else:
-            comment = ""
-        self.makeAdditionStatement(kF_name, kF, is_assignment=False, comment=comment)
-        calculation = "-%s*%s + %s*%s" % (kF_name, name_ot, kF_name, name_in)
+            new_kF = kF
+        self.makeAdditionStatement(kF_name, new_kF, is_assignment=False)
+        # Construct the filter calculation
+        calculation = f"-{kF_name}*{name_ot} + {kF_name}*{name_in}"
         # Use a dummy reaction to integrate instead of "'" to avoid antimony limitations with
         # combining rate rules and assignment rules
         statement = " -> %s; %s " % (name_ot, calculation) 
@@ -433,29 +435,42 @@ class AntimonyBuilder(object):
             str: name of the controller output
         """
         base_name = prefix + "_" +  "%s" + suffix # type: ignore
+        def makeControllerScopedName(name):
+            scoped_name = base_name % name
+            self.closed_loop_symbols.append(scoped_name)
+            return scoped_name
+        #
         self.addStatement("")
         self.makeComment("Make the PID controller")
         name_in, name_ot = self._makeInputOutputName(prefix, suffix)
         # Constants for parameters
-        kP_name = base_name % "kP"
-        kI_name = base_name % "kI"
-        kD_name = base_name % "kD"
         if kP is not None:
+            kP_name = makeControllerScopedName("kP")
             self.makeAdditionStatement(kP_name, str(kP), is_assignment=False)
-            self.closed_loop_symbols.append(kP_name)
         if kI is not None:
+            kI_name = makeControllerScopedName("kI")
             self.makeAdditionStatement(kI_name, str(kI), is_assignment=False)
-            self.closed_loop_symbols.append(kI_name)
         if kD is not None:
+            kD_name = makeControllerScopedName("kD")
             self.makeAdditionStatement(kD_name, str(kD), is_assignment=False)
-            self.closed_loop_symbols.append(kD_name)
         # Make the derivative of the control error
         if kD is not None:
             derivative_error_name = base_name % "derivative_error"
             self.closed_loop_symbols.append(derivative_error_name)
             if filter_calculation is None:
-                filter_calculation = "rateOf(%s)" % (output_name)  # type: ignore
-            sign_filter_calculation = "%d*(%s)" % (sign, filter_calculation)  # type: ignore
+                # Step 1: Make a dummy reaction to get the rate of the output
+                #   J: S->S; output_name
+                #   S = 1
+                #   filter_calculation = rateOf(J)
+                reaction_name = makeControllerScopedName("reaction")
+                species_name = makeControllerScopedName("species")
+                reaction_stmt = f"{reaction_name}: {species_name} -> {species_name}"
+                reaction_stmt += f"; {output_name}"
+                self.addStatement(reaction_stmt)
+                self.makeAdditionStatement(species_name, 1, is_assignment=False)   # rate_law = 0
+                # Step 2: Make the rate law
+                filter_calculation = f"rateOf({reaction_name})"
+            sign_filter_calculation = f"{sign}*{filter_calculation}"
             statement = "%s := %s" % (derivative_error_name, sign_filter_calculation)  # type: ignore
             self.addStatement(statement)
         # Make the integral of the control error
@@ -481,7 +496,8 @@ class AntimonyBuilder(object):
                            noise_spec=cn.NoiseSpec(), disturbance_spec=cn.DisturbanceSpec(),
                            initial_output_value=None, sign=-1):
         """
-        Creates a closed loop system with a single input and a single output.
+        Creates a closed loop system with a single input and a single output. Does not create a filter
+        if kF is in [0, None]
 
         Args:
             input_name: str (input to system)
@@ -512,14 +528,21 @@ class AntimonyBuilder(object):
         controller_in, controller_ot = self.makePIDControllerElement(output_name,
               filter_calculation=filter_calculation,
               kP=kP, kI=kI, kD=kD, prefix="controller", suffix=suffix, sign=sign)
-        control_error_name = self.makeControlErrorSignal(setpoint_name, filter_ot, sign, prefix="control_error", 
+        if filter_ot is None:
+            comparison_signal_str = "(" + output_name + " + " + noise_ot + ")"
+        else:
+            comparison_signal_str = filter_ot
+        control_error_name = self.makeControlErrorSignal(setpoint_name,
+                                                         comparison_signal_str,
+                                                         sign, prefix="control_error", 
                                                          suffix=suffix)
         # Connect the pieces by specifying assignment statements
         self.addStatement("")
         self.makeComment("Connect the elements of the closed loop")
         self.makeAdditionStatement(controller_in, control_error_name)
         self.makeAdditionStatement(input_name, controller_ot, disturbance_ot)
-        self.makeAdditionStatement(filter_in, output_name, noise_ot)
+        if filter_in is not None:
+            self.makeAdditionStatement(filter_in, output_name, noise_ot)
     
     def getInputManipulationName(self, input_name):
         """

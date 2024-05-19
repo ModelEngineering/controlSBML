@@ -322,12 +322,13 @@ class SISOClosedLoopDesigner(object):
         parallel_search.search()
         search_result_df = parallel_search.getSearchResults()
         if len(search_result_df) == 0:
-            df = pd.DataFrame([[None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
+            df = pd.DataFrame([[None, None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
                               columns=[CP_kP, CP_kI, CP_kD, CP_kF, cn.SCORE, cn.REASON])
             return DesignResult(dataframe=df, max_count=0)
         # Merge the results and sort by score
         search_result_df = search_result_df.sort_values(cn.SCORE, ascending=True)  # type: ignore
         search_result_df = search_result_df.reset_index(drop=True)
+        result_df = search_result_df.copy()
         # Handle replications of the same design parameters and select successful designs
         search_result_df = search_result_df[search_result_df[cn.SCORE].notna()]
         del search_result_df[cn.REASON]
@@ -342,6 +343,11 @@ class SISOClosedLoopDesigner(object):
         sorted_mean_df = threshold_mean_df.reset_index()
         sorted_mean_df = sorted_mean_df.sort_values(cn.SCORE, ascending=True)
         sorted_mean_df = sorted_mean_df.reset_index()
+        # Check for no result
+        if len(sorted_mean_df) == 0:
+            df = pd.DataFrame([[None, None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
+                              columns=[CP_kP, CP_kI, CP_kD, CP_kF, cn.SCORE, cn.REASON])
+            return DesignResult(dataframe=df, max_count=0)
         # Record the result
         self.residual_mse = sorted_mean_df.loc[0, cn.SCORE]
         if CP_kP in sorted_mean_df.columns:
@@ -356,7 +362,7 @@ class SISOClosedLoopDesigner(object):
         if self.save_path is not None:
             sorted_mean_df.to_csv(self.save_path, index=False)
         self._design_result_df = sorted_mean_df
-        return DesignResult(dataframe=sorted_mean_df, max_count=max_count)
+        return DesignResult(dataframe=result_df, max_count=max_count)
 
     @property
     def design_result_df(self):
