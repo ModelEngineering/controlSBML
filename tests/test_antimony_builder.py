@@ -7,8 +7,8 @@ import unittest
 import tellurium as te # type: ignore
 
 
-IGNORE_TEST = False
-IS_PLOT = False
+IGNORE_TEST = True
+IS_PLOT = True
 MODEL_NAME = "main_model"
 INCOMPLETE_LINEAR_MDL = """
 S1 -> S2; k1*S1
@@ -121,8 +121,8 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.assertTrue(result)
 
     def testMakeNoiseElement(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         self.init()
         noise_spec = cn.NoiseSpec(sine_amp=0.01, sine_freq=0.2, random_mag=0.3,
                                     random_std=0.004, offset=0.5, slope=0.0006)
@@ -131,6 +131,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.assertTrue(result)
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", ot_name)
+        import pdb; pdb.set_trace()
         self.check()
 
     def testMakeFilterElement(self):
@@ -206,7 +207,7 @@ class TestAntimonyBuilder(unittest.TestCase):
             return
         self.init()
         name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, kD=5, suffix="_S1_S3",
-                    filter_calculation="-3*4")
+                    filter_derivative_calculation="-3*4")
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")

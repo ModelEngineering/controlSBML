@@ -352,7 +352,7 @@ class AntimonyBuilder(object):
         Returns:
             str: name of the filter input
             str: name of the filter output
-            str: filter calculation
+            str: filter derivative calculation
         Usage:
             suffix = "_S1_S3"
             name_in, name_ot = self.makeFilter(0.5, suffix=suffix)
@@ -370,13 +370,13 @@ class AntimonyBuilder(object):
             new_kF = kF
         self.makeAdditionStatement(kF_name, new_kF, is_assignment=False)
         # Construct the filter calculation
-        calculation = f"-{kF_name}*{name_ot} + {kF_name}*{name_in}"
+        filter_derivative_calculation = f"-{kF_name}*{name_ot} + {kF_name}*{name_in}"
         # Use a dummy reaction to integrate instead of "'" to avoid antimony limitations with
         # combining rate rules and assignment rules
-        statement = " -> %s; %s " % (name_ot, calculation) 
+        statement = " -> %s; %s " % (name_ot, filter_derivative_calculation) 
         self.addStatement(statement)
         self.makeAdditionStatement(name_ot, 0, is_assignment=False)   # Initialize the filter output
-        return name_in, name_ot, calculation
+        return name_in, name_ot, filter_derivative_calculation
     
     def makeControlErrorSignal(self, setpoint, forward_output_name, sign, prefix="control_error", suffix=""):
         """
@@ -414,7 +414,7 @@ class AntimonyBuilder(object):
                                  kD:Optional[float]=None,
                                  prefix:Optional[str]="controller",
                                  suffix:Optional[str]="",
-                                 filter_calculation:Optional[str]=None,
+                                 filter_derivative_calculation:Optional[str]=None,
                                  sign:Optional[int]=-1):
         """
         Makes a PID controller. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
@@ -429,7 +429,7 @@ class AntimonyBuilder(object):
             prefix: str (beginning of the name)
             suffix: str (ending of the name)
             sign: int (1 or -1) (1 means that the setpoint is subtracted from the output)
-            filter_calculation: str (calculation for the derivative of the filter)
+            filter_derivative_calculation: str (calculation for the derivative of the filter)
         Returns:
             str: name of the controller input
             str: name of the controller output
@@ -457,7 +457,7 @@ class AntimonyBuilder(object):
         if kD is not None:
             derivative_error_name = base_name % "derivative_error"
             self.closed_loop_symbols.append(derivative_error_name)
-            if filter_calculation is None:
+            if filter_derivative_calculation is None:
                 # Step 1: Make a dummy reaction to get the rate of the output
                 #   J: S->S; output_name
                 #   S = 1
@@ -469,8 +469,8 @@ class AntimonyBuilder(object):
                 self.addStatement(reaction_stmt)
                 self.makeAdditionStatement(species_name, 1, is_assignment=False)   # rate_law = 0
                 # Step 2: Make the rate law
-                filter_calculation = f"rateOf({reaction_name})"
-            sign_filter_calculation = f"{sign}*{filter_calculation}"
+                filter_derivative_calculation = f"rateOf({reaction_name})"
+            sign_filter_calculation = f"{sign}*{filter_derivative_calculation}"
             statement = "%s := %s" % (derivative_error_name, sign_filter_calculation)  # type: ignore
             self.addStatement(statement)
         # Make the integral of the control error
@@ -524,9 +524,10 @@ class AntimonyBuilder(object):
         # Make the elements of the closed loop
         noise_ot = self.makeNoiseElement(noise_spec, prefix="noise", suffix=suffix)
         disturbance_ot = self.makeNoiseElement(disturbance_spec, prefix="disturbance", suffix=suffix)
-        filter_in, filter_ot, filter_calculation = self.makeFilterElement(kF, prefix="filter", suffix=suffix)
+        filter_in, filter_ot, filter_derivative_calculation =   \
+              self.makeFilterElement(kF, prefix="filter", suffix=suffix)
         controller_in, controller_ot = self.makePIDControllerElement(output_name,
-              filter_calculation=filter_calculation,
+              filter_derivative_calculation=filter_derivative_calculation,
               kP=kP, kI=kI, kD=kD, prefix="controller", suffix=suffix, sign=sign)
         if filter_ot is None:
             comparison_signal_str = "(" + output_name + " + " + noise_ot + ")"
