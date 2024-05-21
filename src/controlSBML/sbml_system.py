@@ -543,7 +543,8 @@ class SBMLSystem(object):
         df = pd.DataFrame(timeseries[columns], columns=columns)
         # Plot the other left axis lines
         if cn.O_LEGEND in new_kwargs.keys():
-            new_kwargs[cn.O_LEGEND].append(cn.O_SETPOINT)
+            if isinstance(new_kwargs[cn.O_LEGEND], list):
+                new_kwargs[cn.O_LEGEND].append(cn.O_SETPOINT)
         new_kwargs.setdefault(cn.O_AX2, 0)
         plot_result = util.plotOneTS(df, colors=colors, **new_kwargs)
         ax = plot_result.ax
