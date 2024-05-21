@@ -136,7 +136,13 @@ def plotOneTS(time_series, colors=None, markers=None, mgr=None, legend=True, **k
         mgr.plot_opts.set(cn.O_XLIM, [times[0], times[-1]])
     sel_colors = list(colors)
     sel_markers = list(markers)
+    if cn.O_SELECTIONS in kwargs.keys():
+        selections = kwargs[cn.O_SELECTIONS]
+    else:
+        selections = time_series.columns
     for column in time_series.columns:
+        if not column in selections:
+            continue
         ax.plot(times, time_series[column], color=sel_colors.pop(0), marker=sel_markers.pop(0))
     ax.set_xlim(mgr.plot_opts[cn.O_XLIM])
     if isinstance(legend, bool):
@@ -471,7 +477,6 @@ def latexifyTransferFunction(tf):
                 stage = FRACTION_BAR
                 latex += "}"
             elif stage == FRACTION_BAR:
-                import pdb; pdb.set_trace()
                 if stg[pos] == "-":
                     continue
                 stage = LEFT_DENOMINATOR

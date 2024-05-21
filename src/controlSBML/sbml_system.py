@@ -515,13 +515,14 @@ class SBMLSystem(object):
             raise ValueError("No %s name is specified." % name_type)
         return names[0]
     
-    def plotSISOClosedLoop(self, timeseries:Timeseries, setpoint, 
+    def plotSISOClosedLoop(self, timeseries:Timeseries, setpoint, selections=None, 
                            mgr:Optional[OptionManager]=None, **kwargs):
         """
         Plots the results of a closed lop simulation. Input and output are defined in the SBMLSystem constructor.
 
         Args:
             timeseries: Timeseries
+            selections: list-str (names of variables to be selected)
             setpoint: float
             kwargs: dict (kwargs for plotOneTS)
         """
@@ -531,9 +532,20 @@ class SBMLSystem(object):
         if mgr is None:
             mgr = OptionManager(new_kwargs)
         new_kwargs["is_plot"] = False
-        df = pd.DataFrame(timeseries[output_name], columns=[output_name])
+        if selections is None:
+            columns = [output_name]
+            colors = [cn.SIMULATED_COLOR]
+        else:
+            columns = selections
+            columns.remove(cn.TIME)
+            colors = None
+            new_kwargs["markers"] = None
+        df = pd.DataFrame(timeseries[columns], columns=columns)
+        # Plot the other left axis lines
+        if cn.O_LEGEND in new_kwargs.keys():
+            new_kwargs[cn.O_LEGEND].append(cn.O_SETPOINT)
         new_kwargs.setdefault(cn.O_AX2, 0)
-        plot_result = util.plotOneTS(df, colors=[cn.SIMULATED_COLOR], **new_kwargs)
+        plot_result = util.plotOneTS(df, colors=colors, **new_kwargs)
         ax = plot_result.ax
         ax.set_ylabel(output_name)
         # Plot the setpoint

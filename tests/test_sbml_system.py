@@ -221,7 +221,7 @@ class TestSBMLSystem(unittest.TestCase):
                                               selections=selections,
                                               setpoint=setpoint, end_time=100, num_point=1000)
         self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), markers=["+", "o"], selections=selections,
-                                       title="Closed Loop", is_plot=IS_PLOT)
+                                       title="Closed Loop", is_plot=IS_PLOT, legend=selections)
 
     def testGetValidSymbolsInput(self):
         if IGNORE_TEST:

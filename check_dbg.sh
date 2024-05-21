@@ -5,4 +5,5 @@ for f in tests/*.py
     echo "**$f"
     grep "IGNORE_TEST = T" $f
     grep "IS_PLOT = T" $f
+    grep "pdb.set_trace()" $f
   done
