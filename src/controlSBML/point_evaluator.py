@@ -6,6 +6,7 @@ from controlSBML.sbml_system import SBMLSystem
 
 import numpy as np
 from typing import Tuple, Union
+import warnings
 
 
 ##################################################################
@@ -102,7 +103,9 @@ class PointEvaluator(Evaluator):
                 return cn.DESIGN_RESULT_OUTPUT_TOO_SMALL, None
         #
         residuals = self.setpoint - response_ts[self.output_name].values
-        mse = np.mean(residuals**2)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            mse = np.mean(residuals**2)
         return cn.DESIGN_RESULT_SUCCESS, mse
     
     def _searchForFeasibleClosedLoopSystem(self, max_iteration:int=10, **parameter_dct)->Union[dict, None]:

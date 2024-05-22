@@ -7,8 +7,8 @@ import unittest
 import tellurium as te # type: ignore
 
 
-IGNORE_TEST = True
-IS_PLOT = True
+IGNORE_TEST = False
+IS_PLOT = False
 MODEL_NAME = "main_model"
 INCOMPLETE_LINEAR_MDL = """
 S1 -> S2; k1*S1
@@ -177,8 +177,8 @@ class TestAntimonyBuilder(unittest.TestCase):
         self.init()
         _, _, filter_derivative_calculation = self.builder.makeFilterElement(kF=None)
         self.builder.makeAdditionStatement("filter_in", "S3", is_assignment=False, comment="filter")
-        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, kD=5, suffix="_S1_S3",
-                                filter_derivative_calculation=filter_derivative_calculation)
+        name_in, name_ot = self.builder.makePIDControllerElement(filter_derivative_calculation,
+                                                                 kP=7, kD=5, suffix="_S1_S3")
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
@@ -188,18 +188,10 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, suffix="_S1_S3")
-        self.builder.makeBoundarySpecies("S1")
-        self.builder.makeAdditionStatement("S1", name_ot)
-        self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
-        self.check()
-
-    def testMakePIDController3(self):
-        # Filter without differential control
-        if IGNORE_TEST:
-            return
-        self.init()
-        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, suffix="_S1_S3")
+        _, _, filter_derivative_calculation = self.builder.makeFilterElement(kF=None)
+        self.builder.makeAdditionStatement("filter_in", "S3", is_assignment=False, comment="filter")
+        name_in, name_ot = self.builder.makePIDControllerElement(filter_derivative_calculation,
+                                                                 kP=7, suffix="_S1_S3")
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
@@ -210,8 +202,8 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         self.init()
-        name_in, name_ot = self.builder.makePIDControllerElement("S3", kP=7, kD=5, suffix="_S1_S3",
-                    filter_derivative_calculation="-3*4")
+        name_in, name_ot = self.builder.makePIDControllerElement("-3*4",
+                                                                 kP=7, kD=5, suffix="_S1_S3")
         self.builder.makeBoundarySpecies("S1")
         self.builder.makeAdditionStatement("S1", name_ot)
         self.builder.makeAdditionStatement(name_in, 3, "-"+"S3")
@@ -221,7 +213,7 @@ class TestAntimonyBuilder(unittest.TestCase):
         if IGNORE_TEST:
             return
         builder = ab.AntimonyBuilder(LINEAR_MDL, symbol_dct=SYMBOL_DCT)
-        name_in, name_ot = builder.makePIDControllerElement("S1", kP=7, suffix="_S1_S3")
+        name_in, name_ot = builder.makePIDControllerElement("-3*4", kP=7, suffix="_S1_S3")
         builder.makeAdditionStatement("k0", name_ot)
         builder.makeAdditionStatement(name_in, 3, "-"+"S3")
         self.check(builder=builder)

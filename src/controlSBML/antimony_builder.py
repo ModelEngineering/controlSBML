@@ -408,13 +408,12 @@ class AntimonyBuilder(object):
         return name_ot
     
     def makePIDControllerElement(self,
-                                 output_name:str,
+                                 filter_derivative_calculation:str,
                                  kP:Optional[float]=None,
                                  kI:Optional[float]=None,
                                  kD:Optional[float]=None,
                                  prefix:Optional[str]="controller",
                                  suffix:Optional[str]="",
-                                 filter_derivative_calculation:Optional[str]=None,
                                  sign:Optional[int]=-1):
         """
         Makes a PID controller. prefix + suffix + IN is the input and prefix + suffix + OT is the output.
@@ -422,14 +421,13 @@ class AntimonyBuilder(object):
         Assumes there is no filter.
 
         Args:
-            output_name: str (output of the system)
+            filter_derivative_calculation: str (calculation for the derivative of the filter)
             kP: float
             kI: float
             kD: float
             prefix: str (beginning of the name)
             suffix: str (ending of the name)
             sign: int (1 or -1) (1 means that the setpoint is subtracted from the output)
-            filter_derivative_calculation: str (calculation for the derivative of the filter)
         Returns:
             str: name of the controller input
             str: name of the controller output
@@ -457,19 +455,6 @@ class AntimonyBuilder(object):
         if kD is not None:
             derivative_error_name = base_name % "derivative_error"
             self.closed_loop_symbols.append(derivative_error_name)
-            if filter_derivative_calculation is None:
-                # Step 1: Make a dummy reaction to get the rate of the output
-                #   J: S->S; output_name
-                #   S = 1
-                #   filter_calculation = rateOf(J)
-                reaction_name = makeControllerScopedName("reaction")
-                species_name = makeControllerScopedName("species")
-                reaction_stmt = f"{reaction_name}: {species_name} -> {species_name}"
-                reaction_stmt += f"; {output_name}"
-                self.addStatement(reaction_stmt)
-                self.makeAdditionStatement(species_name, 1, is_assignment=False)   # rate_law = 0
-                # Step 2: Make the rate law
-                filter_derivative_calculation = f"rateOf({reaction_name})"
             sign_filter_calculation = f"{sign}*{filter_derivative_calculation}"
             statement = "%s := %s" % (derivative_error_name, sign_filter_calculation)  # type: ignore
             self.addStatement(statement)
@@ -526,8 +511,8 @@ class AntimonyBuilder(object):
         disturbance_ot = self.makeNoiseElement(disturbance_spec, prefix="disturbance", suffix=suffix)
         filter_in, filter_ot, filter_derivative_calculation =   \
               self.makeFilterElement(kF, prefix="filter", suffix=suffix)
-        controller_in, controller_ot = self.makePIDControllerElement(output_name,
-              filter_derivative_calculation=filter_derivative_calculation,
+        controller_in, controller_ot = self.makePIDControllerElement(
+              filter_derivative_calculation,
               kP=kP, kI=kI, kD=kD, prefix="controller", suffix=suffix, sign=sign)
         if filter_ot is None:
             comparison_signal_str = "(" + output_name + " + " + noise_ot + ")"
