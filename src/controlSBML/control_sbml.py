@@ -132,8 +132,6 @@ STAIRCASE_KEYS = list(STAIRCASE_DCT.keys())
 TIMES_KEYS = list(TIMES_DCT.keys())
 OPTION_KEYS = list(OPTION_DCT.keys())
 SIMULATION_KEYS = list(SIMULATION_DCT.keys())
-#
-SAVE_PATH = os.path.join(cn.DATA_DIR, "control_sbml.csv")
 
 # Returned results
 DesignResult = namedtuple("DesignResult", ["timeseries", "antimony_builder", "designs"])
@@ -157,7 +155,6 @@ class ControlSBML(object):
                  setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                  sign:Optional[int]=OPTION_DCT[cn.O_SIGN],
                  times:Optional[np.ndarray[float]]=None,
-                 save_path:Optional[str]=SAVE_PATH,
                  **kwargs):
         """
         model_reference: str
@@ -169,7 +166,6 @@ class ControlSBML(object):
         is_steady_state: bool
         noise_spec: NoiseSpec
         disturbance_spec: DisturbanceSpec
-        save_path: str (path to file where results are saved after a design)
         kwargs: dict with options listed below. These are the default options used unless overridden.
             Plot options:
                 ax: axis for plot
@@ -231,7 +227,6 @@ class ControlSBML(object):
         self.is_steady_state = is_steady_state
         self.noise_spec = noise_spec
         self.disturbance_spec = disturbance_spec
-        self.save_path = save_path
         self.fitter_method = OPTION_DCT[cn.O_FITTER_METHOD] if fitter_method is None else fitter_method
         self.setpoint = OPTION_DCT[cn.O_SETPOINT] if setpoint is None else setpoint
         self.sign = OPTION_DCT[cn.O_SIGN] if sign is None else sign
@@ -252,8 +247,7 @@ class ControlSBML(object):
                 fitter_method=self.fitter_method,
                 setpoint=self.setpoint,
                 sign=self.sign,
-                times=self.times,
-                save_path=self.save_path)
+                times=self.times)
         for key in cn.CONTROL_PARAMETERS:
             setattr(ctlsb, key, getattr(self, key))
         return ctlsb
@@ -686,8 +680,6 @@ class ControlSBML(object):
                 timeseries: Timeseries
                 antimony_builder: AntimonyBuilder
         """
-        save_path = None   # Disable "save_path" feature
-        #
         new_keys = list(PLOT_KEYS)
         self._checkKwargs(new_keys, **kwargs)
         option_dct = self.getOptions(sign=sign, setpoint=setpoint, times=times, selections=selections,
@@ -699,11 +691,6 @@ class ControlSBML(object):
         selections = option_dct[cn.O_SELECTIONS]
         num_process = option_dct[cn.O_NUM_PROCESS]
         num_restart = option_dct[cn.O_NUM_RESTART]
-        if save_path is not None:
-            if len(save_path) == 0:
-                save_path = self.save_path
-            if os.path.isfile(save_path):
-                os.remove(save_path)
         plot_dct = util.subsetDct(option_dct, PLOT_KEYS)
         # Process the request
         designer = SISOClosedLoopDesigner(self._sbml_system, self.getOpenLoopTransferFunction(),
@@ -712,8 +699,7 @@ class ControlSBML(object):
                 sign=sign,
                 setpoint=setpoint,
                 input_name=self.input_name,
-                output_name=self.output_name,
-                save_path=self.save_path)
+                output_name=self.output_name)
         # Translate axis names
         designs = designer.designAlongGrid(grid, is_greedy=self.is_greedy, num_process=num_process,  # type: ignore
                                  num_restart=num_restart)    # type: ignore
@@ -847,8 +833,7 @@ class ControlSBML(object):
                 sign=sign,
                 setpoint=setpoint,
                 input_name=self.input_name,
-                output_name=self.output_name,
-                save_path=self.save_path)
+                output_name=self.output_name)
         designs = designer.design(
             kP_spec=kP_spec,
             kI_spec=kI_spec,
@@ -893,21 +878,16 @@ class ControlSBML(object):
                 **plot_dct)
         return DesignResult(timeseries=response_ts, antimony_builder=antimony_builder, designs=designs)
     
-    def _plotDesignResult(self, save_path:Optional[str]=None, **kwargs):
+    def _plotDesignResult(self, **kwargs):
         """
         Plots the mean squared error of all points searched in the last design.
 
         Args:
-            save_path: str (path to CSV file where design results are saved)
             kwargs: dict (plot options)
             AntimonyBuilder
         """
-        valids = ["save_path"]
-        valids = list(set(valids).union(PLOT_KEYS))
         self._checkKwargs(**kwargs)
-        if save_path is None:
-            save_path = self.save_path
-        designer = SISOClosedLoopDesigner(self._sbml_system, self.getOpenLoopTransferFunction(), save_path=save_path)
+        designer = SISOClosedLoopDesigner(self._sbml_system, self.getOpenLoopTransferFunction())
         if designer.design_result_df is None:
             msgs.warn("No design found!")
             return None, None

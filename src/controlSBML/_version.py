@@ -11,5 +11,5 @@ try:
         data = tomli.load(f)
     __version__ = data["project"]["version"]
 except FileNotFoundError:
-    __version__ = "1.1.04"
+    __version__ = "1.2.1"
 

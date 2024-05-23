@@ -20,10 +20,13 @@ ctl.__version__
 ```
 
 ## Version History
-* 1.1.04
+* 1.2.1 5/23/2024
+    * Eliminated the save_path feature since it conflicted with usage in colab.
+* 1.2.0 5/22/2024
     * Implemented differential control
     * Extended noise model to include lognormal distribution, offset, and slope
     * Implemented several examples, some of which are based on student projects
+    * Two algorithms for fitting. gpz fits the transfer function in order by gain (g), poles (p), zeroes (z). poly fits a polynomial in s to the simulations.
 * 1.1.03 1/20/2024
     * Better error checking
     * API uses parameter names kI, kP, kF

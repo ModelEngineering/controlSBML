@@ -11,6 +11,7 @@ import control # type: ignore
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+from typing import List
 import unittest
 
 
@@ -18,7 +19,6 @@ IGNORE_TEST = False
 IS_PLOT = False
 TIMES = cn.TIMES
 FIGSIZE = (5, 5)
-SAVE1_PATH = os.path.join(cn.TEST_DIR, "control_sbml_save_path.csv")
 LINEAR_MDL = """
 model *main_model()
 // Illustrate Antimony File
@@ -43,9 +43,7 @@ end
 """
 SPECIES_NAMES = ["S1", "S2", "S3", "S4"]
 CTLSB = ControlSBML(LINEAR_MDL, input_name="S1", output_name="S3")
-CSV_FILE1 = os.path.join(cn.TEST_DIR, "test_control_sbml1.csv")
-CSV_FILE2 = os.path.join(cn.TEST_DIR, "test_control_sbml2.csv")
-REMOVE_FILES = [CSV_FILE1, CSV_FILE2]
+REMOVE_FILES:List[str] = []
 
 
 #############################
@@ -182,16 +180,6 @@ class TestControlSBML(unittest.TestCase):
         grid.addAxis("kD", num_coordinate=3)
         _ = ctlsb.plotGridDesign(grid, is_plot=IS_PLOT)
 
-    def testPlotDesign1(self):
-        if IGNORE_TEST:
-            return
-        setpoint = 5
-        ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_name="S1", output_name="S3", save_path=CSV_FILE1)
-        _ = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=False, is_plot=IS_PLOT,
-                                            min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
-                                            num_coordinate=2)
-        self.assertTrue(os.path.isfile(CSV_FILE1))
-
     def testEqualsCopy(self):
         if IGNORE_TEST:
             return
@@ -242,7 +230,7 @@ class TestControlSBML(unittest.TestCase):
         if IGNORE_TEST:
             return
         setpoint = 5
-        ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_name="S1", output_name="S3", save_path=CSV_FILE2)
+        ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_name="S1", output_name="S3")
         _ = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, kD_spec=True, is_plot=False,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=1,
                                             num_coordinate=4)
@@ -314,7 +302,7 @@ class TestControlSBML(unittest.TestCase):
         path = util.getModelPath("Varusai2018")
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
-        ctlsb = ControlSBML(path, save_path=SAVE1_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        ctlsb = ControlSBML(path, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         #
         grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, kD_spec=True, num_coordinate=10, is_random=False)
         axis = grid.getAxis("kP")
@@ -330,7 +318,7 @@ class TestControlSBML(unittest.TestCase):
         path = util.getModelPath("Varusai2018")
         INPUT_NAME = "pIRS"
         OUTPUT_NAME = "pmTORC1"
-        ctlsb = ControlSBML(path, save_path=SAVE1_PATH, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
+        ctlsb = ControlSBML(path, input_name=INPUT_NAME, output_name=OUTPUT_NAME)
         #
         grid = ctlsb.getGrid(kP_spec=True, kI_spec=False, num_coordinate=40, is_random=False)
         axis = grid.getAxis("kP")
@@ -464,7 +452,7 @@ class TestControlSBML(unittest.TestCase):
         INPUT_NAME = "E"
         OUTPUT_NAME = "R"
         CTLSB = ControlSBML(path, figsize=(5, 5), times=np.linspace(0, 10, 100), markers=False, is_fixed_input_species=True,
-                   save_path="data.csv", input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
+                   input_name=INPUT_NAME, output_name=OUTPUT_NAME)  # Specify default value of options
         TIMES = np.linspace(0, 10**5, 10**6)
         _ = CTLSB.plotDesign(setpoint=0.1, kP_spec=1, kI_spec=0.1, times=TIMES, num_restart=1, is_plot=IS_PLOT,
                              num_coordinate=2)

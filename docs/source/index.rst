@@ -6,22 +6,30 @@
 ``controlSBML``: Control engineering with SBML models
 =============================================================
 
-``controlSBML`` provides a bridge between SBML models and the
+``controlSBML`` is a python package for doing control analysis and design in
+systems biology
+where the open loop system is a model described by the
+community standard Systems Biology Markup Language
+(SBML).
+SBML models may be specified as strings, files, or URLs. They may be in the
+XML representation or in Antimony.
+
+At present, ``controlSBML`` only supports the development of SISO (single input, single output)
+control loops. The input can be a chemical species or an SMBL parameter (e.g.,
+a kinetic constant). The output can be a chemical species or a reaction flux.
+The package supports the following workflow:
+
+* access the SBML model
+* analyze controllability (the ability of an input to control the output)
+* system identification (find a transfer function that fits the input-output response)
+* control design for proportional-integral-differential (PID) control with a filter
+* analyze the effect of perturbations (either disturbances to the control input to the open loop system or noise in the output measured from the open loop system)
+
+``controlSBML`` leverages the
 `CalTech control systems library <https://python-control.readthedocs.io/en/latest/intro.html>`_.
-At the lowest level, this bridge wraps an SBML model as an object known
-to the ``control`` package so that its tools can be
-applied to SBML models.
-The approach is:
+The control package is used
+to do classical control analysis such as bode plots and root locus plots.
 
-1. Construct a ``controlSBML.ControlSBML`` object for the SBML model.
-
-2. From this object, obtain objects used in the ``control`` package.
-
-   a. ``control.NonlinearIOSystem`` objects wrap the entire SBML model to construct computational testbeds for closed loop systems.
-   
-   b. ``control.StateSpace`` objects are linear approximations to the SBML model for control analysis and design using transfer functions.
-
-3. Do control analysis and design using the ``control`` package.
 
 Below, we provide an overview of the features of ``controlSBML``.
 Readers who are less familiar with control engineering

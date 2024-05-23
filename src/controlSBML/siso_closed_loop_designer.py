@@ -70,8 +70,7 @@ def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=No
 class SISOClosedLoopDesigner(object):
 
     def __init__(self, system, open_loop_transfer_function, times=None, setpoint=SETPOINT, is_steady_state=False,
-                 is_history=True, sign=-1, input_name=None, output_name=None,
-                 save_path=None):
+                 sign=-1, input_name=None, output_name=None):
         """
         Constructs a SISOClosedLoopDesigner object. If the system has more than one input (output) and not input (output) is specified),
         then the first input (output) is used.
@@ -79,11 +78,9 @@ class SISOClosedLoopDesigner(object):
             sbml_system: SBMLSystem
             sys_tf: control.TransferFunction (open loop system)
             is_steady_state: bool (if True, then the steady state is used)
-            is_history: bool (if True, then history is maintained)
             sign: int (-1: negative feedback; +1: positive feedback)
             input_name: str (name of input species)
             output_name: str (name of output species)
-            save_path: str (path to save the results or to an existing result)
         """
         self.system = system
         self.open_loop_transfer_function = open_loop_transfer_function
@@ -99,7 +96,6 @@ class SISOClosedLoopDesigner(object):
             output_name = self.system.output_names[0]
         self.input_name = input_name
         self.output_name = output_name
-        self.save_path = save_path
         # Calculated properties
         self.start_time = self.times[0]
         self.end_time = self.times[-1]
@@ -113,7 +109,7 @@ class SISOClosedLoopDesigner(object):
         self.closed_loop_system = None
         self.residual_mse = None
         self.minimizer_result = None
-        self._design_result_df = None   # Calculated in property
+        self.design_result_df = None   # Calculated in property
         #
         self._initializeDesigner()
         self.siso = None # SISOClosedLoopSystem
@@ -358,25 +354,8 @@ class SISOClosedLoopDesigner(object):
             self.kD = getValue(sorted_mean_df.loc[0, CP_kD])
         if CP_kF in sorted_mean_df.columns:
             self.kF = getValue(sorted_mean_df.loc[0, CP_kF])
-        # Save the results
-        if self.save_path is not None:
-            sorted_mean_df.to_csv(self.save_path, index=False)
-        self._design_result_df = sorted_mean_df
+        self.design_result_df = sorted_mean_df
         return DesignResult(dataframe=result_df, max_count=max_count)
-
-    @property
-    def design_result_df(self):
-        """
-        Returns:
-            pd.DataFrame
-                columns: kP, kI, kD, kF, mse
-        """
-        if self._design_result_df is None:
-            if (self.save_path is not None) and (os.path.isfile(self.save_path)):
-                self._design_result_df = pd.read_csv(self.save_path)
-            else:
-                return None
-        return self._design_result_df
 
     def simulateTransferFunction(self, transfer_function=None, period=None)->tuple[np.array, np.array]:
         """

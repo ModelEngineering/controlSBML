@@ -14,6 +14,7 @@ import numpy as np
 import os
 import pandas as pd  # type: ignore
 import sympy # type: ignore
+from typing import List
 import unittest
 
 IGNORE_TEST = False
@@ -73,8 +74,7 @@ TRANSFER_FUNCTION = control.TransferFunction(np.array([1.51083121, 2.01413339]),
 TIMES = np.linspace(0, 20, 200)
 PARAMETER_DCT = {p: n+1 for n, p in enumerate(CONTROL_PARAMETERS)}
 SETPOINT = 3
-SAVE_PATH = os.path.join(cn.TEST_DIR, "siso_closed_loop_designer.csv")
-REMOVE_FILES = [SAVE_PATH]
+REMOVE_FILES:List[str] = []
 CONTROL_PARAMETER_SPECS = ["kP_spec", "kI_spec", "kD_spec", "kF_spec"]
 #if False:
 #    # Required to construct the transfer function
@@ -113,8 +113,8 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
             return
         self.sys_tf = copy.deepcopy(TRANSFER_FUNCTION)
         self.system = copy.deepcopy(SYSTEM)
-        self.designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=TIMES, setpoint=SETPOINT,
-                                                   save_path=SAVE_PATH)
+        self.designer = cld.SISOClosedLoopDesigner(self.system, self.sys_tf, times=TIMES, setpoint=SETPOINT)
+                                                   
 
     def testGetSet(self):
         if IGNORE_TEST:
@@ -183,15 +183,11 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         self.designer.set(kP=10, kI=5, kD=2)
         self.designer.plot(is_plot=IS_PLOT)
 
-    def makeDesigner(self, end_time=200, is_save_path=True):
+    def makeDesigner(self, end_time=200):
         times = np.linspace(0, end_time, 10*end_time)
         system = copy.deepcopy(SYSTEM)
         transfer_function = copy.deepcopy(TRANSFER_FUNCTION)
-        if is_save_path:
-            save_path = SAVE_PATH
-        else:
-            save_path = None
-        designer = cld.SISOClosedLoopDesigner(system, transfer_function, times=times, save_path=save_path)
+        designer = cld.SISOClosedLoopDesigner(system, transfer_function, times=times)
         return designer
 
     def testPlot2(self):
@@ -245,7 +241,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         # Plots a previously computed result
         if IGNORE_TEST:
             return
-        designer = self.makeDesigner(is_save_path=False)
+        designer = self.makeDesigner()
         def test(parameter_names):
             dct = {}
             for spec in CONTROL_PARAMETER_SPECS:
@@ -266,7 +262,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         if IGNORE_TEST:
             return
         def test(parameter_names):
-            designer = self.makeDesigner(is_save_path=False)
+            designer = self.makeDesigner()
             dct = {}
             for spec in CONTROL_PARAMETER_SPECS:
                 if spec in parameter_names:
