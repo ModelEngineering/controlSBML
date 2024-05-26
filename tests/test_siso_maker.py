@@ -36,8 +36,8 @@ class TestModelMaker(unittest.TestCase):
         self.maker = SISOMaker(LINEAR_MDL, model_id="linear")
 
     def testConstructor(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.assertTrue("RoadRunner" in str(type(self.maker.roadrunner)))
         self.assertEqual(self.maker.input_name, "S1")
         self.assertEqual(self.maker.output_name, "S2")
@@ -54,13 +54,13 @@ class TestModelMaker(unittest.TestCase):
         self.maker.makeClosedLoop(is_plot=IS_PLOT)
 
     def testRunModel(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.maker.runModel(LINEAR_MDL, is_plot=IS_PLOT)
 
     def testRunBiomodels(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         self.maker.runBiomodels(start=0, end=5, is_report=True, end_time=20)
 
 

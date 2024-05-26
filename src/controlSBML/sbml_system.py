@@ -8,7 +8,7 @@ from controlSBML.timeseries import Timeseries
 from controlSBML import util
 from controlSBML.option_management.option_manager import OptionManager
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import pandas as pd  # type: ignore
 import numpy as np  # type: ignore
 import tellurium as te  # type: ignore

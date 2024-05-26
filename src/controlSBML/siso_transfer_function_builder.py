@@ -103,6 +103,7 @@ class SISOTransferFunctionBuilder(object):
                                                 final_value=staircase.final_value, is_steady_state=is_steady_state,
                                                 inplace=False)
         if result_ts is None:
+            import pdb; pdb.set_trace()
             raise ValueError("Unable to simulate staircase response")
         staircase.setNumPoint(len(result_ts))
         staircase_name = "%s_%s" % (self.input_name, STAIRCASE)

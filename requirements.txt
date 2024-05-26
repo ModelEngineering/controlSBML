@@ -1,7 +1,8 @@
 numpy
 build
-coverage
+colour
 control
+coverage
 docstring-expander
 jupyterlab
 lmfit

@@ -14,7 +14,7 @@ IGNORE_TEST = False
 IS_PLOT = False
 SIZE = 10
 if IS_PLOT:
-    import matplotlib
+    import matplotlib # type: ignore
     matplotlib.use('TkAgg')
 times = [1.0*n for n in range(SIZE)]
 TS = Timeseries(pd.DataFrame({"a": range(SIZE)}), times=times)

@@ -236,6 +236,7 @@ class ControlSBML(object):
                        output_name=output_name, 
                        is_fixed_input_species=is_fixed_input_species, is_steady_state=is_steady_state)  # type: ignore
         self._fitter_result = cn.FitterResult()
+        self.antimony_builder:Optional[AntimonyBuilder] = None  # Last antimony builder used
         
     def copy(self):
         ctlsb = ControlSBML(self.model_reference,
@@ -523,6 +524,7 @@ class ControlSBML(object):
         response_ts, builder = self._transfer_function_builder.makeStaircaseResponse(times=times,
             staircase=staircase, is_steady_state=self.is_steady_state,
             )
+        self.antimony_builder = builder
         self._transfer_function_builder.plotStaircaseResponse(response_ts, **plot_dct)
         return StaircaseResponseResult(timeseries=response_ts, antimony_builder=builder)
     

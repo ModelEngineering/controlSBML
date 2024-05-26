@@ -8,7 +8,7 @@ from controlSBML.grid import Grid # type: ignore
 import controlSBML.util as util  # type: ignore
 
 import control # type: ignore
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
 import os
 from typing import List
@@ -493,6 +493,7 @@ class TestControlSBML(unittest.TestCase):
         SETPOINT = 1000
         _ = ctlsb.plotGridDesign(grid, times=TIMES, setpoint=SETPOINT, num_restart=5,
                                              is_plot=IS_PLOT)
+
 
 
 

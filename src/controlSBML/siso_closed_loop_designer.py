@@ -15,9 +15,8 @@ from controlSBML.point_evaluator import PointEvaluator
 
 import collections
 import control  # type: ignore
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import numpy as np
-import os
 import pandas as pd  # type: ignore
 import seaborn as sns  # type: ignore
 

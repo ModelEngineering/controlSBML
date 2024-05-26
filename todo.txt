@@ -1,9 +1,4 @@
-Resolve rateOf
-  Use filter?
-Update docs on REAMDE
-Create pypi version
-CTLSB.plotSBMLSystem - does a plot with multiple inputs and multiple outputs.
-Noise & disturbances
+Keep last antimony builder in designs (reconstruct for best design?)
 MISO
 Bugs
   "Stoichiometry matrix does not exist for this model" -- 379
