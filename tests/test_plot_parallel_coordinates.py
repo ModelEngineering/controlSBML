@@ -13,6 +13,10 @@ dct = {}
 for column in columns:
     dct[column] = np.random.rand(10)
 DF = 10*pd.DataFrame(dct)
+DF.loc[9, 'mpg'] = np.nan
+DF.loc[2, 'mpg'] = np.nan
+DF1 = pd.read_csv("tests/plot_parallel_coordinates.csv")
+del DF1['Unnamed: 0']
 
 
 #############################
@@ -28,6 +32,13 @@ class TestFunction(unittest.TestCase):
             return
         plotParallelCoordinates(self.df, value_column='mpg', num_category=3,
                                    is_plot=IS_PLOT)
+        
+    def testPlotParallelCoordinates1(self):
+        if IGNORE_TEST:
+            return
+        columns = ["kD", "kP", "kI", "kF"]
+        plotParallelCoordinates(DF1, value_column='score', num_category=10, columns=columns,
+                                   is_plot=IS_PLOT, round_digit=4)
 
         
 
