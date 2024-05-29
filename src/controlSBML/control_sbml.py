@@ -55,6 +55,7 @@ from controlSBML import util
 import controlSBML.constants as cn
 import controlSBML.msgs as msgs
 from controlSBML.grid import Grid
+from controlSBML.parallel_coordinates import ParallelCoordinates
 
 from collections import namedtuple
 import os
@@ -237,6 +238,7 @@ class ControlSBML(object):
                        is_fixed_input_species=is_fixed_input_species, is_steady_state=is_steady_state)  # type: ignore
         self._fitter_result = cn.FitterResult()
         self.antimony_builder:Optional[AntimonyBuilder] = None  # Last antimony builder used
+        self.design_result:Optional[DesignResult] = None  # Result of last design
         
     def copy(self):
         ctlsb = ControlSBML(self.model_reference,
@@ -653,7 +655,8 @@ class ControlSBML(object):
             msg = "System is unstable for kP={}, kI={}, kD={}, kF={}".format(kP, kI, kD, kF)
             msgs.warn(msg)
             return response_ts, builder
-        self._sbml_system.plotSISOClosedLoop(response_ts, setpoint, times=times, **plot_dct)
+        if plot_dct[cn.O_IS_PLOT]:
+            self._sbml_system.plotSISOClosedLoop(response_ts, setpoint, times=times, **plot_dct)
         return response_ts, builder
 
     def plotGridDesign(self, 
@@ -703,11 +706,13 @@ class ControlSBML(object):
                 input_name=self.input_name,
                 output_name=self.output_name)
         # Translate axis names
-        designs = designer.designAlongGrid(grid, is_greedy=self.is_greedy, num_process=num_process,  # type: ignore
+        self.design_result = designer.designAlongGrid(grid,
+                                 num_process=num_process,  # type: ignore
                                  num_restart=num_restart)    # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")
-            return GridDesignResult(timeseries=None, antimony_builder=None, designs=designs)
+            return GridDesignResult(timeseries=None, antimony_builder=None,
+                                    designs=self.design_result)
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
@@ -733,7 +738,31 @@ class ControlSBML(object):
                 selections=selections,
                 **plot_dct)
         return GridDesignResult(timeseries=response_ts, antimony_builder=antimony_builder,
-                                designs=designs)
+                                designs=self.design_result)
+    
+    def plotAllDesignResults(self, design_result:Optional[DesignResult]=None,
+                         title=None, figsize=None, columns=None, 
+                         round_digit:int=4, is_plot=True):
+        """
+        Does a parallel coordinate plot of the design results.
+
+        Args:
+            design_result: DesignResult
+            title: str
+            figsize: tuple
+            columns: list-str (order in whch columns appear on plot)
+            round_digit: int (number of digits to round to)
+        """
+        if design_result is None:
+            design_result = self.design_result
+        df = design_result.dataframe.copy() # type: ignore
+        del df[cn.REASON]
+        ParallelCoordinates.plotParallelCoordinates(df,  # type: ignore
+                                title=title, figsize=figsize,
+                                columns=columns,
+                                value_column=cn.SCORE,
+                                round_digit=round_digit,
+                                is_plot=is_plot)
 
     @staticmethod
     def setSpec(val):
@@ -836,7 +865,7 @@ class ControlSBML(object):
                 setpoint=setpoint,
                 input_name=self.input_name,
                 output_name=self.output_name)
-        designs = designer.design(
+        self.design_result = designer.design(
             kP_spec=kP_spec,
             kI_spec=kI_spec,
             kD_spec=kD_spec,
@@ -850,7 +879,8 @@ class ControlSBML(object):
             num_process=num_process)   # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")
-            return DesignResult(timeseries=None, antimony_builder=None, designs=designs)
+            return DesignResult(timeseries=None, antimony_builder=None,
+                                designs=self.design_result)
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
@@ -878,7 +908,8 @@ class ControlSBML(object):
                 kF=designer.kF,
                 selections=selections,
                 **plot_dct)
-        return DesignResult(timeseries=response_ts, antimony_builder=antimony_builder, designs=designs)
+        return DesignResult(timeseries=response_ts, antimony_builder=antimony_builder,
+                            designs=self.design_result)
     
     def _plotDesignResult(self, **kwargs):
         """

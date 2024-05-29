@@ -142,6 +142,20 @@ class TestControlSBML(unittest.TestCase):
                                                           times=np.linspace(0, 100, 1000))
         self.assertTrue(isinstance(result.timeseries, Timeseries))
         self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
+
+    def testPlotAllDesignResults(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = CTLSB.copy()
+        setpoint = 5
+        ctlsb.setSystem(input_name="S1", output_name="S3")
+        _ = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, kD_spec=True,
+                             figsize=FIGSIZE, is_plot=False,
+                             min_parameter_value=0.001, max_parameter_value=10,
+                             num_restart=1,
+                             num_coordinate=3,
+        )
+        ctlsb.plotAllDesignResults(is_plot=IS_PLOT, columns=["kD", "kI", "kP"])
      
     def testPlotDesignNoiseDisturbance(self):
         if IGNORE_TEST:
@@ -227,8 +241,8 @@ class TestControlSBML(unittest.TestCase):
         _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, is_plot=IS_PLOT)
 
     def testPlotDesignResult(self):
-        if IGNORE_TEST:
-            return
+        #if IGNORE_TEST:
+        #    return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_name="S1", output_name="S3")
         _ = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, kD_spec=True, is_plot=False,
