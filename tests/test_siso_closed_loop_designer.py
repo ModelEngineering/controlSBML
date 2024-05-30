@@ -217,7 +217,7 @@ class TestSISOClosedLoopDesigner(unittest.TestCase):
         grid = Grid(min_value=0.1, max_value=10, num_coordinate=5)
         grid.addAxis("kP")
         result = designer.designAlongGrid(grid, num_process=2)
-        self.assertTrue(isinstance(result.dataframe, pd.DataFrame))
+        self.assertTrue(isinstance(result.design_df, pd.DataFrame))
         self.assertGreater(designer.kP, 0)
         self.assertIsNone(designer.kI)
         self.assertIsNone(designer.kD)

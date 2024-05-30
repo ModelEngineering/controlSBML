@@ -134,14 +134,14 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = CTLSB.copy()
         setpoint = 5
         ctlsb.setSystem(input_name="S1", output_name="S3")
-        result = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
+        design_result = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
                                             num_coordinate=3, num_process=10)
         # Show that kP, kI are now the defaults
         _ = ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
-        self.assertTrue(isinstance(result.timeseries, Timeseries))
-        self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
+        self.assertTrue(isinstance(design_result.timeseries, Timeseries))
+        self.assertTrue(isinstance(design_result.antimony_builder, AntimonyBuilder))
 
     def testPlotAllDesignResults(self):
         if IGNORE_TEST:
@@ -166,14 +166,14 @@ class TestControlSBML(unittest.TestCase):
         ctlsb = CTLSB.copy()
         setpoint = 5
         ctlsb.setSystem(input_name="S1", output_name="S3")
-        result = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
+        design_result = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, figsize=FIGSIZE, is_plot=IS_PLOT,
                                             min_parameter_value=0.001, max_parameter_value=10, num_restart=2,
                                             num_coordinate=5, num_process=10)
         # Show that kP, kI are now the defaults
         _ = ctlsb._plotClosedLoop(setpoint=setpoint, is_plot=IS_PLOT, kP=1, figsize=FIGSIZE,
                                                           times=np.linspace(0, 100, 1000))
-        self.assertTrue(isinstance(result.timeseries, Timeseries))
-        self.assertTrue(isinstance(result.antimony_builder, AntimonyBuilder))
+        self.assertTrue(isinstance(design_result.timeseries, Timeseries))
+        self.assertTrue(isinstance(design_result.antimony_builder, AntimonyBuilder))
 
     def testPlotDesignKwargs(self):
         if IGNORE_TEST:
@@ -399,9 +399,9 @@ class TestControlSBML(unittest.TestCase):
         path = util.getModelPath("Alharbi2019_TNVM")
         ctlsb = ControlSBML(path, times=np.linspace(0, 30, 300), input_name="Vitamins",
                           output_name="Normal_cells", is_fixed_input_species=True)
-        result = ctlsb.plotDesign(setpoint=2, kP_spec=0.2, kI_spec=0.1, figsize=FIGSIZE, times=np.linspace(0, 100, 1000), min_parameter_value=1,
+        design_result = ctlsb.plotDesign(setpoint=2, kP_spec=0.2, kI_spec=0.1, figsize=FIGSIZE, times=np.linspace(0, 100, 1000), min_parameter_value=1,
                 max_parameter_value=100,is_plot=IS_PLOT, num_coordinate=2) 
-        self.assertTrue(isinstance(result.timeseries, Timeseries))
+        self.assertTrue(isinstance(design_result.timeseries, Timeseries))
         
     def testBug9(self):
         if IGNORE_TEST:
