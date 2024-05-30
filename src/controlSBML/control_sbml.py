@@ -758,6 +758,8 @@ class ControlSBML(object):
         if design_result is None:
             design_result = self.design_result
         df = design_result.design_df.copy() # type: ignore
+        if len(df) == 0:
+            raise ValueError("No designs to plot.")
         del df[cn.REASON]
         df = df.loc[range(num_top), :]
         ParallelCoordinates.plotParallelCoordinates(df,  # type: ignore
