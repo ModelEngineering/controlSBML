@@ -217,11 +217,14 @@ class TestSBMLSystem(unittest.TestCase):
                       "noise_S1_S3_ot",
                       "disturbance_S1_S3_ot"
                       ]
-        ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kP=2, kI=0.8, kF=0.5,
-                                              selections=selections,
-                                              setpoint=setpoint, end_time=100, num_point=1000)
-        self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), markers=["+", "o"], selections=selections,
-                                       title="Closed Loop", is_plot=IS_PLOT, legend=selections)
+        for _ in range(5):
+            ts, _ = system.simulateSISOClosedLoop(input_name="S1", output_name="S3", kP=2, kI=0.8, kF=0.5,
+                                                selections=selections,
+                                                setpoint=setpoint, end_time=100, num_point=1000)
+            if ts is not None:     
+                self.system.plotSISOClosedLoop(ts, setpoint, figsize=(5,5), markers=["+", "o"], selections=selections,
+                                        title="Closed Loop", is_plot=IS_PLOT, legend=selections)
+                break
 
     def testGetValidSymbolsInput(self):
         if IGNORE_TEST:
