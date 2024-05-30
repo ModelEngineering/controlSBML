@@ -155,7 +155,8 @@ class TestControlSBML(unittest.TestCase):
                              num_restart=1,
                              num_coordinate=3,
         )
-        ctlsb.plotAllDesignResults(is_plot=IS_PLOT, columns=["kD", "kI", "kP"])
+        ctlsb.plotDesignResults(is_plot=IS_PLOT, columns=["kD", "kI", "kP"], num_top=15,
+                                   round_digit=4)
      
     def testPlotDesignNoiseDisturbance(self):
         if IGNORE_TEST:
@@ -241,8 +242,8 @@ class TestControlSBML(unittest.TestCase):
         _ = CTLSB._plotClosedLoop(setpoint=150, kP=1, is_plot=IS_PLOT)
 
     def testPlotDesignResult(self):
-        #if IGNORE_TEST:
-        #    return
+        if IGNORE_TEST:
+            return
         setpoint = 5
         ctlsb = ControlSBML(LINEAR_MDL, final_value=10, input_name="S1", output_name="S3")
         _ = ctlsb.plotDesign(setpoint=setpoint, kP_spec=True, kI_spec=True, kD_spec=True, is_plot=False,
@@ -410,12 +411,12 @@ class TestControlSBML(unittest.TestCase):
                           output_name="Normal_cells", is_fixed_input_species=True, 
                          times=np.linspace(0, 100, 1000), figsize=FIGSIZE)
         def test(kP_spec, kI_spec):
-            result = ctlsb.plotDesign(setpoint=2, kP_spec=kP_spec, kI_spec=kI_spec, min_parameter_value=1,
+            design_result = ctlsb.plotDesign(setpoint=2, kP_spec=kP_spec, kI_spec=kI_spec, min_parameter_value=1,
                     max_parameter_value=100, num_restart=1, is_plot=IS_PLOT, num_coordinate=2)
-            self.assertTrue("kP" in result.designs.dataframe.columns)
-            self.assertTrue("kI" in result.designs.dataframe.columns)
-            if result.timeseries is not None:
-                self.assertGreater(len(result.timeseries.columns), 10)
+            self.assertTrue("kP" in design_result.design_df.columns)
+            self.assertTrue("kI" in design_result.design_df.columns)
+            if design_result.timeseries is not None:
+                self.assertGreater(len(design_result.timeseries.columns), 10)
         #
         test(0.1, 0.1)
         test(0.2, 0.1)
@@ -432,9 +433,9 @@ class TestControlSBML(unittest.TestCase):
         grid = CTLSB.getGrid()
         grid.addAxis("kP", min_value=0.0, max_value=0.005, num_coordinate=3)
         grid.addAxis("kI", min_value=0.0, max_value=0.002, num_coordinate=3)
-        result = CTLSB.plotGridDesign(grid, setpoint=0.0000003,
+        design_result = CTLSB.plotGridDesign(grid, setpoint=0.0000003,
                                   is_plot=IS_PLOT)
-        self.assertEqual(result.designs.dataframe.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
+        self.assertEqual(design_result.design_df.loc[0, cn.REASON], cn.DESIGN_RESULT_SUCCESS)
 
     def testBug11(self):
         # Bogus initial transient on fit

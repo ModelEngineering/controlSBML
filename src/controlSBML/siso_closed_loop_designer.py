@@ -37,10 +37,6 @@ PARAMETER_DISPLAY_DCT = {CP_kP: r'$k_p$', CP_kI: r'$k_i$', CP_kF: r'$k_f$', CP_k
 
 Workunit = collections.namedtuple("Workunit",
     "system input_name output_name setpoint times is_greedy num_restart is_report") 
-# DesignResult
-#   dataframe: table of design results
-#   max_count: maximum count of the design parameters that successfully simulate
-DesignResult = collections.namedtuple("DesignResult", "dataframe max_count")
 
 
 def _calculateClosedLoopTransferFunction(open_loop_transfer_function=None, kP=None, kI=None, kD=None, kF=None,
@@ -239,7 +235,7 @@ class SISOClosedLoopDesigner(object):
 
     def design(self, kP_spec=False, kI_spec=False, kD_spec=False, kF_spec=False, is_greedy=True,
                num_restart=5, min_value=MIN_VALUE, max_value=MAX_VALUE,
-               num_coordinate=3, num_process:int=-1, is_report:bool=False)->DesignResult:
+               num_coordinate=3, num_process:int=-1, is_report:bool=False)->pd.DataFrame:
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         Args:
@@ -252,7 +248,7 @@ class SISOClosedLoopDesigner(object):
             is_report: bool (provide progress report)
             num_process: int (number of processes to use)
         Returns:
-            DesignResult
+            pd.DataFrame: design results
         """
         def addAxis(grid, parameter_name, parameter_spec):
             """
@@ -286,7 +282,7 @@ class SISOClosedLoopDesigner(object):
                                     num_process=num_process)
 
     def designAlongGrid(self, grid:Grid, is_greedy:bool=False, num_restart:int=1,
-                        is_report:bool=False, num_process:int=-1)->DesignResult:
+                        is_report:bool=False, num_process:int=-1)->pd.DataFrame:
         """
         Design objective: Create a feasible system (stable, no negative inputs/outputs) that minimizes residuals.
         For systems with random noise or disturbance, uses the maximum value of the score.
@@ -298,7 +294,7 @@ class SISOClosedLoopDesigner(object):
             is_report: bool (provide progress report)
             num_proc: int (number of processes to use; -1 means use all available processors)
         Returns:
-            DesignResult
+            pd.DataFrame: design results
         """
         def getValue(val):
             if isinstance(val, pd.Series):
@@ -319,7 +315,7 @@ class SISOClosedLoopDesigner(object):
         if len(search_result_df) == 0:
             df = pd.DataFrame([[None, None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
                               columns=[CP_kP, CP_kI, CP_kD, CP_kF, cn.SCORE, cn.REASON])
-            return DesignResult(dataframe=df, max_count=0)
+            return df
         # Merge the results and sort by score
         search_result_df = search_result_df.sort_values(cn.SCORE, ascending=True)  # type: ignore
         search_result_df = search_result_df.reset_index(drop=True)
@@ -342,7 +338,7 @@ class SISOClosedLoopDesigner(object):
         if len(sorted_mean_df) == 0:
             df = pd.DataFrame([[None, None, None, None, None, cn.DESIGN_RESULT_CANNOT_SIMULATE]],
                               columns=[CP_kP, CP_kI, CP_kD, CP_kF, cn.SCORE, cn.REASON])
-            return DesignResult(dataframe=df, max_count=0)
+            return df
         # Record the result
         self.residual_mse = sorted_mean_df.loc[0, cn.SCORE]
         if CP_kP in sorted_mean_df.columns:
@@ -354,7 +350,7 @@ class SISOClosedLoopDesigner(object):
         if CP_kF in sorted_mean_df.columns:
             self.kF = getValue(sorted_mean_df.loc[0, CP_kF])
         self.design_result_df = sorted_mean_df
-        return DesignResult(dataframe=result_df, max_count=max_count)
+        return result_df
 
     def simulateTransferFunction(self, transfer_function=None, period=None)->tuple[np.array, np.array]:
         """

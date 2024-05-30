@@ -6,7 +6,7 @@ from controlSBML.staircase import Staircase # type: ignore
 from controlSBML.timeseries import Timeseries # type: ignore
 from controlSBML.control_sbml import ControlSBML # type: ignore
 
-import matplotlib.pyplot as plt
+import matplotlib.pyplot as plt  # type: ignore
 import control  # type: ignore
 import numpy as np
 import unittest

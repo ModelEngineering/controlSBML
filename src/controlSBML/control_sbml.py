@@ -58,9 +58,9 @@ from controlSBML.grid import Grid
 from controlSBML.parallel_coordinates import ParallelCoordinates
 
 from collections import namedtuple
-import os
 import control  # type: ignore
-import numpy as np
+import numpy as np  # type: ignore
+import pandas as pd  # type: ignore
 from typing import List, Tuple, Optional
 
 SETPOINT = 1
@@ -135,8 +135,7 @@ OPTION_KEYS = list(OPTION_DCT.keys())
 SIMULATION_KEYS = list(SIMULATION_DCT.keys())
 
 # Returned results
-DesignResult = namedtuple("DesignResult", ["timeseries", "antimony_builder", "designs"])
-GridDesignResult = namedtuple("GridDesignResult", ["timeseries", "antimony_builder", "designs"])
+DesignResult = namedtuple("DesignResult", ["timeseries", "antimony_builder", "design_df"])
 ModelResult = namedtuple("ModelResult", ["timeseries"])
 StaircaseResponseResult = namedtuple("StaircaseResponseResult", ["timeseries", "antimony_builder"])
 TransferFunctionFitResult = namedtuple("TransferFunctionFitResult", ["timeseries", "antimony_builder"]) 
@@ -667,7 +666,7 @@ class ControlSBML(object):
                        num_process:Optional[int]=OPTION_DCT[cn.O_NUM_PROCESS],
                        num_restart:Optional[int]=OPTION_DCT[cn.O_NUM_RESTART],
                        selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
-                       **kwargs)->GridDesignResult:
+                       **kwargs)->DesignResult:
         """
         Plots the results of a closed loop design based a grid of values for the control parameters.
         Persists the closed loop design (kP, kI, kD, kF) if a design is found.
@@ -681,7 +680,7 @@ class ControlSBML(object):
             selections: list-str (selections for the simulation)
             kwargs: dict (plot options)
         Returns:
-            GridDesignResult
+            DesignResult
                 timeseries: Timeseries
                 antimony_builder: AntimonyBuilder
         """
@@ -705,14 +704,14 @@ class ControlSBML(object):
                 setpoint=setpoint,
                 input_name=self.input_name,
                 output_name=self.output_name)
-        # Translate axis names
-        self.design_result = designer.designAlongGrid(grid,
+        # Do the designs
+        design_df = designer.designAlongGrid(grid,
                                  num_process=num_process,  # type: ignore
                                  num_restart=num_restart)    # type: ignore
         if designer.residual_mse is None:
             msgs.warn("No design found!")
-            return GridDesignResult(timeseries=None, antimony_builder=None,
-                                    designs=self.design_result)
+            return DesignResult(timeseries=None, antimony_builder=None,
+                                    design_df=design_df)
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
@@ -737,31 +736,36 @@ class ControlSBML(object):
                 kF=designer.kF,
                 selections=selections,
                 **plot_dct)
-        return GridDesignResult(timeseries=response_ts, antimony_builder=antimony_builder,
-                                designs=self.design_result)
+        self.design_result = DesignResult(timeseries=response_ts, antimony_builder=antimony_builder,
+                                design_df=design_df)
+        return self.design_result
     
-    def plotAllDesignResults(self, design_result:Optional[DesignResult]=None,
-                         title=None, figsize=None, columns=None, 
+    def plotDesignResults(self, design_result:Optional[DesignResult]=None,
+                         title=None, figsize=None, columns=None, num_top:int=10, num_category=5,
                          round_digit:int=4, is_plot=True):
         """
         Does a parallel coordinate plot of the design results.
 
         Args:
-            design_result: DesignResult
+            design_df: pd.DataFrame (designs)
             title: str
             figsize: tuple
             columns: list-str (order in whch columns appear on plot)
+            num_top: int (number of top designs to plot)
+            num_category: int (number of categories to plot)
             round_digit: int (number of digits to round to)
         """
         if design_result is None:
             design_result = self.design_result
-        df = design_result.dataframe.copy() # type: ignore
+        df = design_result.design_df.copy() # type: ignore
         del df[cn.REASON]
+        df = df.loc[range(num_top), :]
         ParallelCoordinates.plotParallelCoordinates(df,  # type: ignore
                                 title=title, figsize=figsize,
                                 columns=columns,
                                 value_column=cn.SCORE,
                                 round_digit=round_digit,
+                                num_category=num_category,
                                 is_plot=is_plot)
 
     @staticmethod
@@ -816,7 +820,7 @@ class ControlSBML(object):
             DesignResult
                 timeseries: Timeseries of the response
                 antimony_builder: AntimonyBuilder simulated with the design parameters
-                designs
+                design_df
         """
         #
         def setValue(val):
@@ -865,7 +869,7 @@ class ControlSBML(object):
                 setpoint=setpoint,
                 input_name=self.input_name,
                 output_name=self.output_name)
-        self.design_result = designer.design(
+        design_df = designer.design(
             kP_spec=kP_spec,
             kI_spec=kI_spec,
             kD_spec=kD_spec,
@@ -880,7 +884,7 @@ class ControlSBML(object):
         if designer.residual_mse is None:
             msgs.warn("No design found!")
             return DesignResult(timeseries=None, antimony_builder=None,
-                                designs=self.design_result)
+                                design_df=None)
         # Persist the design parameters
         self.setOption(cn.CP_KP, designer.kP)
         self.setOption(cn.CP_KI, designer.kI)
@@ -908,8 +912,9 @@ class ControlSBML(object):
                 kF=designer.kF,
                 selections=selections,
                 **plot_dct)
-        return DesignResult(timeseries=response_ts, antimony_builder=antimony_builder,
-                            designs=self.design_result)
+        self.design_result = DesignResult(timeseries=response_ts, antimony_builder=antimony_builder,
+                            design_df=design_df)
+        return self.design_result
     
     def _plotDesignResult(self, **kwargs):
         """
