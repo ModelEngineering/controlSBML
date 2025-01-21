@@ -1,6 +1,6 @@
 [project]
 name = "controlSBML"
-version = "1.2.1"
+version = "1.2.3"
 description = "Control analysis of SBML models"
 authors = [{ name = "Joseph Hellerstein", email = "joseph.hellerstein@gmail.com" }]
 license = { file = "LICENSE" }
@@ -23,6 +23,7 @@ dependencies = [
     "symmathSBML",
     "sympy",
     "tellurium",
+    "toml",
     "tqdm",
     "twine",
     "urllib3",

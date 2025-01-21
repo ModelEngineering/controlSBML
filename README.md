@@ -20,6 +20,10 @@ ctl.__version__
 ```
 
 ## Version History
+* 1.2.3 1/21/2025
+    * Fix update bug
+* 1.2.2 1/21/2025
+    * Update to most current API
 * 1.2.1 5/23/2024
     * Eliminated the save_path feature since it conflicted with usage in colab.
 * 1.2.0 5/22/2024

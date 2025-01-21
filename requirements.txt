@@ -20,7 +20,7 @@ statsmodels
 sympy
 tabulate
 tellurium
-tomli
+toml
 tqdm
 twine
 urllib3
