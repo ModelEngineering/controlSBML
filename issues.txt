@@ -4,3 +4,6 @@
 4. Simplified handling of state space models. The A matrix is the Jacobian
    at a user-specified simulation time (with 0 as the default).
 5. Allow Boundary species as inputs.
+6. plotDesign
+    a. num_coordinate -> num_parameter_value
+    b. k*_spec: 1 float is value; 3 float is upper and lower bound and num_parameter value; eliminate min_value, max_value, num_
