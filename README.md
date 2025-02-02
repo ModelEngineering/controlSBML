@@ -20,6 +20,8 @@ ctl.__version__
 ```
 
 ## Version History
+* 1.2.4 2/2/2024
+  * Add colour to requirements
 * 1.2.3 1/21/2025
     * Fix update bug
 * 1.2.2 1/21/2025
