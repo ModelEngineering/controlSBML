@@ -138,7 +138,8 @@ SIMULATION_KEYS = list(SIMULATION_DCT.keys())
 DesignResult = namedtuple("DesignResult", ["timeseries", "antimony_builder", "design_df"])
 ModelResult = namedtuple("ModelResult", ["timeseries"])
 StaircaseResponseResult = namedtuple("StaircaseResponseResult", ["timeseries", "antimony_builder"])
-TransferFunctionFitResult = namedtuple("TransferFunctionFitResult", ["timeseries", "antimony_builder"]) 
+TransferFunctionFitResult = namedtuple("TransferFunctionFitResult",
+                                       ["timeseries", "antimony_builder", "transfer_function"]) 
 
 
 class ControlSBML(object):
@@ -154,7 +155,7 @@ class ControlSBML(object):
                  fitter_method:Optional[str]=OPTION_DCT[cn.O_FITTER_METHOD],
                  setpoint:Optional[float]=OPTION_DCT[cn.O_SETPOINT],
                  sign:Optional[int]=OPTION_DCT[cn.O_SIGN],
-                 times:Optional[np.ndarray[float]]=None,
+                 times:Optional[np.ndarray]=None,
                  **kwargs):
         """
         model_reference: str
@@ -460,7 +461,7 @@ class ControlSBML(object):
 
     ############ PLOTTERS ##############
     def plotModel(self, 
-                  times:Optional[np.ndarray[float]]=None,
+                  times:Optional[np.ndarray]=None,
                   selections:Optional[List[str]]=OPTION_DCT[cn.O_SELECTIONS],
                   **kwargs)->ModelResult:
         """
@@ -562,6 +563,7 @@ class ControlSBML(object):
             TransferFunctionFitResult
                 timeseries: Timeseries (predicted, staircase input, simulated output)
                 antimony_builder: AntimonyBuilder
+                transfer_function: control.TransferFunction
         """
         # Check the options
         self._checkKwargs(valids=PLOT_KEYS, **kwargs)
@@ -602,6 +604,7 @@ class ControlSBML(object):
         return TransferFunctionFitResult(
                 timeseries=self._fitter_result.time_series, 
                 antimony_builder=self._fitter_result.antimony_builder,
+                transfer_function=self._fitter_result.transfer_function,
         )
     
     def _plotClosedLoop(self, 

@@ -18,6 +18,7 @@ scikit-learn
 seaborn
 statsmodels
 sympy
+symmathSBML
 tabulate
 tellurium
 toml
