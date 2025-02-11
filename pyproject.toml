@@ -21,6 +21,7 @@ dependencies = [
     "pylint",
     "python-libsbml",
     "seaborn",
+    "sbmlnetwork",
     "symmathSBML",
     "sympy",
     "tellurium",

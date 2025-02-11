@@ -20,7 +20,10 @@ ctl.__version__
 ```
 
 ## Version History
-* 1.2.4 2/2/2024
+* 1.3.0 2/10/2025
+  * Add draw to API
+  * Change colors for plots to make them more visible
+* 1.2.4 2/2/2025
   * Add colour to requirements
 * 1.2.3 1/21/2025
     * Fix update bug

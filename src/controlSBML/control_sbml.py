@@ -61,6 +61,8 @@ from collections import namedtuple
 import control  # type: ignore
 import numpy as np  # type: ignore
 import pandas as pd  # type: ignore
+import sbmlnetwork # type: ignore
+import tempfile  # type: ignore
 from typing import List, Tuple, Optional
 
 SETPOINT = 1
@@ -492,6 +494,17 @@ class ControlSBML(object):
         if is_plot:
             util.plotOneTS(ts, **plot_dct)
         return ModelResult(timeseries=ts)
+    
+    def draw(self)->sbmlnetwork.SBMLNetwork:
+        """
+        Draws
+        """
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            temp_file_path = temp_file.name
+            self._roadrunner.exportToSBML(temp_file_path)
+            drawer = sbmlnetwork.load(temp_file_path)
+            drawer.draw()
+        return drawer
     
     def plotStaircaseResponse(self,
                               initial_value:Optional[float]=OPTION_DCT[cn.O_INITIAL_VALUE],

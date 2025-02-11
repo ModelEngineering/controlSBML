@@ -98,6 +98,12 @@ class TestControlSBML(unittest.TestCase):
         result = self.ctlsb.plotModel(is_plot=IS_PLOT, figsize=FIGSIZE, markers=False)
         self.assertTrue(isinstance(result.timeseries, Timeseries))
 
+    def testDraw(self):
+        if IGNORE_TEST:
+            return
+        ctlsb = CTLSB.copy()
+        ctlsb.draw()
+
     def testPlotStaircaseResponse(self):
         if IGNORE_TEST:
             return

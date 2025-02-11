@@ -13,7 +13,7 @@ pandas
 pip>20
 pylint
 python-libsbml
-SBMLDiagrams
+sbmlnetwork
 scikit-learn
 seaborn
 statsmodels

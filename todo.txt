@@ -1,4 +1,7 @@
 Keep last antimony builder in designs (reconstruct for best design?)
+plotDesign
+  Better colors
+  label y-axis meaningfully
 MISO
 Bugs
   "Stoichiometry matrix does not exist for this model" -- 379
