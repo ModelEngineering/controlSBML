@@ -1,4 +1,10 @@
 Keep last antimony builder in designs (reconstruct for best design?)
+Titles on fitt plots with poles, zeros
+Color of plot lines
+Document options
+Bug in transfer calculation for DC gain. Seems realted to fit_start_time
+  that doesn't properly normalize (or maybe input_start, input_final)
+  See class notebook interpreting_laplace_transforms
 plotDesign
   Better colors
   label y-axis meaningfully
