@@ -1,4 +1,4 @@
-# controlSBML
+# ControlSBML
 ``controlSBML`` is a python packag that assists with control engineering of biological systems that are characterized by models in
  the [Systems Biology Markup Language (SBML)](https://co.mbine.org/standards/sbml), a community standard for representing
 models of biological models, especially chemical reaction networks.
